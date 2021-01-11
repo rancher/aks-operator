@@ -1,0 +1,33 @@
+apiVersion: aks.cattle.io/v1
+kind: AKSClusterConfig
+metadata:
+  name: my-cluster
+spec:
+  displayName: "my-cluster"
+  resourceLocation: "germanywestcentral"
+  resourceGroup: "my-group"
+  clusterName: "my-cluster"
+  baseUrl: "https://management.azure.com/"
+  authBaseUrl: "https://login.microsoftonline.com"
+  subscriptionId: "REPLACE_WITH_SUBCRIPTION_ID"
+  tenantId: "REPLACE_WITH_TENANT_ID"
+  azureCredentialSecret: "REPLACE_WITH_K8S_SECRETS_NAME"
+  kubernetesVersion: "1.18.14"
+  nodePools:
+  - name: "masters"
+    count: 1
+    vmSize: "Standard_DS2_v2"
+    osDiskSizeGB: 128
+    osDiskType: "Managed"
+    maxPods: 110
+    mode: "System"
+    osType: "Linux"
+  - name: "workers"
+    count: 2
+    vmSize: "Standard_DS2_v2"
+    osDiskSizeGB: 128
+    osDiskType: "Managed"
+    maxPods: 110
+    mode: "User"
+    osType: "Linux"
+status: {}

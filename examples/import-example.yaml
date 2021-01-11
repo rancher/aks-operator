@@ -1,0 +1,11 @@
+apiVersion: aks.cattle.io/v1
+kind: AKSClusterConfig
+metadata:
+  name: my-import-cluster
+spec:
+  displayName: my-import-cluster
+  subscriptionId: "REPLACE_WITH_SUBCRIPTION_ID"
+  azureCredentialSecret: "REPLACE_WITH_K8S_SECRETS_NAME"
+  tenantId: "REPLACE_WITH_TENANT_ID"
+  imported: true
+status: {}
