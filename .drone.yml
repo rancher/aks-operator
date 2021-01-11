@@ -1,0 +1,58 @@
+---
+kind: pipeline
+name: linux-amd64
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: ci
+  image: golang:1.16
+  commands:
+  - ./scripts/ci
+  when:
+    event:
+    - push
+    - pull_request
+    - tag
+
+- name: docker-build
+  image: plugins/docker
+  settings:
+    dockerfile: Dockerfile
+    repo: "rancher/aks-operator"
+    tag: "dev"
+    dry_run: true
+  when:
+    event:
+    - pull_request
+
+- name: docker-publish
+  image: plugins/docker
+  settings:
+    dockerfile: Dockerfile
+    password:
+      from_secret: docker_password
+    username:
+      from_secret: docker_username
+    repo: "rancher/aks-operator"
+    tag: "${DRONE_TAG}"
+  when:
+    event:
+    - tag
+
+- name: manifest
+  image: plugins/manifest
+  settings:
+    dockerfile: Dockerfile
+    password:
+      from_secret: docker_password
+    username:
+      from_secret: docker_username
+    platforms:
+    - linux/amd64
+    target: "rancher/aks-operator:${DRONE_TAG}"
+    template: "rancher/aks-operator:${DRONE_TAG}"
+  when:
+    event:
+    - tag
