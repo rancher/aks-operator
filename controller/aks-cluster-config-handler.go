@@ -259,7 +259,7 @@ func (h *Handler) validateConfig(ctx context.Context, config *aksv1.AKSClusterCo
 		return fmt.Errorf("cannot list AKSClusterConfig for display name check")
 	}
 	for _, c := range aksConfigs.Items {
-		if c.Spec.ClusterName == config.Spec.ClusterName && c.Name != config.Name  {
+		if c.Spec.ClusterName == config.Spec.ClusterName && c.Name != config.Name {
 			return fmt.Errorf("cannot create cluster [%s] because an AKSClusterConfig exists with the same name", config.Spec.ClusterName)
 		}
 	}
@@ -283,11 +283,11 @@ func (h *Handler) validateConfig(ctx context.Context, config *aksv1.AKSClusterCo
 	if config.Spec.AzureCredentialSecret == "" {
 		return fmt.Errorf(cannotBeNilError, "azureCredentialSecret", config.ClusterName)
 	}
-	clientId, clientSecret, err := getSecrets(h.secretsCache, config.Spec.AzureCredentialSecret)
+	clientID, clientSecret, err := getSecrets(h.secretsCache, config.Spec.AzureCredentialSecret)
 	if err != nil {
 		return fmt.Errorf("could not get secrets with error: %v", err)
 	}
-	if clientId == "" || clientSecret == "" {
+	if clientID == "" || clientSecret == "" {
 		return fmt.Errorf(cannotBeNilError, "clientId and clientSecret", config.ClusterName)
 	}
 	if config.Spec.Imported {
@@ -559,11 +559,11 @@ func newClientAuthorizer(secretsCache wranglerv1.SecretCache, spec aksv1.AKSClus
 		baseURL = &azure.PublicCloud.ResourceManagerEndpoint
 	}
 
-	clientId, clientSecret, err := getSecrets(secretsCache, spec.AzureCredentialSecret)
+	clientID, clientSecret, err := getSecrets(secretsCache, spec.AzureCredentialSecret)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get secrets with error: %v", err)
 	}
-	spToken, err := adal.NewServicePrincipalToken(*oauthConfig, clientId, clientSecret, *baseURL)
+	spToken, err := adal.NewServicePrincipalToken(*oauthConfig, clientID, clientSecret, *baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't authenticate to Azure cloud with error: %v", err)
 	}
@@ -772,7 +772,7 @@ func createOrUpdateCluster(ctx context.Context, secretsCache wranglerv1.SecretCa
 		}
 	}
 
-	clientId, clientSecret, err := getSecrets(secretsCache, spec.AzureCredentialSecret)
+	clientID, clientSecret, err := getSecrets(secretsCache, spec.AzureCredentialSecret)
 	if err != nil {
 		return c, fmt.Errorf("couldn't get secrets with error: %v", err)
 	}
@@ -787,7 +787,7 @@ func createOrUpdateCluster(ctx context.Context, secretsCache wranglerv1.SecretCa
 			LinuxProfile:      linuxProfile,
 			NetworkProfile:    networkProfile,
 			ServicePrincipalProfile: &containersv211.ManagedClusterServicePrincipalProfile{
-				ClientID: to.StringPtr(clientId),
+				ClientID: to.StringPtr(clientID),
 				Secret:   to.StringPtr(clientSecret),
 			},
 		},
@@ -873,11 +873,11 @@ func getSecrets(secretsCache wranglerv1.SecretCache, secretName string) (string,
 		return "", "", fmt.Errorf("couldn't find secret [%s] in namespace [%s]", id, ns)
 	}
 
-	clientIdBytes := secret.Data["clientId"]
+	clientIDBytes := secret.Data["clientId"]
 	clientSecretBytes := secret.Data["clientSecret"]
-	if clientIdBytes == nil || clientSecretBytes == nil {
+	if clientIDBytes == nil || clientSecretBytes == nil {
 		return "", "", fmt.Errorf("invalid secret client data for Azure cloud")
 	}
 
-	return string(clientIdBytes), string(clientSecretBytes), nil
+	return string(clientIDBytes), string(clientSecretBytes), nil
 }

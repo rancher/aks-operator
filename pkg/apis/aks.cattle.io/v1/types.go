@@ -63,8 +63,8 @@ type AKSClusterConfigSpec struct {
 }
 
 type AKSClusterConfigStatus struct {
-	Phase          string   `json:"phase"`
-	FailureMessage string   `json:"failureMessage"`
+	Phase          string `json:"phase"`
+	FailureMessage string `json:"failureMessage"`
 }
 
 type AKSNodePool struct {
