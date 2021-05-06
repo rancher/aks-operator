@@ -51,8 +51,10 @@ type AKSClusterConfigSpec struct {
 	NetworkPodCIDR              *string           `json:"podCidr"`
 	LoadBalancerSKU             *string           `json:"loadBalancerSku"`
 	NetworkPolicy               *string           `json:"networkPolicy"`
-	LinuxAdminUsername          *string           `json:"adminUsername,omitempty"`
+	LinuxAdminUsername          *string           `json:"linuxAdminUsername,omitempty"`
 	LinuxSSHPublicKey           *string           `json:"sshPublicKey,omitempty"`
+	WindowsAdminUsername        *string           `json:"windowsAdminUsername,omitempty"`
+	WindowsAdminPassword        *string           `json:"windowsAdminPassword,omitempty"`
 	DNSPrefix                   *string           `json:"dnsPrefix,omitempty"`
 	KubernetesVersion           *string           `json:"kubernetesVersion"`
 	Tags                        map[string]string `json:"tags"`
