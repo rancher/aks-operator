@@ -47,11 +47,11 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		}
 
 		vmNetSubnetID = to.StringPtr(fmt.Sprintf(
-			"/subscriptions/%v/resourceGroups/%v/providers/Microsoft.Network/virtualNetworks/%v/subnets/%v",
+			"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/virtualNetworks/%s/subnets/%s",
 			cred.SubscriptionID,
 			virtualNetworkResourceGroup,
-			spec.VirtualNetwork,
-			spec.Subnet,
+			*spec.VirtualNetwork,
+			*spec.Subnet,
 		))
 
 		networkProfile.DNSServiceIP = spec.NetworkDNSServiceIP
