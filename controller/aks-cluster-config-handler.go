@@ -5,14 +5,15 @@ import (
 	"encoding/base64"
 	"fmt"
 	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/rancher/aks-operator/internal/aks"
-	"github.com/rancher/aks-operator/internal/utils"
+	"github.com/rancher/aks-operator/pkg/aks"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	v10 "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io/v1"
+	"github.com/rancher/aks-operator/pkg/utils"
 	wranglerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
@@ -70,6 +71,9 @@ const (
 	// NodePoolUpgrading The Upgrading state indicates that cluster was upgraded
 	NodePoolUpgrading = "Upgrading"
 )
+
+var matchWorkspaceGroup = regexp.MustCompile("/resourcegroups/(.+?)/")
+var matchWorkspaceName = regexp.MustCompile("/workspaces/(.+?)")
 
 type Handler struct {
 	aksCC           v10.AKSClusterConfigClient
@@ -590,6 +594,18 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 		upstreamSpec.HTTPApplicationRouting = addonProfile["httpApplicationRouting"].Enabled
 	}
 
+	// set addon monitoring profile
+	if addonProfile["omsagent"] != nil {
+		upstreamSpec.Monitoring = addonProfile["omsagent"].Enabled
+		logAnalyticsWorkspaceResourceID := addonProfile["omsagent"].Config["logAnalyticsWorkspaceResourceID"]
+
+		logAnalyticsWorkspaceGroup := matchWorkspaceGroup.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))[1]
+		upstreamSpec.LogAnalyticsWorkspaceGroup = to.StringPtr(logAnalyticsWorkspaceGroup)
+
+		logAnalyticsWorkspaceName := matchWorkspaceName.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))[1]
+		upstreamSpec.LogAnalyticsWorkspaceName = to.StringPtr(logAnalyticsWorkspaceName)
+	}
+
 	// set API server access profile
 	upstreamSpec.PrivateCluster = to.BoolPtr(false)
 	if clusterState.APIServerAccessProfile != nil {
@@ -711,6 +727,13 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 	if config.Spec.HTTPApplicationRouting != nil {
 		if to.Bool(config.Spec.HTTPApplicationRouting) != to.Bool(upstreamSpec.HTTPApplicationRouting) {
 			logrus.Infof("Updating HTTP application routing for cluster [%s]", config.Spec.ClusterName)
+		}
+	}
+
+	// check addon monitoring
+	if config.Spec.Monitoring != nil {
+		if to.Bool(config.Spec.Monitoring) != to.Bool(upstreamSpec.Monitoring) {
+			logrus.Infof("Updating monitoring addon for cluster [%s]", config.Spec.ClusterName)
 			updateAksCluster = true
 		}
 	}

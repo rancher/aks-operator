@@ -59,6 +59,9 @@ type AKSClusterConfigSpec struct {
 	PrivateCluster              *bool             `json:"privateCluster"`
 	AuthorizedIPRanges          *[]string         `json:"authorizedIpRanges"`
 	HTTPApplicationRouting      *bool             `json:"httpApplicationRouting"`
+	Monitoring                  *bool             `json:"monitoring"`
+	LogAnalyticsWorkspaceGroup  *string           `json:"logAnalyticsWorkspaceGroup"`
+	LogAnalyticsWorkspaceName   *string           `json:"logAnalyticsWorkspaceName"`
 }
 
 type AKSClusterConfigStatus struct {

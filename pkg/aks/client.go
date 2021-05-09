@@ -10,8 +10,8 @@ import (
 	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/rancher/aks-operator/internal/utils"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
+	"github.com/rancher/aks-operator/pkg/utils"
 	wranglerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 )
 
