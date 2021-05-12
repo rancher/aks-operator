@@ -277,7 +277,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 
 	clusterState := *result.ManagedClusterProperties.ProvisioningState
 	if clusterState == ClusterStatusFailed {
-		return config, fmt.Errorf("update failed for cluster [%s] with error %v", config.Spec.ClusterName, err)
+		return config, fmt.Errorf("update failed for cluster [%s], status: %s", config.Spec.ClusterName, clusterState)
 	}
 	if clusterState == ClusterStatusInProgress || clusterState == ClusterStatusUpgrading {
 		// upstream cluster is already updating, must wait until sending next update
@@ -424,7 +424,7 @@ func (h *Handler) waitForCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 
 	clusterState := *result.ManagedClusterProperties.ProvisioningState
 	if clusterState == ClusterStatusFailed {
-		return config, fmt.Errorf("creation failed for cluster [%s] with error %v", config.Spec.ClusterName, err)
+		return config, fmt.Errorf("creation for cluster [%s] status: %s", config.Spec.ClusterName, clusterState)
 	}
 	if clusterState == ClusterStatusSucceeded {
 		if err = h.createCASecret(ctx, config); err != nil {
