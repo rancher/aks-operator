@@ -39,24 +39,24 @@ type AKSClusterConfigSpec struct {
 	ClusterName                 string            `json:"clusterName" norman:"noupdate"`
 	TenantID                    string            `json:"tenantId"`
 	AzureCredentialSecret       string            `json:"azureCredentialSecret"`
-	BaseURL                     *string           `json:"baseUrl"`
-	AuthBaseURL                 *string           `json:"authBaseUrl"`
-	NetworkPlugin               *string           `json:"networkPlugin"`
-	VirtualNetworkResourceGroup *string           `json:"virtualNetworkResourceGroup"`
-	VirtualNetwork              *string           `json:"virtualNetwork"`
-	Subnet                      *string           `json:"subnet"`
-	NetworkDNSServiceIP         *string           `json:"dnsServiceIp"`
-	NetworkServiceCIDR          *string           `json:"serviceCidr"`
-	NetworkDockerBridgeCIDR     *string           `json:"dockerBridgeCidr"`
-	NetworkPodCIDR              *string           `json:"podCidr"`
-	LoadBalancerSKU             *string           `json:"loadBalancerSku"`
-	NetworkPolicy               *string           `json:"networkPolicy"`
-	LinuxAdminUsername          *string           `json:"linuxAdminUsername,omitempty"`
-	LinuxSSHPublicKey           *string           `json:"sshPublicKey,omitempty"`
-	WindowsAdminUsername        *string           `json:"windowsAdminUsername,omitempty"`
-	WindowsAdminPassword        *string           `json:"windowsAdminPassword,omitempty"`
-	DNSPrefix                   *string           `json:"dnsPrefix,omitempty"`
-	KubernetesVersion           *string           `json:"kubernetesVersion"`
+	BaseURL                     *string           `json:"baseUrl" norman:"type=nullablestring"`
+	AuthBaseURL                 *string           `json:"authBaseUrl" norman:"type=nullablestring"`
+	NetworkPlugin               *string           `json:"networkPlugin" norman:"type=nullablestring"`
+	VirtualNetworkResourceGroup *string           `json:"virtualNetworkResourceGroup" norman:"type=nullablestring"`
+	VirtualNetwork              *string           `json:"virtualNetwork" norman:"type=nullablestring"`
+	Subnet                      *string           `json:"subnet" norman:"type=nullablestring"`
+	NetworkDNSServiceIP         *string           `json:"dnsServiceIp" norman:"type=nullablestring"`
+	NetworkServiceCIDR          *string           `json:"serviceCidr" norman:"type=nullablestring"`
+	NetworkDockerBridgeCIDR     *string           `json:"dockerBridgeCidr" norman:"type=nullablestring"`
+	NetworkPodCIDR              *string           `json:"podCidr" norman:"type=nullablestring"`
+	LoadBalancerSKU             *string           `json:"loadBalancerSku" norman:"type=nullablestring"`
+	NetworkPolicy               *string           `json:"networkPolicy" norman:"type=nullablestring"`
+	LinuxAdminUsername          *string           `json:"linuxAdminUsername,omitempty" norman:"type=nullablestring"`
+	LinuxSSHPublicKey           *string           `json:"sshPublicKey,omitempty" norman:"type=nullablestring"`
+	WindowsAdminUsername        *string           `json:"windowsAdminUsername,omitempty" norman:"type=nullablestring"`
+	WindowsAdminPassword        *string           `json:"windowsAdminPassword,omitempty" norman:"type=nullablestring"`
+	DNSPrefix                   *string           `json:"dnsPrefix,omitempty" norman:"type=nullablestring"`
+	KubernetesVersion           *string           `json:"kubernetesVersion" norman:"type=nullablestring"`
 	Tags                        map[string]string `json:"tags"`
 	NodePools                   []AKSNodePool     `json:"nodePools"`
 	PrivateCluster              *bool             `json:"privateCluster"`
@@ -69,7 +69,7 @@ type AKSClusterConfigStatus struct {
 }
 
 type AKSNodePool struct {
-	Name                *string   `json:"name,omitempty"`
+	Name                *string   `json:"name,omitempty" norman:"type=nullablestring"`
 	Count               *int32    `json:"count,omitempty"`
 	MaxPods             *int32    `json:"maxPods,omitempty"`
 	VMSize              string    `json:"vmSize,omitempty"`
@@ -77,7 +77,7 @@ type AKSNodePool struct {
 	OsDiskType          string    `json:"osDiskType,omitempty"`
 	Mode                string    `json:"mode,omitempty"`
 	OsType              string    `json:"osType,omitempty"`
-	OrchestratorVersion *string   `json:"orchestratorVersion,omitempty"`
+	OrchestratorVersion *string   `json:"orchestratorVersion,omitempty" norman:"type=nullablestring"`
 	AvailabilityZones   *[]string `json:"availabilityZones,omitempty"`
 	MaxCount            *int32    `json:"maxCount,omitempty"`
 	MinCount            *int32    `json:"minCount,omitempty"`
