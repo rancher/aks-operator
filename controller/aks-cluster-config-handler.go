@@ -635,58 +635,60 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 		}
 	}
 
-	agentPoolClient, err := aks.NewAgentPoolClient(credentials)
-	if err != nil {
-		return config, err
-	}
-
-	downstreamNodePools, err := utils.BuildNodePoolMap(config.Spec.NodePools, config.Spec.ClusterName)
-	if err != nil {
-		return config, err
-	}
-
-	// check for updated NodePools
-	upstreamNodePools, _ := utils.BuildNodePoolMap(upstreamSpec.NodePools, config.Spec.ClusterName)
-	updateNodePool := false
-	for npName, np := range downstreamNodePools {
-		upstreamNodePool, ok := upstreamNodePools[npName]
-		if ok {
-			// There is a matching node pool in the cluster already, so update it if needed
-			if to.Int32(np.Count) != to.Int32(upstreamNodePool.Count) {
-				logrus.Infof("Updating node count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
-				updateNodePool = true
-			}
-			if np.EnableAutoScaling != nil && to.Bool(np.EnableAutoScaling) != to.Bool(upstreamNodePool.EnableAutoScaling) {
-				logrus.Infof("Updating autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
-				updateNodePool = true
-			}
-			if np.OrchestratorVersion != nil && to.String(np.OrchestratorVersion) != to.String(upstreamNodePool.OrchestratorVersion) {
-				logrus.Infof("Updating orchestrator version in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
-				updateNodePool = true
-			}
-		} else {
-			logrus.Infof("Adding node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
-			updateNodePool = true
+	if config.Spec.NodePools != nil {
+		agentPoolClient, err := aks.NewAgentPoolClient(credentials)
+		if err != nil {
+			return config, err
 		}
 
-		if updateNodePool {
-			err = aks.CreateOrUpdateAgentPool(ctx, agentPoolClient, &config.Spec, np)
-			if err != nil {
-				return config, fmt.Errorf("failed to update cluster: %v", err)
-			}
-			return h.enqueueUpdate(config)
+		downstreamNodePools, err := utils.BuildNodePoolMap(config.Spec.NodePools, config.Spec.ClusterName)
+		if err != nil {
+			return config, err
 		}
-	}
 
-	// check for removed NodePools
-	for npName := range upstreamNodePools {
-		if _, ok := downstreamNodePools[npName]; !ok {
-			logrus.Infof("Removing node pool [%s] from cluster [%s]", npName, config.Spec.ClusterName)
-			err = aks.RemoveAgentPool(ctx, agentPoolClient, &config.Spec, upstreamNodePools[npName])
-			if err != nil {
-				return config, fmt.Errorf("failed to remove node pool: %v", err)
+		// check for updated NodePools
+		upstreamNodePools, _ := utils.BuildNodePoolMap(upstreamSpec.NodePools, config.Spec.ClusterName)
+		updateNodePool := false
+		for npName, np := range downstreamNodePools {
+			upstreamNodePool, ok := upstreamNodePools[npName]
+			if ok {
+				// There is a matching node pool in the cluster already, so update it if needed
+				if to.Int32(np.Count) != to.Int32(upstreamNodePool.Count) {
+					logrus.Infof("Updating node count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					updateNodePool = true
+				}
+				if np.EnableAutoScaling != nil && to.Bool(np.EnableAutoScaling) != to.Bool(upstreamNodePool.EnableAutoScaling) {
+					logrus.Infof("Updating autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					updateNodePool = true
+				}
+				if np.OrchestratorVersion != nil && to.String(np.OrchestratorVersion) != to.String(upstreamNodePool.OrchestratorVersion) {
+					logrus.Infof("Updating orchestrator version in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					updateNodePool = true
+				}
+			} else {
+				logrus.Infof("Adding node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+				updateNodePool = true
 			}
-			return h.enqueueUpdate(config)
+
+			if updateNodePool {
+				err = aks.CreateOrUpdateAgentPool(ctx, agentPoolClient, &config.Spec, np)
+				if err != nil {
+					return config, fmt.Errorf("failed to update cluster: %v", err)
+				}
+				return h.enqueueUpdate(config)
+			}
+		}
+
+		// check for removed NodePools
+		for npName := range upstreamNodePools {
+			if _, ok := downstreamNodePools[npName]; !ok {
+				logrus.Infof("Removing node pool [%s] from cluster [%s]", npName, config.Spec.ClusterName)
+				err = aks.RemoveAgentPool(ctx, agentPoolClient, &config.Spec, upstreamNodePools[npName])
+				if err != nil {
+					return config, fmt.Errorf("failed to remove node pool: %v", err)
+				}
+				return h.enqueueUpdate(config)
+			}
 		}
 	}
 
