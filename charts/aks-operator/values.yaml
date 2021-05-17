@@ -1,0 +1,11 @@
+global:
+  systemDefaultRegistry: ""
+
+aksOperator:
+  image:
+    repository: rancher/aks-operator
+    tag: v0.0.0
+
+httpProxy: ""
+httpsProxy: ""
+noProxy: ""

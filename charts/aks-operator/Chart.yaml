@@ -1,0 +1,18 @@
+apiVersion: v2
+name: rancher-aks-operator
+description: A Helm chart for provisioning AKS clusters
+home: https://github.com/rancher/aks-operator
+sources:
+  - "https://github.com/rancher/aks-operator"
+version: 999
+appVersion: 999
+annotations:
+  catalog.cattle.io/auto-install: rancher-aks-operator-crd=match
+  catalog.cattle.io/certified: rancher
+  catalog.cattle.io/hidden: "true"
+  catalog.cattle.io/scope: management
+  catalog.cattle.io/namespace: cattle-system
+  catalog.cattle.io/release-name: rancher-aks-operator
+  catalog.cattle.io/provides-gvr: aksclusterconfigs.aks.cattle.io/v1
+  catalog.cattle.io/os: linux
+  catalog.cattle.io/rancher-version: ">= 2.6.0-alpha"
