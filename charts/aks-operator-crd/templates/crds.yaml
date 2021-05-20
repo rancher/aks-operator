@@ -138,9 +138,6 @@ spec:
                 type: string
               nullable: true
               type: object
-            tenantId:
-              nullable: true
-              type: string
             virtualNetwork:
               nullable: true
               type: string

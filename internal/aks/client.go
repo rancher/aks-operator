@@ -94,11 +94,15 @@ func GetSecrets(secretsCache wranglerv1.SecretCache, spec *aksv1.AKSClusterConfi
 		return nil, fmt.Errorf("couldn't find secret [%s] in namespace [%s]", id, ns)
 	}
 
+	tenantIDBytes := secret.Data["azurecredentialConfig-tenantId"]
 	subscriptionIDBytes := secret.Data["azurecredentialConfig-subscriptionId"]
 	clientIDBytes := secret.Data["azurecredentialConfig-clientId"]
 	clientSecretBytes := secret.Data["azurecredentialConfig-clientSecret"]
 
 	cannotBeNilError := "field [azurecredentialConfig-%s] must be provided in cloud credential"
+	if tenantIDBytes == nil {
+		return nil, fmt.Errorf(cannotBeNilError, "tenantId")
+	}
 	if subscriptionIDBytes == nil {
 		return nil, fmt.Errorf(cannotBeNilError, "subscriptionId")
 	}
@@ -109,10 +113,10 @@ func GetSecrets(secretsCache wranglerv1.SecretCache, spec *aksv1.AKSClusterConfi
 		return nil, fmt.Errorf(cannotBeNilError, "clientSecret")
 	}
 
+	cred.TenantID = string(tenantIDBytes)
 	cred.SubscriptionID = string(subscriptionIDBytes)
 	cred.ClientID = string(clientIDBytes)
 	cred.ClientSecret = string(clientSecretBytes)
-	cred.TenantID = spec.TenantID
 	cred.AuthBaseURL = spec.AuthBaseURL
 	cred.BaseURL = spec.BaseURL
 

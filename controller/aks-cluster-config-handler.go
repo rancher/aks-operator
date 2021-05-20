@@ -344,9 +344,6 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	if config.Spec.ClusterName == "" {
 		return fmt.Errorf(cannotBeNilError, "clusterName", config.ClusterName)
 	}
-	if config.Spec.TenantID == "" {
-		return fmt.Errorf(cannotBeNilError, "tenantId", config.ClusterName)
-	}
 	if config.Spec.AzureCredentialSecret == "" {
 		return fmt.Errorf(cannotBeNilError, "azureCredentialSecret", config.ClusterName)
 	}
