@@ -37,7 +37,6 @@ type AKSClusterConfigSpec struct {
 	ResourceLocation            string            `json:"resourceLocation" norman:"noupdate"`
 	ResourceGroup               string            `json:"resourceGroup" norman:"noupdate"`
 	ClusterName                 string            `json:"clusterName" norman:"noupdate"`
-	TenantID                    string            `json:"tenantId"`
 	AzureCredentialSecret       string            `json:"azureCredentialSecret"`
 	BaseURL                     *string           `json:"baseUrl"`
 	AuthBaseURL                 *string           `json:"authBaseUrl"`
