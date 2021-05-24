@@ -8,8 +8,10 @@ spec:
   clusterName: "my-cluster"
   baseUrl: "https://management.azure.com/"
   authBaseUrl: "https://login.microsoftonline.com"
-  tenantId: "REPLACE_WITH_TENANT_ID"
   azureCredentialSecret: "REPLACE_WITH_K8S_SECRETS_NAME"
+  privateCluster: false,
+  linuxAdminUsername: "rancher-user",
+  sshPublicKey: "REPLACE_WITH_SSH_PUBLIC_KEY",
   kubernetesVersion: "1.19.9"
   nodePools:
   - name: "masters"
@@ -21,11 +23,15 @@ spec:
     mode: "System"
     osType: "Linux"
   - name: "workers"
-    count: 2
+    orchestratorVersion: "1.19.9"
+    count: 6
     vmSize: "Standard_DS2_v2"
     osDiskSizeGB: 128
     osDiskType: "Managed"
     maxPods: 110
     mode: "User"
     osType: "Linux"
-status: {}
+    enableAutoScaling: true
+    minCount: 1
+    maxCount: 6
+    availabilityZones: [ "1", "2", "3" ]
