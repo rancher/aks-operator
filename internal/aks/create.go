@@ -120,14 +120,6 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		}
 	}
 
-	var windowsProfile *containerservice.ManagedClusterWindowsProfile
-	if hasWindowsProfile(spec) {
-		windowsProfile = &containerservice.ManagedClusterWindowsProfile{
-			AdminUsername: spec.WindowsAdminUsername,
-			AdminPassword: spec.WindowsAdminPassword,
-		}
-	}
-
 	managedCluster := containerservice.ManagedCluster{
 		Name:     to.StringPtr(spec.ClusterName),
 		Location: to.StringPtr(spec.ResourceLocation),
@@ -137,7 +129,6 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 			DNSPrefix:         dnsPrefix,
 			AgentPoolProfiles: &agentPoolProfiles,
 			LinuxProfile:      linuxProfile,
-			WindowsProfile:    windowsProfile,
 			NetworkProfile:    networkProfile,
 			ServicePrincipalProfile: &containerservice.ManagedClusterServicePrincipalProfile{
 				ClientID: to.StringPtr(cred.ClientID),
@@ -191,8 +182,4 @@ func hasCustomVirtualNetwork(spec *aksv1.AKSClusterConfigSpec) bool {
 
 func hasLinuxProfile(spec *aksv1.AKSClusterConfigSpec) bool {
 	return spec.LinuxAdminUsername != nil && spec.LinuxSSHPublicKey != nil
-}
-
-func hasWindowsProfile(spec *aksv1.AKSClusterConfigSpec) bool {
-	return spec.WindowsAdminUsername != nil && spec.WindowsAdminPassword != nil
 }

@@ -158,16 +158,6 @@ func (in *AKSClusterConfigSpec) DeepCopyInto(out *AKSClusterConfigSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.WindowsAdminUsername != nil {
-		in, out := &in.WindowsAdminUsername, &out.WindowsAdminUsername
-		*out = new(string)
-		**out = **in
-	}
-	if in.WindowsAdminPassword != nil {
-		in, out := &in.WindowsAdminPassword, &out.WindowsAdminPassword
-		*out = new(string)
-		**out = **in
-	}
 	if in.DNSPrefix != nil {
 		in, out := &in.DNSPrefix, &out.DNSPrefix
 		*out = new(string)

@@ -388,10 +388,8 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 		if np.OsType == "" {
 			return fmt.Errorf(cannotBeNilError, "NodePool.OsType", config.ClusterName)
 		}
-		// Validate name length here because the AKS API does not validate it but will mysteriously fail if not in compliance.
-		// https://docs.microsoft.com/en-us/azure/aks/windows-faq#what-can-i-name-my-windows-node-pools
-		if np.OsType == "Windows" && len(*np.Name) > poolNameMaxLength {
-			return fmt.Errorf("node pool name must be a maximum of %d characters for Windows node pools", poolNameMaxLength)
+		if np.OsType == "Windows" {
+			return fmt.Errorf("windows node pools are not currently supported")
 		}
 	}
 	if !systemMode || len(config.Spec.NodePools) < 1 {
@@ -581,13 +579,6 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 		upstreamSpec.LinuxAdminUsername = linuxProfile.AdminUsername
 		sshKeys := *linuxProfile.SSH.PublicKeys
 		upstreamSpec.LinuxSSHPublicKey = sshKeys[0].KeyData
-	}
-
-	// set windows account profile
-	windowsProfile := clusterState.WindowsProfile
-	if windowsProfile != nil {
-		upstreamSpec.WindowsAdminUsername = windowsProfile.AdminUsername
-		upstreamSpec.WindowsAdminPassword = windowsProfile.AdminPassword
 	}
 
 	// set API server access profile
