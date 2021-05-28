@@ -52,8 +52,6 @@ type AKSClusterConfigSpec struct {
 	NetworkPolicy               *string           `json:"networkPolicy" norman:"type=nullablestring"`
 	LinuxAdminUsername          *string           `json:"linuxAdminUsername,omitempty" norman:"type=nullablestring"`
 	LinuxSSHPublicKey           *string           `json:"sshPublicKey,omitempty" norman:"type=nullablestring"`
-	WindowsAdminUsername        *string           `json:"windowsAdminUsername,omitempty" norman:"type=nullablestring"`
-	WindowsAdminPassword        *string           `json:"windowsAdminPassword,omitempty" norman:"type=nullablestring"`
 	DNSPrefix                   *string           `json:"dnsPrefix,omitempty" norman:"type=nullablestring"`
 	KubernetesVersion           *string           `json:"kubernetesVersion" norman:"type=nullablestring"`
 	Tags                        map[string]string `json:"tags"`
