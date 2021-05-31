@@ -66,6 +66,9 @@ const (
 
 	// NodePoolDeleting The Deleting state indicates that cluster was removed, return code 4
 	NodePoolDeleting = "Deleting"
+
+	// NodePoolUpgrading The Upgrading state indicates that cluster was upgraded
+	NodePoolUpgrading = "Upgrading"
 )
 
 type Handler struct {
@@ -294,7 +297,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 
 	for _, np := range *result.AgentPoolProfiles {
 		if status := to.String(np.ProvisioningState); status == NodePoolCreating ||
-			status == NodePoolScaling || status == NodePoolDeleting {
+			status == NodePoolScaling || status == NodePoolDeleting || status == NodePoolUpgrading {
 			if config.Status.Phase != aksConfigUpdatingPhase {
 				config = config.DeepCopy()
 				config.Status.Phase = aksConfigUpdatingPhase
