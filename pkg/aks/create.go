@@ -209,6 +209,7 @@ func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient *containerserv
 		Mode:                containerservice.AgentPoolMode(np.Mode),
 		Type:                containerservice.VirtualMachineScaleSets,
 		OrchestratorVersion: np.OrchestratorVersion,
+		AvailabilityZones:   np.AvailabilityZones,
 		EnableAutoScaling:   np.EnableAutoScaling,
 		MinCount:            np.MinCount,
 		MaxCount:            np.MaxCount,
