@@ -9,10 +9,10 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/rancher/aks-operator/internal/aks"
-	"github.com/rancher/aks-operator/internal/utils"
+	"github.com/rancher/aks-operator/pkg/aks"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	v10 "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io/v1"
+	"github.com/rancher/aks-operator/pkg/utils"
 	wranglerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
