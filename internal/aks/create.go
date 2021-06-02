@@ -3,6 +3,7 @@ package aks
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-10-01/resources"
@@ -23,7 +24,8 @@ func CreateResourceGroup(ctx context.Context, groupsClient *resources.GroupsClie
 }
 
 // CreateOrUpdateCluster creates a new managed Kubernetes cluster
-func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient *containerservice.ManagedClustersClient, spec *aksv1.AKSClusterConfigSpec) error {
+func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient *containerservice.ManagedClustersClient,
+	spec *aksv1.AKSClusterConfigSpec) error {
 	dnsPrefix := spec.DNSPrefix
 	if dnsPrefix == nil {
 		dnsPrefix = to.StringPtr(spec.ClusterName)
@@ -120,6 +122,15 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		}
 	}
 
+	var addonProfiles map[string]*containerservice.ManagedClusterAddonProfile
+	if hasHTTPApplicationRoutingSupport(spec) {
+		addonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{
+			"httpApplicationRouting": {
+				Enabled: spec.HTTPApplicationRouting,
+			},
+		}
+	}
+
 	managedCluster := containerservice.ManagedCluster{
 		Name:     to.StringPtr(spec.ClusterName),
 		Location: to.StringPtr(spec.ResourceLocation),
@@ -130,6 +141,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 			AgentPoolProfiles: &agentPoolProfiles,
 			LinuxProfile:      linuxProfile,
 			NetworkProfile:    networkProfile,
+			AddonProfiles:     addonProfiles,
 			ServicePrincipalProfile: &containerservice.ManagedClusterServicePrincipalProfile{
 				ClientID: to.StringPtr(cred.ClientID),
 				Secret:   to.StringPtr(cred.ClientSecret),
@@ -142,7 +154,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 			AuthorizedIPRanges: spec.AuthorizedIPRanges,
 		}
 	}
-	if spec.PrivateCluster != nil && *spec.PrivateCluster {
+	if to.Bool(spec.PrivateCluster) {
 		managedCluster.APIServerAccessProfile = &containerservice.ManagedClusterAPIServerAccessProfile{
 			EnablePrivateCluster: spec.PrivateCluster,
 		}
@@ -182,4 +194,9 @@ func hasCustomVirtualNetwork(spec *aksv1.AKSClusterConfigSpec) bool {
 
 func hasLinuxProfile(spec *aksv1.AKSClusterConfigSpec) bool {
 	return spec.LinuxAdminUsername != nil && spec.LinuxSSHPublicKey != nil
+}
+
+func hasHTTPApplicationRoutingSupport(spec *aksv1.AKSClusterConfigSpec) bool {
+	// HttpApplicationRouting is not supported in azure china cloud
+	return !strings.HasPrefix(spec.ResourceLocation, "china")
 }

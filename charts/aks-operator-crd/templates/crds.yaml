@@ -46,6 +46,9 @@ spec:
             dockerBridgeCidr:
               nullable: true
               type: string
+            httpApplicationRouting:
+              nullable: true
+              type: boolean
             imported:
               type: boolean
             kubernetesVersion:

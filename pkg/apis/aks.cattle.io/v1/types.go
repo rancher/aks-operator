@@ -58,6 +58,7 @@ type AKSClusterConfigSpec struct {
 	NodePools                   []AKSNodePool     `json:"nodePools"`
 	PrivateCluster              *bool             `json:"privateCluster"`
 	AuthorizedIPRanges          *[]string         `json:"authorizedIpRanges"`
+	HTTPApplicationRouting      *bool             `json:"httpApplicationRouting"`
 }
 
 type AKSClusterConfigStatus struct {

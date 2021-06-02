@@ -196,6 +196,11 @@ func (in *AKSClusterConfigSpec) DeepCopyInto(out *AKSClusterConfigSpec) {
 			copy(*out, *in)
 		}
 	}
+	if in.HTTPApplicationRouting != nil {
+		in, out := &in.HTTPApplicationRouting, &out.HTTPApplicationRouting
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

@@ -584,6 +584,12 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 		upstreamSpec.LinuxSSHPublicKey = sshKeys[0].KeyData
 	}
 
+	// set addons profile
+	addonProfile := clusterState.AddonProfiles
+	if addonProfile != nil && addonProfile["httpApplicationRouting"] != nil {
+		upstreamSpec.HTTPApplicationRouting = addonProfile["httpApplicationRouting"].Enabled
+	}
+
 	// set API server access profile
 	upstreamSpec.PrivateCluster = to.BoolPtr(false)
 	if clusterState.APIServerAccessProfile != nil {
@@ -600,7 +606,8 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 
 // updateUpstreamClusterState compares the upstream spec with the config spec, then updates the upstream AKS cluster to
 // match the config spec. Function returns after a update is finished.
-func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache, config *aksv1.AKSClusterConfig, upstreamSpec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfig, error) {
+func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache,
+	config *aksv1.AKSClusterConfig, upstreamSpec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfig, error) {
 	credentials, err := aks.GetSecrets(secretsCache, &config.Spec)
 	if err != nil {
 		return config, err
@@ -700,6 +707,14 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 		}
 	}
 
+	// check addon HTTP Application Routing
+	if config.Spec.HTTPApplicationRouting != nil {
+		if to.Bool(config.Spec.HTTPApplicationRouting) != to.Bool(upstreamSpec.HTTPApplicationRouting) {
+			logrus.Infof("Updating HTTP application routing for cluster [%s]", config.Spec.ClusterName)
+			updateAksCluster = true
+		}
+	}
+
 	if updateAksCluster {
 		resourceGroupsClient, err := aks.NewResourceGroupClient(credentials)
 		if err != nil {
@@ -708,7 +723,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 
 		if !aks.ExistsResourceGroup(ctx, resourceGroupsClient, config.Spec.ResourceGroup) {
 			logrus.Infof("Resource group [%s] does not exist, creating", config.Spec.ResourceGroup)
-			if err := aks.CreateResourceGroup(ctx, resourceGroupsClient, &config.Spec); err != nil {
+			if err = aks.CreateResourceGroup(ctx, resourceGroupsClient, &config.Spec); err != nil {
 				return config, fmt.Errorf("error during updating resource group %v", err)
 			}
 			logrus.Infof("Resource group [%s] updated successfully", config.Spec.ResourceGroup)

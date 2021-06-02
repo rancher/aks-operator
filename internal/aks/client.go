@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
+	"github.com/Azure/azure-sdk-for-go/services/operationalinsights/mgmt/2020-08-01/operationalinsights"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-10-01/resources"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/adal"
@@ -57,6 +58,18 @@ func NewAgentPoolClient(cred *Credentials) (*containerservice.AgentPoolsClient, 
 	agentProfile.Authorizer = authorizer
 
 	return &agentProfile, nil
+}
+
+func NewOperationInsightsWorkspaceClient(cred *Credentials) (*operationalinsights.WorkspacesClient, error) {
+	authorizer, err := NewClientAuthorizer(cred)
+	if err != nil {
+		return nil, err
+	}
+
+	client := operationalinsights.NewWorkspacesClientWithBaseURI(to.String(cred.BaseURL), cred.SubscriptionID)
+	client.Authorizer = authorizer
+
+	return &client, nil
 }
 
 func NewClientAuthorizer(cred *Credentials) (autorest.Authorizer, error) {
