@@ -178,7 +178,11 @@ func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient *containerserv
 		OsType:              containerservice.OSType(np.OsType),
 		VMSize:              containerservice.VMSizeTypes(np.VMSize),
 		Mode:                containerservice.AgentPoolMode(np.Mode),
+		Type:                containerservice.VirtualMachineScaleSets,
 		OrchestratorVersion: np.OrchestratorVersion,
+		EnableAutoScaling:   np.EnableAutoScaling,
+		MinCount:            np.MinCount,
+		MaxCount:            np.MaxCount,
 	}
 
 	_, err := agentPoolClient.CreateOrUpdate(ctx, spec.ResourceGroup, spec.ClusterName, to.String(np.Name), containerservice.AgentPool{
