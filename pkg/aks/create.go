@@ -123,11 +123,40 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 	}
 
 	var addonProfiles map[string]*containerservice.ManagedClusterAddonProfile
+
 	if hasHTTPApplicationRoutingSupport(spec) {
 		addonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{
 			"httpApplicationRouting": {
 				Enabled: spec.HTTPApplicationRouting,
 			},
+		}
+	}
+
+	if to.Bool(spec.Monitoring) {
+		addonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{
+			"omsagent": {
+				Enabled: spec.Monitoring,
+			},
+		}
+
+		operationInsightsWorkspaceClient, err := NewOperationInsightsWorkspaceClient(cred)
+		if err != nil {
+			return err
+		}
+
+		logAnalyticsWorkspaceResourceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx, operationInsightsWorkspaceClient,
+			spec.ResourceLocation, spec.ResourceGroup, to.String(spec.LogAnalyticsWorkspaceGroup), to.String(spec.LogAnalyticsWorkspaceName))
+		if err != nil {
+			return err
+		}
+
+		if !strings.HasPrefix(logAnalyticsWorkspaceResourceID, "/") {
+			logAnalyticsWorkspaceResourceID = "/" + logAnalyticsWorkspaceResourceID
+		}
+		logAnalyticsWorkspaceResourceID = strings.TrimSuffix(logAnalyticsWorkspaceResourceID, "/")
+
+		addonProfiles["omsagent"].Config = map[string]*string{
+			"logAnalyticsWorkspaceResourceID": to.StringPtr(logAnalyticsWorkspaceResourceID),
 		}
 	}
 

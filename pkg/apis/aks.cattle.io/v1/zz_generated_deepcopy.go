@@ -201,6 +201,21 @@ func (in *AKSClusterConfigSpec) DeepCopyInto(out *AKSClusterConfigSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.Monitoring != nil {
+		in, out := &in.Monitoring, &out.Monitoring
+		*out = new(bool)
+		**out = **in
+	}
+	if in.LogAnalyticsWorkspaceGroup != nil {
+		in, out := &in.LogAnalyticsWorkspaceGroup, &out.LogAnalyticsWorkspaceGroup
+		*out = new(string)
+		**out = **in
+	}
+	if in.LogAnalyticsWorkspaceName != nil {
+		in, out := &in.LogAnalyticsWorkspaceName, &out.LogAnalyticsWorkspaceName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
