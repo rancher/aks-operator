@@ -35,3 +35,6 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   echo 'go mod tidy produced differences'
   exit 1
 fi
+
+echo 'Running: go test'
+go test -cover -tags=test ./pkg/aks/...
