@@ -541,6 +541,12 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 	}
 	upstreamSpec.KubernetesVersion = clusterState.KubernetesVersion
 
+	// set DNS prefix
+	if clusterState.DNSPrefix == nil {
+		return nil, fmt.Errorf("cannot detect cluster [%s] upstream DNS prefix", spec.ClusterName)
+	}
+	upstreamSpec.DNSPrefix = clusterState.DNSPrefix
+
 	// set tags
 	upstreamSpec.Tags = make(map[string]string)
 	if len(clusterState.Tags) != 0 {
