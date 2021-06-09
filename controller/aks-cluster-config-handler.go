@@ -733,6 +733,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 	if config.Spec.HTTPApplicationRouting != nil {
 		if to.Bool(config.Spec.HTTPApplicationRouting) != to.Bool(upstreamSpec.HTTPApplicationRouting) {
 			logrus.Infof("Updating HTTP application routing for cluster [%s]", config.Spec.ClusterName)
+			updateAksCluster = true
 		}
 	}
 
