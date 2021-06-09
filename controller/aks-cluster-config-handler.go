@@ -668,18 +668,37 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 
 		// check for updated NodePools
 		upstreamNodePools, _ := utils.BuildNodePoolMap(upstreamSpec.NodePools, config.Spec.ClusterName)
-		updateNodePool := false
 		for npName, np := range downstreamNodePools {
+			updateNodePool := false
 			upstreamNodePool, ok := upstreamNodePools[npName]
 			if ok {
-				// There is a matching node pool in the cluster already, so update it if needed
-				if to.Int32(np.Count) != to.Int32(upstreamNodePool.Count) {
-					logrus.Infof("Updating node count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
-					updateNodePool = true
-				}
-				if np.EnableAutoScaling != nil && to.Bool(np.EnableAutoScaling) != to.Bool(upstreamNodePool.EnableAutoScaling) {
-					logrus.Infof("Updating autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
-					updateNodePool = true
+				if to.Bool(np.EnableAutoScaling) {
+					if to.Int32(np.Count) != to.Int32(upstreamNodePool.Count) {
+						return config, fmt.Errorf("can't update node count when autoscaling is enabled in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					}
+					if !to.Bool(upstreamNodePool.EnableAutoScaling) {
+						logrus.Infof("Enable autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+						updateNodePool = true
+					}
+					if to.Int32(np.MinCount) != to.Int32(upstreamNodePool.MinCount) {
+						logrus.Infof("Updating minimum count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+						updateNodePool = true
+					}
+					if to.Int32(np.MaxCount) != to.Int32(upstreamNodePool.MaxCount) {
+						logrus.Infof("Updating maximum count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+						updateNodePool = true
+					}
+				} else {
+					if np.MinCount != nil && np.MaxCount != nil {
+						return config, fmt.Errorf("min and max node count must be nil for node pool [%s] for cluster [%s], because autoscaling is disabled", to.String(np.Name), config.Spec.ClusterName)
+					}
+					if to.Bool(upstreamNodePool.EnableAutoScaling) {
+						logrus.Infof("Disable autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+						updateNodePool = true
+					} else if to.Int32(np.Count) != to.Int32(upstreamNodePool.Count) {
+						logrus.Infof("Updating node count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+						updateNodePool = true
+					}
 				}
 				if np.OrchestratorVersion != nil && to.String(np.OrchestratorVersion) != to.String(upstreamNodePool.OrchestratorVersion) {
 					logrus.Infof("Updating orchestrator version in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
