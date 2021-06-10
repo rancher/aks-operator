@@ -355,8 +355,23 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 		return fmt.Errorf(cannotBeNilError, "azureCredentialSecret", config.ClusterName)
 	}
 
-	if _, err = aks.GetSecrets(h.secretsCache, &config.Spec); err != nil {
+	cred, err := aks.GetSecrets(h.secretsCache, &config.Spec)
+	if err != nil {
 		return fmt.Errorf("couldn't get secret [%s] with error: %v", config.Spec.AzureCredentialSecret, err)
+	}
+
+	cannotBeEmptyCCError := "field [%s] must be provided for cloud credentials [%s]"
+	if cred.ClientID == "" {
+		return fmt.Errorf(cannotBeEmptyCCError, "clientId", config.Spec.AzureCredentialSecret)
+	}
+	if cred.ClientSecret == "" {
+		return fmt.Errorf(cannotBeEmptyCCError, "clientSecret", config.Spec.AzureCredentialSecret)
+	}
+	if cred.SubscriptionID == "" {
+		return fmt.Errorf(cannotBeEmptyCCError, "subscriptionId", config.Spec.AzureCredentialSecret)
+	}
+	if cred.TenantID == "" {
+		return fmt.Errorf(cannotBeEmptyCCError, "tenantId", config.Spec.AzureCredentialSecret)
 	}
 
 	if config.Spec.Imported {
