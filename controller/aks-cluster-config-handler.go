@@ -403,10 +403,18 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 		return fmt.Errorf("at least one NodePool with mode System is required")
 	}
 
+	if config.Spec.NetworkPlugin != nil &&
+		to.String(config.Spec.NetworkPlugin) != string(containerservice.Kubenet) &&
+		to.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
+		return fmt.Errorf("invalid network plugin value [%s] for [%s] cluster config", to.String(config.Spec.NetworkPlugin), config.ClusterName)
+	}
 	if config.Spec.NetworkPolicy != nil &&
-		*config.Spec.NetworkPolicy != string(containerservice.NetworkPolicyAzure) &&
-		*config.Spec.NetworkPolicy != string(containerservice.NetworkPolicyCalico) {
-		return fmt.Errorf("wrong network policy value for [%s] cluster config", config.ClusterName)
+		to.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyAzure) &&
+		to.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyCalico) {
+		return fmt.Errorf("invalid network policy value [%s] for [%s] cluster config", to.String(config.Spec.NetworkPolicy), config.ClusterName)
+	}
+	if !(to.String(config.Spec.NetworkPlugin) == string(containerservice.Azure) && to.String(config.Spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure)) {
+		return fmt.Errorf("azure network policy can be used only with Azure CNI network plugin for [%s] cluster", config.ClusterName)
 	}
 	return nil
 }
