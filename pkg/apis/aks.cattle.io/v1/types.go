@@ -38,30 +38,30 @@ type AKSClusterConfigSpec struct {
 	ResourceGroup               string            `json:"resourceGroup" norman:"noupdate"`
 	ClusterName                 string            `json:"clusterName" norman:"noupdate"`
 	AzureCredentialSecret       string            `json:"azureCredentialSecret"`
-	BaseURL                     *string           `json:"baseUrl" norman:"type=nullablestring"`
-	AuthBaseURL                 *string           `json:"authBaseUrl" norman:"type=nullablestring"`
-	NetworkPlugin               *string           `json:"networkPlugin" norman:"type=nullablestring"`
-	VirtualNetworkResourceGroup *string           `json:"virtualNetworkResourceGroup" norman:"type=nullablestring"`
-	VirtualNetwork              *string           `json:"virtualNetwork" norman:"type=nullablestring"`
-	Subnet                      *string           `json:"subnet" norman:"type=nullablestring"`
-	NetworkDNSServiceIP         *string           `json:"dnsServiceIp" norman:"type=nullablestring"`
-	NetworkServiceCIDR          *string           `json:"serviceCidr" norman:"type=nullablestring"`
-	NetworkDockerBridgeCIDR     *string           `json:"dockerBridgeCidr" norman:"type=nullablestring"`
-	NetworkPodCIDR              *string           `json:"podCidr" norman:"type=nullablestring"`
-	LoadBalancerSKU             *string           `json:"loadBalancerSku" norman:"type=nullablestring"`
-	NetworkPolicy               *string           `json:"networkPolicy" norman:"type=nullablestring"`
-	LinuxAdminUsername          *string           `json:"linuxAdminUsername,omitempty" norman:"type=nullablestring"`
-	LinuxSSHPublicKey           *string           `json:"sshPublicKey,omitempty" norman:"type=nullablestring"`
-	DNSPrefix                   *string           `json:"dnsPrefix,omitempty" norman:"type=nullablestring"`
-	KubernetesVersion           *string           `json:"kubernetesVersion" norman:"type=nullablestring"`
-	Tags                        map[string]string `json:"tags"`
-	NodePools                   []AKSNodePool     `json:"nodePools"`
+	BaseURL                     *string           `json:"baseUrl" norman:"pointer"`
+	AuthBaseURL                 *string           `json:"authBaseUrl" norman:"pointer"`
+	NetworkPlugin               *string           `json:"networkPlugin" norman:"pointer"`
+	VirtualNetworkResourceGroup *string           `json:"virtualNetworkResourceGroup" norman:"pointer"`
+	VirtualNetwork              *string           `json:"virtualNetwork" norman:"pointer"`
+	Subnet                      *string           `json:"subnet" norman:"pointer"`
+	NetworkDNSServiceIP         *string           `json:"dnsServiceIp" norman:"pointer"`
+	NetworkServiceCIDR          *string           `json:"serviceCidr" norman:"pointer"`
+	NetworkDockerBridgeCIDR     *string           `json:"dockerBridgeCidr" norman:"pointer"`
+	NetworkPodCIDR              *string           `json:"podCidr" norman:"pointer"`
+	LoadBalancerSKU             *string           `json:"loadBalancerSku" norman:"pointer"`
+	NetworkPolicy               *string           `json:"networkPolicy" norman:"pointer"`
+	LinuxAdminUsername          *string           `json:"linuxAdminUsername,omitempty" norman:"pointer"`
+	LinuxSSHPublicKey           *string           `json:"sshPublicKey,omitempty" norman:"pointer"`
+	DNSPrefix                   *string           `json:"dnsPrefix,omitempty" norman:"pointer"`
+	KubernetesVersion           *string           `json:"kubernetesVersion" norman:"pointer"`
+	Tags                        map[string]string `json:"tags" norman:"pointer"`
+	NodePools                   []AKSNodePool     `json:"nodePools" norman:"pointer"`
 	PrivateCluster              *bool             `json:"privateCluster"`
-	AuthorizedIPRanges          *[]string         `json:"authorizedIpRanges"`
+	AuthorizedIPRanges          *[]string         `json:"authorizedIpRanges" norman:"pointer"`
 	HTTPApplicationRouting      *bool             `json:"httpApplicationRouting"`
 	Monitoring                  *bool             `json:"monitoring"`
-	LogAnalyticsWorkspaceGroup  *string           `json:"logAnalyticsWorkspaceGroup"`
-	LogAnalyticsWorkspaceName   *string           `json:"logAnalyticsWorkspaceName"`
+	LogAnalyticsWorkspaceGroup  *string           `json:"logAnalyticsWorkspaceGroup" norman:"pointer"`
+	LogAnalyticsWorkspaceName   *string           `json:"logAnalyticsWorkspaceName" norman:"pointer"`
 }
 
 type AKSClusterConfigStatus struct {
@@ -70,7 +70,7 @@ type AKSClusterConfigStatus struct {
 }
 
 type AKSNodePool struct {
-	Name                *string   `json:"name,omitempty" norman:"type=nullablestring"`
+	Name                *string   `json:"name,omitempty" norman:"pointer"`
 	Count               *int32    `json:"count,omitempty"`
 	MaxPods             *int32    `json:"maxPods,omitempty"`
 	VMSize              string    `json:"vmSize,omitempty"`
@@ -78,8 +78,8 @@ type AKSNodePool struct {
 	OsDiskType          string    `json:"osDiskType,omitempty"`
 	Mode                string    `json:"mode,omitempty"`
 	OsType              string    `json:"osType,omitempty"`
-	OrchestratorVersion *string   `json:"orchestratorVersion,omitempty" norman:"type=nullablestring"`
-	AvailabilityZones   *[]string `json:"availabilityZones,omitempty"`
+	OrchestratorVersion *string   `json:"orchestratorVersion,omitempty" norman:"pointer"`
+	AvailabilityZones   *[]string `json:"availabilityZones,omitempty" norman:"pointer"`
 	MaxCount            *int32    `json:"maxCount,omitempty"`
 	MinCount            *int32    `json:"minCount,omitempty"`
 	EnableAutoScaling   *bool     `json:"enableAutoScaling,omitempty"`
