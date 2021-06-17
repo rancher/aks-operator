@@ -39,13 +39,23 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 	}
 
 	var vmNetSubnetID *string
-	networkProfile := &containerservice.NetworkProfile{}
-	if hasCustomVirtualNetwork(spec) {
+	networkProfile := &containerservice.NetworkProfile{
+		NetworkPlugin:   containerservice.Kubenet,
+		NetworkPolicy:   containerservice.NetworkPolicy(to.String(spec.NetworkPolicy)),
+		LoadBalancerSku: containerservice.Standard,
+	}
+
+	if spec.LoadBalancerSKU != nil {
+		networkProfile.LoadBalancerSku = containerservice.LoadBalancerSku(to.String(spec.LoadBalancerSKU))
+	}
+
+	if containerservice.NetworkPlugin(to.String(spec.NetworkPlugin)) == containerservice.Azure {
+		networkProfile.NetworkPlugin = containerservice.NetworkPlugin(to.String(spec.NetworkPlugin))
 		virtualNetworkResourceGroup := spec.ResourceGroup
 
 		//if virtual network resource group is set, use it, otherwise assume it is the same as the cluster
 		if spec.VirtualNetworkResourceGroup != nil {
-			virtualNetworkResourceGroup = *spec.VirtualNetworkResourceGroup
+			virtualNetworkResourceGroup = to.String(spec.VirtualNetworkResourceGroup)
 		}
 
 		vmNetSubnetID = to.StringPtr(fmt.Sprintf(
@@ -59,26 +69,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		networkProfile.DNSServiceIP = spec.NetworkDNSServiceIP
 		networkProfile.DockerBridgeCidr = spec.NetworkDockerBridgeCIDR
 		networkProfile.ServiceCidr = spec.NetworkServiceCIDR
-
-		if spec.NetworkPlugin != nil {
-			networkProfile.NetworkPlugin = containerservice.NetworkPlugin(*spec.NetworkPlugin)
-		} else {
-			networkProfile.NetworkPlugin = containerservice.Kubenet
-		}
-
-		// if network plugin is 'Azure', set PodCIDR
-		if networkProfile.NetworkPlugin == containerservice.Azure {
-			networkProfile.PodCidr = spec.NetworkPodCIDR
-		}
-
-		if spec.LoadBalancerSKU != nil {
-			loadBalancerSku := containerservice.LoadBalancerSku(*spec.LoadBalancerSKU)
-			networkProfile.LoadBalancerSku = loadBalancerSku
-		}
-
-		if spec.NetworkPolicy != nil {
-			networkProfile.NetworkPolicy = containerservice.NetworkPolicy(*spec.NetworkPolicy)
-		}
+		networkProfile.PodCidr = spec.NetworkPodCIDR
 	}
 
 	agentPoolProfiles := make([]containerservice.ManagedClusterAgentPoolProfile, 0, len(spec.NodePools))
