@@ -413,7 +413,7 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 		to.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyCalico) {
 		return fmt.Errorf("invalid network policy value [%s] for [%s] cluster config", to.String(config.Spec.NetworkPolicy), config.ClusterName)
 	}
-	if !(to.String(config.Spec.NetworkPlugin) == string(containerservice.Azure) && to.String(config.Spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure)) {
+	if to.String(config.Spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) && to.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
 		return fmt.Errorf("azure network policy can be used only with Azure CNI network plugin for [%s] cluster", config.ClusterName)
 	}
 	return nil
