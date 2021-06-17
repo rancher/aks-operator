@@ -62,8 +62,8 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 			"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/virtualNetworks/%s/subnets/%s",
 			cred.SubscriptionID,
 			virtualNetworkResourceGroup,
-			*spec.VirtualNetwork,
-			*spec.Subnet,
+			to.String(spec.VirtualNetwork),
+			to.String(spec.Subnet),
 		))
 
 		networkProfile.DNSServiceIP = spec.NetworkDNSServiceIP
