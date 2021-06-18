@@ -4,4 +4,5 @@ ENV KUBECONFIG /root/.kube/config
 RUN microdnf update -y && \
     rm -rf /var/cache/yum
 COPY bin/aks-operator /usr/bin/
+USER 1001
 ENTRYPOINT ["aks-operator"]
