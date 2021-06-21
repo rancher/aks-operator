@@ -283,6 +283,12 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 		return config, err
 	}
 
+	if config.Status.RBACEnabled == nil && result.EnableRBAC != nil {
+		config = config.DeepCopy()
+		config.Status.RBACEnabled = result.EnableRBAC
+		return h.aksCC.UpdateStatus(config)
+	}
+
 	clusterState := *result.ManagedClusterProperties.ProvisioningState
 	if clusterState == ClusterStatusFailed {
 		return config, fmt.Errorf("update failed for cluster [%s], status: %s", config.Spec.ClusterName, clusterState)

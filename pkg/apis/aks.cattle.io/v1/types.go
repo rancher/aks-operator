@@ -67,6 +67,7 @@ type AKSClusterConfigSpec struct {
 type AKSClusterConfigStatus struct {
 	Phase          string `json:"phase"`
 	FailureMessage string `json:"failureMessage"`
+	RBACEnabled    *bool  `json:"rbacEnabled"`
 }
 
 type AKSNodePool struct {
