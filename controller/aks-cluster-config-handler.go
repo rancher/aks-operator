@@ -416,6 +416,24 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	if to.String(config.Spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) && to.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
 		return fmt.Errorf("azure network policy can be used only with Azure CNI network plugin for [%s] cluster", config.ClusterName)
 	}
+	cannotBeNilErrorAzurePlugin := "field [%s] must be provided for cluster [%s] config when Azure CNI network plugin is used"
+	if to.String(config.Spec.NetworkPlugin) == string(containerservice.Azure) {
+		if config.Spec.VirtualNetwork == nil {
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "virtualNetwork", config.ClusterName)
+		}
+		if config.Spec.Subnet == nil {
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "subnet", config.ClusterName)
+		}
+		if config.Spec.NetworkDNSServiceIP == nil {
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "dnsServiceIp", config.ClusterName)
+		}
+		if config.Spec.NetworkDockerBridgeCIDR == nil {
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "dockerBridgeCidr", config.ClusterName)
+		}
+		if config.Spec.NetworkServiceCIDR == nil {
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "serviceCidr", config.ClusterName)
+		}
+	}
 	return nil
 }
 
