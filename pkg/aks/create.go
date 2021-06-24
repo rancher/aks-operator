@@ -125,7 +125,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 
 	if to.Bool(spec.Monitoring) {
 		addonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{
-			"omsagent": {
+			"omsAgent": {
 				Enabled: spec.Monitoring,
 			},
 		}
@@ -146,7 +146,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		}
 		logAnalyticsWorkspaceResourceID = strings.TrimSuffix(logAnalyticsWorkspaceResourceID, "/")
 
-		addonProfiles["omsagent"].Config = map[string]*string{
+		addonProfiles["omsAgent"].Config = map[string]*string{
 			"logAnalyticsWorkspaceResourceID": to.StringPtr(logAnalyticsWorkspaceResourceID),
 		}
 	}
