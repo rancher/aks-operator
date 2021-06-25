@@ -1,8 +1,9 @@
-ARG UBI_IMAGE=registry.access.redhat.com/ubi8/ubi-minimal:latest
-FROM ${UBI_IMAGE}
-ENV KUBECONFIG /root/.kube/config
-RUN microdnf update -y && \
-    rm -rf /var/cache/yum
+FROM registry.suse.com/suse/sle15:15.3
+RUN zypper update -y && \
+    zypper -n clean -a && \
+    rm -rf /tmp/* /var/tmp/* /usr/share/doc/packages/*
+RUN useradd --uid 1007 aks-operator
+ENV KUBECONFIG /home/aks-operator/.kube/config
 COPY bin/aks-operator /usr/bin/
-USER 1001
+USER 1007
 ENTRYPOINT ["aks-operator"]
