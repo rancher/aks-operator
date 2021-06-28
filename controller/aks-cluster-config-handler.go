@@ -73,7 +73,7 @@ const (
 )
 
 var matchWorkspaceGroup = regexp.MustCompile("/resourcegroups/(.+?)/")
-var matchWorkspaceName = regexp.MustCompile("/workspaces/(.+?)")
+var matchWorkspaceName = regexp.MustCompile("/workspaces/(.+?)$")
 
 type Handler struct {
 	aksCC           v10.AKSClusterConfigClient
@@ -633,9 +633,9 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 	}
 
 	// set addon monitoring profile
-	if addonProfile["omsagent"] != nil {
-		upstreamSpec.Monitoring = addonProfile["omsagent"].Enabled
-		logAnalyticsWorkspaceResourceID := addonProfile["omsagent"].Config["logAnalyticsWorkspaceResourceID"]
+	if addonProfile["omsAgent"] != nil {
+		upstreamSpec.Monitoring = addonProfile["omsAgent"].Enabled
+		logAnalyticsWorkspaceResourceID := addonProfile["omsAgent"].Config["logAnalyticsWorkspaceResourceID"]
 
 		logAnalyticsWorkspaceGroup := matchWorkspaceGroup.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))[1]
 		upstreamSpec.LogAnalyticsWorkspaceGroup = to.StringPtr(logAnalyticsWorkspaceGroup)
