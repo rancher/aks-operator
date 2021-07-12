@@ -704,14 +704,13 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			updateNodePool := false
 			upstreamNodePool, ok := upstreamNodePools[npName]
 			if ok {
-				if to.Bool(np.EnableAutoScaling) {
+				if to.Bool(np.EnableAutoScaling) && !to.Bool(upstreamNodePool.EnableAutoScaling) {
 					if to.Int32(np.Count) != to.Int32(upstreamNodePool.Count) {
 						return config, fmt.Errorf("can't update node count when autoscaling is enabled in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
 					}
-					if !to.Bool(upstreamNodePool.EnableAutoScaling) {
-						logrus.Infof("Enable autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
-						updateNodePool = true
-					}
+					logrus.Infof("Enable autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					updateNodePool = true
+				} else if to.Bool(np.EnableAutoScaling) && to.Bool(upstreamNodePool.EnableAutoScaling) {
 					if to.Int32(np.MinCount) != to.Int32(upstreamNodePool.MinCount) {
 						logrus.Infof("Updating minimum count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
 						updateNodePool = true
