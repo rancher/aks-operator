@@ -25,11 +25,7 @@ func CreateResourceGroup(ctx context.Context, groupsClient *resources.GroupsClie
 
 // CreateOrUpdateCluster creates a new managed Kubernetes cluster
 func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient *containerservice.ManagedClustersClient,
-	spec *aksv1.AKSClusterConfigSpec) error {
-	dnsPrefix := spec.DNSPrefix
-	if dnsPrefix == nil {
-		dnsPrefix = to.StringPtr(spec.ClusterName)
-	}
+	spec *aksv1.AKSClusterConfigSpec, phase string) error {
 
 	tags := make(map[string]*string)
 	for key, val := range spec.Tags {
@@ -157,16 +153,22 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		Tags:     tags,
 		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 			KubernetesVersion: spec.KubernetesVersion,
-			DNSPrefix:         dnsPrefix,
 			AgentPoolProfiles: &agentPoolProfiles,
 			LinuxProfile:      linuxProfile,
 			NetworkProfile:    networkProfile,
 			AddonProfiles:     addonProfiles,
-			ServicePrincipalProfile: &containerservice.ManagedClusterServicePrincipalProfile{
-				ClientID: to.StringPtr(cred.ClientID),
-				Secret:   to.StringPtr(cred.ClientSecret),
-			},
 		},
+	}
+
+	if phase != "updating" && phase != "active" {
+		managedCluster.ServicePrincipalProfile = &containerservice.ManagedClusterServicePrincipalProfile{
+			ClientID: to.StringPtr(cred.ClientID),
+			Secret:   to.StringPtr(cred.ClientSecret),
+		}
+	}
+
+	if spec.DNSPrefix != nil {
+		managedCluster.DNSPrefix = spec.DNSPrefix
 	}
 
 	if spec.AuthorizedIPRanges != nil {
