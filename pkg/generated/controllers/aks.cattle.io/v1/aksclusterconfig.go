@@ -360,6 +360,10 @@ func (a *aKSClusterConfigGeneratingHandler) Remove(key string, obj *v1.AKSCluste
 }
 
 func (a *aKSClusterConfigGeneratingHandler) Handle(obj *v1.AKSClusterConfig, status v1.AKSClusterConfigStatus) (v1.AKSClusterConfigStatus, error) {
+	if !obj.DeletionTimestamp.IsZero() {
+		return status, nil
+	}
+
 	objs, newStatus, err := a.AKSClusterConfigGeneratingHandler(obj, status)
 	if err != nil {
 		return newStatus, err
