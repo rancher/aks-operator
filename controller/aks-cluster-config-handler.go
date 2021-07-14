@@ -237,7 +237,7 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 		return config, err
 	}
 
-	err = aks.CreateOrUpdateCluster(ctx, credentials, resourceClusterClient, &config.Spec)
+	err = aks.CreateOrUpdateCluster(ctx, credentials, resourceClusterClient, &config.Spec, config.Status.Phase)
 	if err != nil {
 		return config, fmt.Errorf("error failed to create cluster: %v ", err)
 	}
@@ -370,6 +370,9 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	}
 	if config.Spec.KubernetesVersion == nil {
 		return fmt.Errorf(cannotBeNilError, "kubernetesVersion", config.ClusterName)
+	}
+	if config.Spec.DNSPrefix == nil {
+		return fmt.Errorf(cannotBeNilError, "dnsPrefix", config.ClusterName)
 	}
 
 	systemMode := false
@@ -810,7 +813,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			logrus.Infof("Resource group [%s] updated successfully", config.Spec.ResourceGroup)
 		}
 
-		err = aks.CreateOrUpdateCluster(ctx, credentials, resourceClusterClient, &config.Spec)
+		err = aks.CreateOrUpdateCluster(ctx, credentials, resourceClusterClient, &config.Spec, config.Status.Phase)
 		if err != nil {
 			return config, fmt.Errorf("failed to update cluster: %v", err)
 		}
