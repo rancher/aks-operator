@@ -59,16 +59,20 @@ const (
 	// ClusterStatusDeleting The Deleting state indicates that cluster was removed, return code 4
 	ClusterStatusDeleting = "Deleting"
 
-	// NodePoolCreating The Creating state indicates that cluster was removed, return code 4
+	// NodePoolSucceeded The Succeeeded state indicates the node pool has been
+	// created and is fully usable, return code 0
+	NodePoolSucceeded = "Succeeded"
+
+	// NodePoolCreating The Creating state indicates that node pool is creating
 	NodePoolCreating = "Creating"
 
-	// NodePoolScaling The Scaling state indicates that cluster was removed, return code 4
+	// NodePoolScaling The Scaling state indicates that node pool is being scaled
 	NodePoolScaling = "Scaling"
 
-	// NodePoolDeleting The Deleting state indicates that cluster was removed, return code 4
+	// NodePoolDeleting The Deleting state indicates that node pool is being deleted
 	NodePoolDeleting = "Deleting"
 
-	// NodePoolUpgrading The Upgrading state indicates that cluster was upgraded
+	// NodePoolUpgrading The Upgrading state indicates that node pool is upgrading
 	NodePoolUpgrading = "Upgrading"
 )
 
@@ -294,6 +298,12 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 		return config, fmt.Errorf("update failed for cluster [%s], status: %s", config.Spec.ClusterName, clusterState)
 	}
 	if clusterState == ClusterStatusInProgress || clusterState == ClusterStatusUpgrading {
+		// If the cluster is in an active state in Rancher but is updating in AKS, then an update was initiated outside of Rancher,
+		// such as in AKS console. In this case, this is a no-op and the reconciliation will happen after syncing.
+		if config.Status.Phase == aksConfigActivePhase {
+			logrus.Infof("Waiting for non-Rancher initiated cluster update for [%s]", config.Name)
+			return config, nil
+		}
 		// upstream cluster is already updating, must wait until sending next update
 		logrus.Infof("Waiting for cluster [%s] to finish updating", config.Name)
 		if config.Status.Phase != aksConfigUpdatingPhase {
@@ -308,13 +318,11 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	for _, np := range *result.AgentPoolProfiles {
 		if status := to.String(np.ProvisioningState); status == NodePoolCreating ||
 			status == NodePoolScaling || status == NodePoolDeleting || status == NodePoolUpgrading {
-			if config.Status.Phase != aksConfigUpdatingPhase {
-				config = config.DeepCopy()
-				config.Status.Phase = aksConfigUpdatingPhase
-				config, err = h.aksCC.UpdateStatus(config)
-				if err != nil {
-					return config, err
-				}
+			// If the node pool is in an active state in Rancher but is updating in AKS, then an update was initiated outside of Rancher,
+			// such as in AKS console. In this case, this is a no-op and the reconciliation will happen after syncing.
+			if config.Status.Phase == aksConfigActivePhase {
+				logrus.Infof("Waiting for non-Rancher initiated cluster update for [%s]", config.Name)
+				return config, nil
 			}
 			switch status {
 			case NodePoolDeleting:
@@ -592,7 +600,26 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 	for _, np := range *clusterState.AgentPoolProfiles {
 		var upstreamNP aksv1.AKSNodePool
 		upstreamNP.Name = np.Name
-		upstreamNP.Count = np.Count
+		if to.String(np.ProvisioningState) != NodePoolSucceeded || to.Bool(np.EnableAutoScaling) {
+			// If the node pool is not in a Succeeded state (i.e. it is updating or something of the like)
+			// or if autoscaling is enabled, then we don't want to set the upstream node count.
+			// This is because node count can vary in these two states causing continual updates to the object Spec.
+			// In addition, if EnableAutoScaling is true then we don't control the number of nodes in the pool. When autoscaling changes
+			// the number of nodes, then aks-operator will to try to update the node count resulting in errors that have to be manually reconciled.
+			nodePoolFound := false
+			for _, configNp := range spec.NodePools {
+				if to.String(configNp.Name) == to.String(np.Name) {
+					upstreamNP.Count = configNp.Count
+					nodePoolFound = true
+					break
+				}
+			}
+			if !nodePoolFound {
+				upstreamNP.Count = np.Count
+			}
+		} else {
+			upstreamNP.Count = np.Count
+		}
 		upstreamNP.MaxPods = np.MaxPods
 		upstreamNP.VMSize = string(np.VMSize)
 		upstreamNP.OsDiskSizeGB = np.OsDiskSizeGB
@@ -708,9 +735,8 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			upstreamNodePool, ok := upstreamNodePools[npName]
 			if ok {
 				if to.Bool(np.EnableAutoScaling) {
-					if to.Int32(np.Count) != to.Int32(upstreamNodePool.Count) {
-						return config, fmt.Errorf("can't update node count when autoscaling is enabled in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
-					}
+					// Count can't be updated when EnableAutoScaling is true, so don't send anything.
+					np.Count = nil
 					if !to.Bool(upstreamNodePool.EnableAutoScaling) {
 						logrus.Infof("Enable autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
 						updateNodePool = true
