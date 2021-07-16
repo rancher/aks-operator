@@ -718,6 +718,68 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 		}
 	}
 
+	updateAksCluster := false
+	// check Kubernetes version for update
+	if config.Spec.KubernetesVersion != nil {
+		if to.String(config.Spec.KubernetesVersion) != to.String(upstreamSpec.KubernetesVersion) {
+			logrus.Infof("Updating kubernetes version for cluster [%s]", config.Spec.ClusterName)
+			updateAksCluster = true
+		}
+	}
+
+	// check authorized IP ranges to access AKS
+	if config.Spec.AuthorizedIPRanges != nil {
+		if !reflect.DeepEqual(config.Spec.AuthorizedIPRanges, upstreamSpec.AuthorizedIPRanges) {
+			logrus.Infof("Updating authorized IP ranges for cluster [%s]", config.Spec.ClusterName)
+			updateAksCluster = true
+		}
+	}
+
+	// check addon HTTP Application Routing
+	if config.Spec.HTTPApplicationRouting != nil {
+		if to.Bool(config.Spec.HTTPApplicationRouting) != to.Bool(upstreamSpec.HTTPApplicationRouting) {
+			logrus.Infof("Updating HTTP application routing for cluster [%s]", config.Spec.ClusterName)
+			updateAksCluster = true
+		}
+	}
+
+	// check addon monitoring
+	if config.Spec.Monitoring != nil {
+		if to.Bool(config.Spec.Monitoring) != to.Bool(upstreamSpec.Monitoring) {
+			logrus.Infof("Updating monitoring addon for cluster [%s]", config.Spec.ClusterName)
+			updateAksCluster = true
+		}
+	}
+
+	if updateAksCluster {
+		resourceGroupsClient, err := aks.NewResourceGroupClient(credentials)
+		if err != nil {
+			return config, err
+		}
+
+		if !aks.ExistsResourceGroup(ctx, resourceGroupsClient, config.Spec.ResourceGroup) {
+			logrus.Infof("Resource group [%s] does not exist, creating", config.Spec.ResourceGroup)
+			if err = aks.CreateResourceGroup(ctx, resourceGroupsClient, &config.Spec); err != nil {
+				return config, fmt.Errorf("error during updating resource group %v", err)
+			}
+			logrus.Infof("Resource group [%s] updated successfully", config.Spec.ResourceGroup)
+		}
+
+		upstreamNodePools, _ := utils.BuildNodePoolMap(upstreamSpec.NodePools, config.Spec.ClusterName)
+		clusterSpecCopy := config.Spec.DeepCopy()
+		clusterSpecCopy.NodePools = make([]aksv1.AKSNodePool, 0, len(config.Spec.NodePools))
+		for _, n := range config.Spec.NodePools {
+			if _, ok := upstreamNodePools[*n.Name]; ok {
+				clusterSpecCopy.NodePools = append(clusterSpecCopy.NodePools, n)
+			}
+		}
+		err = aks.CreateOrUpdateCluster(ctx, credentials, resourceClusterClient, clusterSpecCopy, config.Status.Phase)
+		if err != nil {
+			return config, fmt.Errorf("failed to update cluster: %v", err)
+		}
+		return h.enqueueUpdate(config)
+	}
+
 	if config.Spec.NodePools != nil {
 		agentPoolClient, err := aks.NewAgentPoolClient(credentials)
 		if err != nil {
@@ -791,60 +853,6 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 				return h.enqueueUpdate(config)
 			}
 		}
-	}
-
-	updateAksCluster := false
-	// check Kubernetes version for update
-	if config.Spec.KubernetesVersion != nil {
-		if to.String(config.Spec.KubernetesVersion) != to.String(upstreamSpec.KubernetesVersion) {
-			logrus.Infof("Updating kubernetes version for cluster [%s]", config.Spec.ClusterName)
-			updateAksCluster = true
-		}
-	}
-
-	// check authorized IP ranges to access AKS
-	if config.Spec.AuthorizedIPRanges != nil {
-		if !reflect.DeepEqual(config.Spec.AuthorizedIPRanges, upstreamSpec.AuthorizedIPRanges) {
-			logrus.Infof("Updating authorized IP ranges for cluster [%s]", config.Spec.ClusterName)
-			updateAksCluster = true
-		}
-	}
-
-	// check addon HTTP Application Routing
-	if config.Spec.HTTPApplicationRouting != nil {
-		if to.Bool(config.Spec.HTTPApplicationRouting) != to.Bool(upstreamSpec.HTTPApplicationRouting) {
-			logrus.Infof("Updating HTTP application routing for cluster [%s]", config.Spec.ClusterName)
-			updateAksCluster = true
-		}
-	}
-
-	// check addon monitoring
-	if config.Spec.Monitoring != nil {
-		if to.Bool(config.Spec.Monitoring) != to.Bool(upstreamSpec.Monitoring) {
-			logrus.Infof("Updating monitoring addon for cluster [%s]", config.Spec.ClusterName)
-			updateAksCluster = true
-		}
-	}
-
-	if updateAksCluster {
-		resourceGroupsClient, err := aks.NewResourceGroupClient(credentials)
-		if err != nil {
-			return config, err
-		}
-
-		if !aks.ExistsResourceGroup(ctx, resourceGroupsClient, config.Spec.ResourceGroup) {
-			logrus.Infof("Resource group [%s] does not exist, creating", config.Spec.ResourceGroup)
-			if err = aks.CreateResourceGroup(ctx, resourceGroupsClient, &config.Spec); err != nil {
-				return config, fmt.Errorf("error during updating resource group %v", err)
-			}
-			logrus.Infof("Resource group [%s] updated successfully", config.Spec.ResourceGroup)
-		}
-
-		err = aks.CreateOrUpdateCluster(ctx, credentials, resourceClusterClient, &config.Spec, config.Status.Phase)
-		if err != nil {
-			return config, fmt.Errorf("failed to update cluster: %v", err)
-		}
-		return h.enqueueUpdate(config)
 	}
 
 	// no new updates, set to active
