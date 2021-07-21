@@ -1,6 +1,7 @@
 package aks
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
@@ -12,6 +13,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	"github.com/rancher/aks-operator/pkg/utils"
+	"github.com/rancher/machine/drivers/azure/azureutil"
 	wranglerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 )
 
@@ -113,9 +115,6 @@ func GetSecrets(secretsCache wranglerv1.SecretCache, spec *aksv1.AKSClusterConfi
 	clientSecretBytes := secret.Data["azurecredentialConfig-clientSecret"]
 
 	cannotBeNilError := "field [azurecredentialConfig-%s] must be provided in cloud credential"
-	if tenantIDBytes == nil {
-		return nil, fmt.Errorf(cannotBeNilError, "tenantId")
-	}
 	if subscriptionIDBytes == nil {
 		return nil, fmt.Errorf(cannotBeNilError, "subscriptionId")
 	}
@@ -132,6 +131,13 @@ func GetSecrets(secretsCache wranglerv1.SecretCache, spec *aksv1.AKSClusterConfi
 	cred.ClientSecret = string(clientSecretBytes)
 	cred.AuthBaseURL = spec.AuthBaseURL
 	cred.BaseURL = spec.BaseURL
+
+	if cred.TenantID == "" {
+		cred.TenantID, err = azureutil.FindTenantID(context.Background(), azure.PublicCloud, string(cred.SubscriptionID))
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return &cred, nil
 }
