@@ -136,7 +136,7 @@ func (h *Handler) OnAksConfigRemoved(key string, config *aksv1.AKSClusterConfig)
 
 	logrus.Infof("Removing cluster [%s]", config.Spec.ClusterName)
 
-	credentials, err := aks.GetSecrets(h.secretsCache, &config.Spec)
+	credentials, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
 	if err != nil {
 		return config, err
 	}
@@ -209,7 +209,7 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 
 	logrus.Infof("Creating cluster [%s]", config.Spec.ClusterName)
 
-	credentials, err := aks.GetSecrets(h.secretsCache, &config.Spec)
+	credentials, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
 	if err != nil {
 		return config, err
 	}
@@ -268,7 +268,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	credentials, err := aks.GetSecrets(h.secretsCache, &config.Spec)
+	credentials, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
 	if err != nil {
 		return config, err
 	}
@@ -328,11 +328,11 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	}
 
 	logrus.Infof("Checking configuration for cluster [%s]", config.Spec.ClusterName)
-	upstreamSpec, err := BuildUpstreamClusterState(ctx, h.secretsCache, &config.Spec)
+	upstreamSpec, err := BuildUpstreamClusterState(ctx, h.secretsCache, h.secrets, &config.Spec)
 	if err != nil {
 		return config, err
 	}
-	return h.updateUpstreamClusterState(ctx, h.secretsCache, config, upstreamSpec)
+	return h.updateUpstreamClusterState(ctx, h.secretsCache, h.secrets, config, upstreamSpec)
 }
 
 func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
@@ -361,7 +361,7 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 		return fmt.Errorf(cannotBeNilError, "azureCredentialSecret", config.ClusterName)
 	}
 
-	if _, err = aks.GetSecrets(h.secretsCache, &config.Spec); err != nil {
+	if _, err = aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec); err != nil {
 		return fmt.Errorf("couldn't get secret [%s] with error: %v", config.Spec.AzureCredentialSecret, err)
 	}
 
@@ -450,7 +450,7 @@ func (h *Handler) waitForCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	credentials, err := aks.GetSecrets(h.secretsCache, &config.Spec)
+	credentials, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
 	if err != nil {
 		return config, err
 	}
@@ -503,7 +503,7 @@ func (h *Handler) enqueueUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 // createCASecret creates a secret containing ca and endpoint. These can be used to create a kubeconfig via
 // the go sdk
 func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterConfig) error {
-	kubeConfig, err := GetClusterKubeConfig(ctx, h.secretsCache, &config.Spec)
+	kubeConfig, err := GetClusterKubeConfig(ctx, h.secretsCache, h.secrets, &config.Spec)
 	if err != nil {
 		return err
 	}
@@ -532,8 +532,8 @@ func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterCo
 	return err
 }
 
-func GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCache, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
-	credentials, err := aks.GetSecrets(secretsCache, spec)
+func GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
+	credentials, err := aks.GetSecrets(secretsCache, secretClient, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -554,10 +554,10 @@ func GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCac
 }
 
 // BuildUpstreamClusterState creates AKSClusterConfigSpec from existing cluster configuration
-func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
+func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
 	upstreamSpec := &aksv1.AKSClusterConfigSpec{}
 
-	credentials, err := aks.GetSecrets(secretsCache, spec)
+	credentials, err := aks.GetSecrets(secretsCache, secretClient, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -664,8 +664,9 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 // updateUpstreamClusterState compares the upstream spec with the config spec, then updates the upstream AKS cluster to
 // match the config spec. Function returns after a update is finished.
 func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache,
+	secretClient wranglerv1.SecretClient,
 	config *aksv1.AKSClusterConfig, upstreamSpec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfig, error) {
-	credentials, err := aks.GetSecrets(secretsCache, &config.Spec)
+	credentials, err := aks.GetSecrets(secretsCache, secretClient, &config.Spec)
 	if err != nil {
 		return config, err
 	}
