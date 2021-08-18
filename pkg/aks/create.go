@@ -110,21 +110,17 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		}
 	}
 
-	var addonProfiles map[string]*containerservice.ManagedClusterAddonProfile
+	addonProfiles := make(map[string]*containerservice.ManagedClusterAddonProfile, 0)
 
 	if hasHTTPApplicationRoutingSupport(spec) {
-		addonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{
-			"httpApplicationRouting": {
-				Enabled: spec.HTTPApplicationRouting,
-			},
+		addonProfiles["httpApplicationRouting"] = &containerservice.ManagedClusterAddonProfile{
+			Enabled: spec.HTTPApplicationRouting,
 		}
 	}
 
 	if to.Bool(spec.Monitoring) {
-		addonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{
-			"omsAgent": {
-				Enabled: spec.Monitoring,
-			},
+		addonProfiles["omsAgent"] = &containerservice.ManagedClusterAddonProfile{
+			Enabled: spec.Monitoring,
 		}
 
 		operationInsightsWorkspaceClient, err := NewOperationInsightsWorkspaceClient(cred)
