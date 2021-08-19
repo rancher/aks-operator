@@ -50,8 +50,8 @@ const (
 	// node software, return code 3
 	ClusterStatusInProgress = "InProgress"
 
-	// ClusterStatusUpgrading The Upgrading state indicates the cluster is updating
-	ClusterStatusUpgrading = "Upgrading"
+	// ClusterStatusUpdating The Updating state indicates the cluster is updating
+	ClusterStatusUpdating = "Updating"
 
 	// ClusterStatusCanceled The Canceled state indicates that create or update was canceled, return code 2
 	ClusterStatusCanceled = "Canceled"
@@ -297,7 +297,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	if clusterState == ClusterStatusFailed {
 		return config, fmt.Errorf("update failed for cluster [%s], status: %s", config.Spec.ClusterName, clusterState)
 	}
-	if clusterState == ClusterStatusInProgress || clusterState == ClusterStatusUpgrading {
+	if clusterState == ClusterStatusInProgress || clusterState == ClusterStatusUpdating {
 		// If the cluster is in an active state in Rancher but is updating in AKS, then an update was initiated outside of Rancher,
 		// such as in AKS console. In this case, this is a no-op and the reconciliation will happen after syncing.
 		if config.Status.Phase == aksConfigActivePhase {
