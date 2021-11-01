@@ -349,9 +349,21 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	if err != nil {
 		return fmt.Errorf("cannot list AKSClusterConfig for display name check")
 	}
+
+	creds, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
+	if err != nil {
+		return fmt.Errorf("couldn't get secret [%s] with error: %v", config.Spec.AzureCredentialSecret, err)
+	}
+
 	for _, c := range aksConfigs.Items {
 		if c.Spec.ClusterName == config.Spec.ClusterName && c.Name != config.Name {
-			return fmt.Errorf("cannot create cluster [%s] because an AKSClusterConfig exists with the same name", config.Spec.ClusterName)
+			existingCreds, err := aks.GetSecrets(h.secretsCache, h.secrets, &c.Spec)
+			if err != nil {
+				return fmt.Errorf("couldn't get secret [%s] with error: %v", c.Spec.AzureCredentialSecret, err)
+			}
+			if existingCreds.SubscriptionID == creds.SubscriptionID {
+				return fmt.Errorf("cannot create cluster [%s] because an AKSClusterConfig exists with the same name and subscription", config.Spec.ClusterName)
+			}
 		}
 	}
 
@@ -367,10 +379,6 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	}
 	if config.Spec.AzureCredentialSecret == "" {
 		return fmt.Errorf(cannotBeNilError, "azureCredentialSecret", config.ClusterName)
-	}
-
-	if _, err = aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec); err != nil {
-		return fmt.Errorf("couldn't get secret [%s] with error: %v", config.Spec.AzureCredentialSecret, err)
 	}
 
 	if config.Spec.Imported {
