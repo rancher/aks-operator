@@ -12,7 +12,7 @@ require (
 	github.com/Azure/go-autorest/autorest/validation v0.3.2-0.20210111195520-9fc88b15294e // indirect
 	github.com/rancher/lasso v0.0.0-20210616224652-fc3ebd901c08
 	github.com/rancher/machine v0.15.0-rancher63
-	github.com/rancher/wrangler v0.8.3
+	github.com/rancher/wrangler v0.8.10
 	github.com/rancher/wrangler-api v0.6.1-0.20200427172631-a7c2f09b783e
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.7.0
