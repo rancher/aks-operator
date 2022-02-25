@@ -665,6 +665,10 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 	// set addon monitoring profile
 	if addonProfile["omsAgent"] != nil {
 		upstreamSpec.Monitoring = addonProfile["omsAgent"].Enabled
+
+		if len(addonProfile["omsAgent"].Config) == 0 {
+			return nil, fmt.Errorf("cannot set OMS Agent configuration retrieved from Azure")
+		}
 		logAnalyticsWorkspaceResourceID := addonProfile["omsAgent"].Config["logAnalyticsWorkspaceResourceID"]
 
 		logAnalyticsWorkspaceGroup := matchWorkspaceGroup.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))[1]
