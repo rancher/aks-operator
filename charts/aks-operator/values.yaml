@@ -11,6 +11,7 @@ httpProxy: ""
 httpsProxy: ""
 noProxy: ""
 additionalTrustedCAs: false
+
 ## Node labels for pod assignment
 ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
 ##
