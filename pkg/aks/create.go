@@ -83,8 +83,12 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 			VMSize:              containerservice.VMSizeTypes(np.VMSize),
 			Mode:                containerservice.AgentPoolMode(np.Mode),
 			OrchestratorVersion: np.OrchestratorVersion,
-			AvailabilityZones:   np.AvailabilityZones,
 		}
+
+		if np.AvailabilityZones != nil && len(*np.AvailabilityZones) > 0 {
+			agentProfile.AvailabilityZones = np.AvailabilityZones
+		}
+
 		if np.EnableAutoScaling != nil && *np.EnableAutoScaling {
 			agentProfile.EnableAutoScaling = np.EnableAutoScaling
 			agentProfile.MaxCount = np.MaxCount
