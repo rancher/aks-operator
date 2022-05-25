@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
@@ -21,6 +23,7 @@ import (
 	v15 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -693,7 +696,7 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 }
 
 // updateUpstreamClusterState compares the upstream spec with the config spec, then updates the upstream AKS cluster to
-// match the config spec. Function returns after a update is finished.
+// match the config spec. Function returns after an update is finished.
 func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache,
 	secretClient wranglerv1.SecretClient,
 	config *aksv1.AKSClusterConfig, upstreamSpec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfig, error) {
@@ -709,16 +712,33 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 
 	// check tags for update
 	if config.Spec.Tags != nil {
+
 		if !reflect.DeepEqual(config.Spec.Tags, upstreamSpec.Tags) {
 			logrus.Infof("Updating tags for cluster [%s]", config.Spec.ClusterName)
 			tags := containerservice.TagsObject{
 				Tags: *to.StringMapPtr(config.Spec.Tags),
 			}
-			_, err = resourceClusterClient.UpdateTags(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName, tags)
+			response, err := resourceClusterClient.UpdateTags(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName, tags)
 			if err != nil {
 				return config, err
 			}
-			return h.enqueueUpdate(config)
+
+			// Azure may have a policy that automatically adds upstream default tags to a cluster resource. We don't
+			// have a good way to detect that policy. We handle this case by checking if Azure returns an unexpected
+			// state for the tags and if so, log the response and move on. Any upstream tags regenerated on the cluster
+			// by Azure will be synced back to rancher.
+			upstreamTags := containerservice.TagsObject{}
+			err = retry.OnError(retry.DefaultBackoff, func(err error) bool { return strings.HasSuffix(err.Error(), "asynchronous operation has not completed") }, func() error {
+				managedCluster, err := response.Result(*resourceClusterClient)
+				upstreamTags.Tags = managedCluster.Tags
+				return err
+			})
+
+			if !reflect.DeepEqual(tags, upstreamTags) && response.Response().StatusCode == http.StatusOK {
+				logrus.Infof("Tags were not updated as expected for cluster [%s], expected %s, actual %s, moving on", config.Spec.ClusterName, to.StringMap(tags.Tags), to.StringMap(upstreamTags.Tags))
+			} else {
+				return h.enqueueUpdate(config)
+			}
 		}
 	}
 
