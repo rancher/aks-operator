@@ -9,6 +9,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-10-01/resources"
 	"github.com/Azure/go-autorest/autorest/to"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
+	"github.com/sirupsen/logrus"
 )
 
 func CreateResourceGroup(ctx context.Context, groupsClient *resources.GroupsClient, spec *aksv1.AKSClusterConfigSpec) error {
@@ -23,10 +24,154 @@ func CreateResourceGroup(ctx context.Context, groupsClient *resources.GroupsClie
 	return err
 }
 
-// CreateOrUpdateCluster creates a new managed Kubernetes cluster
-func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient *containerservice.ManagedClustersClient,
+// CreateCluster creates a new managed Kubernetes cluster. In this case, there will be no existing upstream cluster.
+// We are provisioning a brand new one.
+func CreateCluster(ctx context.Context, cred *Credentials, clusterClient *containerservice.ManagedClustersClient,
 	spec *aksv1.AKSClusterConfigSpec, phase string) error {
 
+	managedCluster, err := CreateManagedCluster(ctx, cred, spec, phase)
+	if err != nil {
+		return err
+	}
+
+	_, err = clusterClient.CreateOrUpdate(
+		ctx,
+		spec.ResourceGroup,
+		spec.ClusterName,
+		managedCluster,
+	)
+
+	return err
+}
+
+// UpdateCluster updates an existing managed Kubernetes cluster. Before updating, it pulls any existing configuration
+// and then only updates managed fields.
+func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient *containerservice.ManagedClustersClient,
+	spec *aksv1.AKSClusterConfigSpec, phase string) error {
+
+	// Create a new managed cluster from the AKS cluster config
+	managedCluster, err := CreateManagedCluster(ctx, cred, spec, phase)
+	if err != nil {
+		return err
+	}
+
+	// Pull the upstream cluster state
+	aksCluster, err := clusterClient.Get(ctx, spec.ResourceGroup, spec.ClusterName)
+	if err != nil {
+		logrus.Errorf("Error getting upstream AKS cluster by name [%s]: %s", spec.ClusterName, err.Error())
+		return err
+	}
+
+	// Upstream cluster state was successfully pulled. Merge in updates without overwriting upstream fields: we never
+	// want to overwrite preconfigured values in Azure with nil values. So only update fields pulled from AKS with
+	// values from the managed cluster if they are non nil.
+
+	/*
+	The following fields are managed in Rancher but are NOT configurable on update
+	- Name
+	- Location
+	- DNSPrefix
+	- EnablePrivateCluster
+	- LoadBalancerProfile
+	 */
+
+	// Update kubernetes version
+	// If a cluster is imported, we may not have the kubernetes version set on the spec.
+	if managedCluster.KubernetesVersion != nil {
+		aksCluster.KubernetesVersion = managedCluster.KubernetesVersion
+	}
+
+	// Add/update agent pool profiles
+	for _, ap := range *managedCluster.AgentPoolProfiles {
+		if !hasAgentPoolProfile(ap.Name, aksCluster.AgentPoolProfiles) {
+			*aksCluster.AgentPoolProfiles = append(*aksCluster.AgentPoolProfiles, ap)
+		}
+	}
+
+	// Add/update addon profiles (this will keep separate profiles added by AKS). This code will also add/update addon
+	// profiles for http application routing and monitoring.
+	for profile := range managedCluster.AddonProfiles {
+		aksCluster.AddonProfiles[profile] = managedCluster.AddonProfiles[profile]
+	}
+
+	// Auth IP ranges
+	// note: there could be authorized IP ranges set in AKS that haven't propagated yet when this update is done. Add
+	// ranges from Rancher to any ones already set in AKS.
+	if managedCluster.APIServerAccessProfile != nil && managedCluster.APIServerAccessProfile.AuthorizedIPRanges != nil {
+
+		for index := range *managedCluster.APIServerAccessProfile.AuthorizedIPRanges {
+			ipRange := (*managedCluster.APIServerAccessProfile.AuthorizedIPRanges)[index]
+
+			if !hasAuthorizedIpRange(ipRange, aksCluster.APIServerAccessProfile.AuthorizedIPRanges) {
+				*aksCluster.APIServerAccessProfile.AuthorizedIPRanges = append(*aksCluster.APIServerAccessProfile.AuthorizedIPRanges, ipRange)
+			}
+		}
+	}
+
+	// Linux profile
+	if managedCluster.LinuxProfile != nil {
+		aksCluster.LinuxProfile = managedCluster.LinuxProfile
+	}
+
+	// Network profile
+	if managedCluster.NetworkProfile != nil {
+		np := managedCluster.NetworkProfile
+		if np.NetworkPlugin != "" {
+			aksCluster.NetworkProfile.NetworkPlugin = np.NetworkPlugin
+		}
+		if np.NetworkPolicy != "" {
+			aksCluster.NetworkProfile.NetworkPolicy = np.NetworkPolicy
+		}
+		if np.NetworkMode != "" {
+			aksCluster.NetworkProfile.NetworkMode = np.NetworkMode
+		}
+		if np.DNSServiceIP != nil {
+			aksCluster.NetworkProfile.DNSServiceIP = np.DNSServiceIP
+		}
+		if np.DockerBridgeCidr != nil {
+			aksCluster.NetworkProfile.DockerBridgeCidr = np.DockerBridgeCidr
+		}
+		if np.PodCidr != nil {
+			aksCluster.NetworkProfile.PodCidr = np.PodCidr
+		}
+		if np.ServiceCidr != nil {
+			aksCluster.NetworkProfile.ServiceCidr = np.ServiceCidr
+		}
+		if np.OutboundType != "" {
+			aksCluster.NetworkProfile.OutboundType = np.OutboundType
+		}
+		if np.LoadBalancerSku != "" {
+			aksCluster.NetworkProfile.LoadBalancerSku = np.LoadBalancerSku
+		}
+		// LoadBalancerProfile is not configurable in Rancher so there won't be subfield conflicts. Just pull it from
+		// the state in AKS.
+	}
+
+	// Service principal client id and secret
+	if managedCluster.ServicePrincipalProfile != nil { // operator phase is 'updating' or 'active'
+		aksCluster.ServicePrincipalProfile = managedCluster.ServicePrincipalProfile
+	}
+
+	// Tags
+	if managedCluster.Tags != nil {
+		aksCluster.Tags = managedCluster.Tags
+	}
+
+	_, err = clusterClient.CreateOrUpdate(
+		ctx,
+		spec.ResourceGroup,
+		spec.ClusterName,
+		aksCluster,
+	)
+
+	return err
+}
+
+// CreateManagedCluster creates a new managed Kubernetes cluster.
+func CreateManagedCluster(ctx context.Context, cred *Credentials, spec *aksv1.AKSClusterConfigSpec, phase string) (containerservice.ManagedCluster, error) {
+	managedCluster := containerservice.ManagedCluster{}
+
+	// Get tags from config spec
 	tags := make(map[string]*string)
 	for key, val := range spec.Tags {
 		if val != "" {
@@ -34,6 +179,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		}
 	}
 
+	// Get network profile from config spec
 	var vmNetSubnetID *string
 	networkProfile := &containerservice.NetworkProfile{
 		NetworkPlugin:   containerservice.Kubenet,
@@ -49,7 +195,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		networkProfile.NetworkPlugin = containerservice.NetworkPlugin(to.String(spec.NetworkPlugin))
 		virtualNetworkResourceGroup := spec.ResourceGroup
 
-		//if virtual network resource group is set, use it, otherwise assume it is the same as the cluster
+		// If a virtual network resource group is set, use it, otherwise assume it is the same as the cluster
 		if spec.VirtualNetworkResourceGroup != nil {
 			virtualNetworkResourceGroup = to.String(spec.VirtualNetworkResourceGroup)
 		}
@@ -68,6 +214,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		networkProfile.PodCidr = spec.NetworkPodCIDR
 	}
 
+	// Get agent pool profile from config spec
 	agentPoolProfiles := make([]containerservice.ManagedClusterAgentPoolProfile, 0, len(spec.NodePools))
 	for _, np := range spec.NodePools {
 		if np.OrchestratorVersion == nil {
@@ -100,6 +247,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		agentPoolProfiles = append(agentPoolProfiles, agentProfile)
 	}
 
+	// Get linux profile from config spec
 	var linuxProfile *containerservice.LinuxProfile
 	if hasLinuxProfile(spec) {
 		linuxProfile = &containerservice.LinuxProfile{
@@ -114,6 +262,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		}
 	}
 
+	// Get addon profile from config spec
 	addonProfiles := make(map[string]*containerservice.ManagedClusterAddonProfile, 0)
 
 	if hasHTTPApplicationRoutingSupport(spec) {
@@ -122,6 +271,7 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		}
 	}
 
+	// Get monitoring from config spec
 	if to.Bool(spec.Monitoring) {
 		addonProfiles["omsAgent"] = &containerservice.ManagedClusterAddonProfile{
 			Enabled: spec.Monitoring,
@@ -129,13 +279,13 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 
 		operationInsightsWorkspaceClient, err := NewOperationInsightsWorkspaceClient(cred)
 		if err != nil {
-			return err
+			return managedCluster, err
 		}
 
 		logAnalyticsWorkspaceResourceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx, operationInsightsWorkspaceClient,
 			spec.ResourceLocation, spec.ResourceGroup, to.String(spec.LogAnalyticsWorkspaceGroup), to.String(spec.LogAnalyticsWorkspaceName))
 		if err != nil {
-			return err
+			return managedCluster, err
 		}
 
 		if !strings.HasPrefix(logAnalyticsWorkspaceResourceID, "/") {
@@ -148,7 +298,8 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 		}
 	}
 
-	managedCluster := containerservice.ManagedCluster{
+	// Create a new managed cluster
+	managedCluster = containerservice.ManagedCluster{
 		Name:     to.StringPtr(spec.ClusterName),
 		Location: to.StringPtr(spec.ResourceLocation),
 		Tags:     tags,
@@ -177,22 +328,19 @@ func CreateOrUpdateCluster(ctx context.Context, cred *Credentials, clusterClient
 			AuthorizedIPRanges: spec.AuthorizedIPRanges,
 		}
 	}
+
 	if to.Bool(spec.PrivateCluster) {
 		managedCluster.APIServerAccessProfile = &containerservice.ManagedClusterAPIServerAccessProfile{
 			EnablePrivateCluster: spec.PrivateCluster,
 		}
 	}
 
-	_, err := clusterClient.CreateOrUpdate(
-		ctx,
-		spec.ResourceGroup,
-		spec.ClusterName,
-		managedCluster,
-	)
-
-	return err
+	return managedCluster, nil
 }
 
+
+// CreateOrUpdateAgentPool creates a new pool(s) in AKS. If one already exists it updates the upstream node pool with
+// any provided updates.
 func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient *containerservice.AgentPoolsClient, spec *aksv1.AKSClusterConfigSpec, np *aksv1.AKSNodePool) error {
 	agentProfile := &containerservice.ManagedClusterAgentPoolProfileProperties{
 		Count:               np.Count,
@@ -229,3 +377,22 @@ func hasHTTPApplicationRoutingSupport(spec *aksv1.AKSClusterConfigSpec) bool {
 	// HttpApplicationRouting is not supported in azure china cloud
 	return !strings.HasPrefix(spec.ResourceLocation, "china")
 }
+
+func hasAgentPoolProfile(name *string, agentPoolProfiles *[]containerservice.ManagedClusterAgentPoolProfile) bool {
+	for _, ap := range *agentPoolProfiles {
+		if ap.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func hasAuthorizedIpRange(name string, authorizedIpRanges *[]string) bool {
+	for _, ipRange := range *authorizedIpRanges {
+		if ipRange == name {
+			return true
+		}
+	}
+	return false
+}
+
