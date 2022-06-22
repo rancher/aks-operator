@@ -360,16 +360,16 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 
 	cannotBeNilError := "field [%s] must be provided for cluster [%s] config"
 	if config.Spec.ResourceLocation == "" {
-		return fmt.Errorf(cannotBeNilError, "resourceLocation", config.ClusterName)
+		return fmt.Errorf(cannotBeNilError, "resourceLocation", config.Spec.ClusterName)
 	}
 	if config.Spec.ResourceGroup == "" {
-		return fmt.Errorf(cannotBeNilError, "resourceGroup", config.ClusterName)
+		return fmt.Errorf(cannotBeNilError, "resourceGroup", config.Spec.ClusterName)
 	}
 	if config.Spec.ClusterName == "" {
-		return fmt.Errorf(cannotBeNilError, "clusterName", config.ClusterName)
+		return fmt.Errorf(cannotBeNilError, "clusterName", config.Spec.ClusterName)
 	}
 	if config.Spec.AzureCredentialSecret == "" {
-		return fmt.Errorf(cannotBeNilError, "azureCredentialSecret", config.ClusterName)
+		return fmt.Errorf(cannotBeNilError, "azureCredentialSecret", config.Spec.ClusterName)
 	}
 
 	if _, err = aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec); err != nil {
@@ -380,40 +380,40 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 		return nil
 	}
 	if config.Spec.KubernetesVersion == nil {
-		return fmt.Errorf(cannotBeNilError, "kubernetesVersion", config.ClusterName)
+		return fmt.Errorf(cannotBeNilError, "kubernetesVersion", config.Spec.ClusterName)
 	}
 	if config.Spec.DNSPrefix == nil {
-		return fmt.Errorf(cannotBeNilError, "dnsPrefix", config.ClusterName)
+		return fmt.Errorf(cannotBeNilError, "dnsPrefix", config.Spec.ClusterName)
 	}
 
 	systemMode := false
 	for _, np := range config.Spec.NodePools {
 		if np.Name == nil {
-			return fmt.Errorf(cannotBeNilError, "NodePool.Name", config.ClusterName)
+			return fmt.Errorf(cannotBeNilError, "NodePool.Name", config.Spec.ClusterName)
 		}
 		if np.Count == nil {
-			return fmt.Errorf(cannotBeNilError, "NodePool.Count", config.ClusterName)
+			return fmt.Errorf(cannotBeNilError, "NodePool.Count", config.Spec.ClusterName)
 		}
 		if np.MaxPods == nil {
-			return fmt.Errorf(cannotBeNilError, "NodePool.MaxPods", config.ClusterName)
+			return fmt.Errorf(cannotBeNilError, "NodePool.MaxPods", config.Spec.ClusterName)
 		}
 		if np.VMSize == "" {
-			return fmt.Errorf(cannotBeNilError, "NodePool.VMSize", config.ClusterName)
+			return fmt.Errorf(cannotBeNilError, "NodePool.VMSize", config.Spec.ClusterName)
 		}
 		if np.OsDiskSizeGB == nil {
-			return fmt.Errorf(cannotBeNilError, "NodePool.OsDiskSizeGB", config.ClusterName)
+			return fmt.Errorf(cannotBeNilError, "NodePool.OsDiskSizeGB", config.Spec.ClusterName)
 		}
 		if np.OsDiskType == "" {
-			return fmt.Errorf(cannotBeNilError, "NodePool.OSDiskType", config.ClusterName)
+			return fmt.Errorf(cannotBeNilError, "NodePool.OSDiskType", config.Spec.ClusterName)
 		}
 		if np.Mode == "" {
-			return fmt.Errorf(cannotBeNilError, "NodePool.Mode", config.ClusterName)
+			return fmt.Errorf(cannotBeNilError, "NodePool.Mode", config.Spec.ClusterName)
 		}
 		if np.Mode == "System" {
 			systemMode = true
 		}
 		if np.OsType == "" {
-			return fmt.Errorf(cannotBeNilError, "NodePool.OsType", config.ClusterName)
+			return fmt.Errorf(cannotBeNilError, "NodePool.OsType", config.Spec.ClusterName)
 		}
 		if np.OsType == "Windows" {
 			return fmt.Errorf("windows node pools are not currently supported")
@@ -426,32 +426,32 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	if config.Spec.NetworkPlugin != nil &&
 		to.String(config.Spec.NetworkPlugin) != string(containerservice.Kubenet) &&
 		to.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
-		return fmt.Errorf("invalid network plugin value [%s] for [%s] cluster config", to.String(config.Spec.NetworkPlugin), config.ClusterName)
+		return fmt.Errorf("invalid network plugin value [%s] for [%s] cluster config", to.String(config.Spec.NetworkPlugin), config.Spec.ClusterName)
 	}
 	if config.Spec.NetworkPolicy != nil &&
 		to.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyAzure) &&
 		to.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyCalico) {
-		return fmt.Errorf("invalid network policy value [%s] for [%s] cluster config", to.String(config.Spec.NetworkPolicy), config.ClusterName)
+		return fmt.Errorf("invalid network policy value [%s] for [%s] cluster config", to.String(config.Spec.NetworkPolicy), config.Spec.ClusterName)
 	}
 	if to.String(config.Spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) && to.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
-		return fmt.Errorf("azure network policy can be used only with Azure CNI network plugin for [%s] cluster", config.ClusterName)
+		return fmt.Errorf("azure network policy can be used only with Azure CNI network plugin for [%s] cluster", config.Spec.ClusterName)
 	}
 	cannotBeNilErrorAzurePlugin := "field [%s] must be provided for cluster [%s] config when Azure CNI network plugin is used"
 	if to.String(config.Spec.NetworkPlugin) == string(containerservice.Azure) {
 		if config.Spec.VirtualNetwork == nil {
-			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "virtualNetwork", config.ClusterName)
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "virtualNetwork", config.Spec.ClusterName)
 		}
 		if config.Spec.Subnet == nil {
-			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "subnet", config.ClusterName)
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "subnet", config.Spec.ClusterName)
 		}
 		if config.Spec.NetworkDNSServiceIP == nil {
-			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "dnsServiceIp", config.ClusterName)
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "dnsServiceIp", config.Spec.ClusterName)
 		}
 		if config.Spec.NetworkDockerBridgeCIDR == nil {
-			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "dockerBridgeCidr", config.ClusterName)
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "dockerBridgeCidr", config.Spec.ClusterName)
 		}
 		if config.Spec.NetworkServiceCIDR == nil {
-			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "serviceCidr", config.ClusterName)
+			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "serviceCidr", config.Spec.ClusterName)
 		}
 	}
 	return nil
@@ -728,7 +728,9 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			// state for the tags and if so, log the response and move on. Any upstream tags regenerated on the cluster
 			// by Azure will be synced back to rancher.
 			upstreamTags := containerservice.TagsObject{}
-			err = retry.OnError(retry.DefaultBackoff, func(err error) bool { return strings.HasSuffix(err.Error(), "asynchronous operation has not completed") }, func() error {
+			err = retry.OnError(retry.DefaultBackoff, func(err error) bool {
+				return strings.HasSuffix(err.Error(), "asynchronous operation has not completed")
+			}, func() error {
 				managedCluster, err := response.Result(*resourceClusterClient)
 				upstreamTags.Tags = managedCluster.Tags
 				return err
