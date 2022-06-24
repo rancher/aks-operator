@@ -244,7 +244,7 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 		return config, err
 	}
 
-	err = aks.CreateOrUpdateCluster(ctx, credentials, resourceClusterClient, &config.Spec, config.Status.Phase)
+	err = aks.CreateCluster(ctx, credentials, resourceClusterClient, &config.Spec, config.Status.Phase)
 	if err != nil {
 		return config, fmt.Errorf("error failed to create cluster: %v ", err)
 	}
@@ -343,6 +343,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	if err != nil {
 		return config, err
 	}
+
 	return h.updateUpstreamClusterState(ctx, h.secretsCache, h.secrets, config, upstreamSpec)
 }
 
@@ -564,7 +565,8 @@ func GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCac
 	return config, nil
 }
 
-// BuildUpstreamClusterState creates AKSClusterConfigSpec from existing cluster configuration
+// BuildUpstreamClusterState creates an AKSClusterConfigSpec (spec for the AKS cluster state) from the existing
+// cluster configuration.
 func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
 	upstreamSpec := &aksv1.AKSClusterConfigSpec{}
 
@@ -687,7 +689,7 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 		if clusterState.APIServerAccessProfile.EnablePrivateCluster != nil {
 			upstreamSpec.PrivateCluster = clusterState.APIServerAccessProfile.EnablePrivateCluster
 		}
-		if clusterState.APIServerAccessProfile.AuthorizedIPRanges != nil {
+		if clusterState.APIServerAccessProfile.AuthorizedIPRanges != nil && *clusterState.APIServerAccessProfile.AuthorizedIPRanges != nil {
 			upstreamSpec.AuthorizedIPRanges = clusterState.APIServerAccessProfile.AuthorizedIPRanges
 		}
 	}
@@ -797,7 +799,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 				clusterSpecCopy.NodePools = append(clusterSpecCopy.NodePools, n)
 			}
 		}
-		err = aks.CreateOrUpdateCluster(ctx, credentials, resourceClusterClient, clusterSpecCopy, config.Status.Phase)
+		err = aks.UpdateCluster(ctx, credentials, resourceClusterClient, clusterSpecCopy, config.Status.Phase)
 		if err != nil {
 			return config, fmt.Errorf("failed to update cluster: %v", err)
 		}
