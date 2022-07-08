@@ -380,7 +380,7 @@ func hasHTTPApplicationRoutingSupport(spec *aksv1.AKSClusterConfigSpec) bool {
 
 func hasAgentPoolProfile(name *string, agentPoolProfiles *[]containerservice.ManagedClusterAgentPoolProfile) bool {
 	for _, ap := range *agentPoolProfiles {
-		if ap.Name == name {
+		if *ap.Name == *name {
 			return true
 		}
 	}
