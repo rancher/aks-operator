@@ -31,11 +31,11 @@ Rancher aks-operator is a new service, which takes care about Azure Kubernetes S
 
 `vim examples/create-aks.yaml`
 
-### 5. Create AKS secret with clientID and clientSecret
+### 5. Create AKS secret with clientID, clientSecret and azureEnvironment
 
 `export REPLACE_WITH_K8S_SECRETS_NAME=aks-secret`
 
-`kubectl create secret generic $REPLACE_WITH_K8S_SECRETS_NAME --from-literal=azurecredentialConfig-subscriptionId=<REPLACE_WITH_SUBSCRIPTIONID> --from-literal=azurecredentialConfig-clientId=<REPLACE_WITH_CLIENTID> --from-literal=azurecredentialConfig-clientSecret=<REPLACE_WITH_CLIENTSECRET>`
+`kubectl create secret generic $REPLACE_WITH_K8S_SECRETS_NAME --from-literal=azurecredentialConfig-subscriptionId=<REPLACE_WITH_SUBSCRIPTIONID> --from-literal=azurecredentialConfig-clientId=<REPLACE_WITH_CLIENTID> --from-literal=azurecredentialConfig-clientSecret=<REPLACE_WITH_CLIENTSECRET> --from-literal=azurecredentialConfig-environment=<REPLACE_WITH_AZURE_ENVIRONMENT>`
 
 ### 6. Start aks-operator
 

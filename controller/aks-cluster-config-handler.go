@@ -601,6 +601,10 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 		upstreamSpec.Tags = to.StringMap(clusterState.Tags)
 	}
 
+	// set BaseURL && AuthBaseURL
+	upstreamSpec.AuthBaseURL = credentials.AuthBaseURL
+	upstreamSpec.BaseURL = credentials.BaseURL
+
 	// set AgentPool profile
 	for _, np := range *clusterState.AgentPoolProfiles {
 		var upstreamNP aksv1.AKSNodePool
