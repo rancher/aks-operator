@@ -25,7 +25,7 @@ Edit the CRD
 Create AKS secret with clientID and clientSecret
 
     export REPLACE_WITH_K8S_SECRETS_NAME=aks-secret
-    kubectl create secret generic $REPLACE_WITH_K8S_SECRETS_NAME --from-literal=azurecredentialConfig-subscriptionId=<REPLACE_WITH_SUBSCRIPTIONID> --from-literal=azurecredentialConfig-clientId=<REPLACE_WITH_CLIENTID> --from-literal=azurecredentialConfig-clientSecret=<REPLACE_WITH_CLIENTSECRET>
+    kubectl create secret generic $REPLACE_WITH_K8S_SECRETS_NAME --from-literal=azurecredentialConfig-subscriptionId=<REPLACE_WITH_SUBSCRIPTIONID> --from-literal=azurecredentialConfig-clientId=<REPLACE_WITH_CLIENTID> --from-literal=azurecredentialConfig-clientSecret=<REPLACE_WITH_CLIENTSECRET> --from-literal=azurecredentialConfig-environment=<REPLACE_WITH_AZURE_ENVIRONMENT>
 
 Start the AKS operator
 
