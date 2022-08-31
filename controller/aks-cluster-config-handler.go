@@ -221,6 +221,17 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 		return config, err
 	}
 
+	resourceClusterClient, err := aks.NewClusterClient(credentials)
+	if err != nil {
+		return config, err
+	}
+
+	logrus.Infof("Checking if cluster [%s] exists", config.Spec.ClusterName)
+
+	if aks.ExistsCluster(ctx, resourceClusterClient, &config.Spec) {
+		return config, fmt.Errorf("cluster [%s] already exists in AKS. Please import it", config.Spec.ClusterName)
+	}
+
 	resourceGroupsClient, err := aks.NewResourceGroupClient(credentials)
 	if err != nil {
 		return config, err
@@ -238,11 +249,6 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 	}
 
 	logrus.Infof("Creating AKS cluster [%s]", config.Spec.ClusterName)
-
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return config, err
-	}
 
 	err = aks.CreateCluster(ctx, credentials, resourceClusterClient, &config.Spec, config.Status.Phase)
 	if err != nil {
