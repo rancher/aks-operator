@@ -153,7 +153,12 @@ func (h *Handler) OnAksConfigRemoved(key string, config *aksv1.AKSClusterConfig)
 		return config, err
 	}
 
-	if aks.ExistsCluster(ctx, resourceClusterClient, &config.Spec) {
+	clusterExists, err := aks.ExistsCluster(ctx, resourceClusterClient, &config.Spec)
+	if err != nil && strings.Contains(err.Error(), "unauthorized") {
+		logrus.Infof("user does not have permissions to access cluster [%s]: %s", config.Spec.ClusterName, err)
+	}
+
+	if clusterExists {
 		if err = aks.RemoveCluster(ctx, resourceClusterClient, &config.Spec); err != nil {
 			return config, fmt.Errorf("error removing cluster [%s] message %v", config.Spec.ClusterName, err)
 		}
@@ -228,8 +233,13 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 
 	logrus.Infof("Checking if cluster [%s] exists", config.Spec.ClusterName)
 
-	if aks.ExistsCluster(ctx, resourceClusterClient, &config.Spec) {
-		return config, fmt.Errorf("cluster [%s] already exists in AKS. Please import it", config.Spec.ClusterName)
+	clusterExists, err := aks.ExistsCluster(ctx, resourceClusterClient, &config.Spec)
+	if err != nil && strings.Contains(err.Error(), "unauthorized") {
+		logrus.Infof("user does not have permissions to access cluster [%s]: %s", config.Spec.ClusterName, err)
+	}
+
+	if clusterExists {
+		return config, fmt.Errorf("cluster [%s] already exists in AKS. Update configuration or import the existing one", config.Spec.ClusterName)
 	}
 
 	resourceGroupsClient, err := aks.NewResourceGroupClient(credentials)
@@ -239,7 +249,12 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 
 	logrus.Infof("Checking if resource group [%s] exists", config.Spec.ResourceGroup)
 
-	if !aks.ExistsResourceGroup(ctx, resourceGroupsClient, config.Spec.ResourceGroup) {
+	resourceGroupExists, err := aks.ExistsResourceGroup(ctx, resourceGroupsClient, config.Spec.ResourceGroup)
+	if err != nil && strings.Contains(err.Error(), "unauthorized") {
+		logrus.Infof("user does not have permissions to access resource group [%s]: %s", config.Spec.ResourceGroup, err)
+	}
+
+	if !resourceGroupExists {
 		logrus.Infof("Creating resource group [%s] for cluster [%s]", config.Spec.ResourceGroup, config.Spec.ClusterName)
 		err = aks.CreateResourceGroup(ctx, resourceGroupsClient, &config.Spec)
 		if err != nil {
@@ -791,7 +806,12 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			return config, err
 		}
 
-		if !aks.ExistsResourceGroup(ctx, resourceGroupsClient, config.Spec.ResourceGroup) {
+		resourceGroupExists, err := aks.ExistsResourceGroup(ctx, resourceGroupsClient, config.Spec.ResourceGroup)
+		if err != nil && strings.Contains(err.Error(), "unauthorized") {
+			logrus.Infof("user does not have permissions to access resource group [%s]: %s", config.Spec.ResourceGroup, err)
+		}
+
+		if !resourceGroupExists {
 			logrus.Infof("Resource group [%s] does not exist, creating", config.Spec.ResourceGroup)
 			if err = aks.CreateResourceGroup(ctx, resourceGroupsClient, &config.Spec); err != nil {
 				return config, fmt.Errorf("error during updating resource group %v", err)
