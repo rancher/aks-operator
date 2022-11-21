@@ -79,8 +79,8 @@ const (
 	NodePoolUpgrading = "Upgrading"
 )
 
-var matchWorkspaceGroup = regexp.MustCompile("/resourcegroups/(.+?)/")
-var matchWorkspaceName = regexp.MustCompile("/workspaces/(.+?)$")
+var matchWorkspaceGroup = regexp.MustCompile("/(?i)resourcegroups/(.+?)/")
+var matchWorkspaceName = regexp.MustCompile("/(?i)workspaces/(.+?)$")
 
 type Handler struct {
 	aksCC           v10.AKSClusterConfigClient
@@ -697,10 +697,18 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 		}
 		logAnalyticsWorkspaceResourceID := addonProfile["omsAgent"].Config["logAnalyticsWorkspaceResourceID"]
 
-		logAnalyticsWorkspaceGroup := matchWorkspaceGroup.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))[1]
+		group := matchWorkspaceGroup.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))
+		if group == nil {
+			return nil, fmt.Errorf("OMS Agent configuration workspace group was not found")
+		}
+		logAnalyticsWorkspaceGroup := group[1]
 		upstreamSpec.LogAnalyticsWorkspaceGroup = to.StringPtr(logAnalyticsWorkspaceGroup)
 
-		logAnalyticsWorkspaceName := matchWorkspaceName.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))[1]
+		name := matchWorkspaceName.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))
+		if name == nil {
+			return nil, fmt.Errorf("OMS Agent configuration workspace group was not found")
+		}
+		logAnalyticsWorkspaceName := name[1]
 		upstreamSpec.LogAnalyticsWorkspaceName = to.StringPtr(logAnalyticsWorkspaceName)
 	}
 
