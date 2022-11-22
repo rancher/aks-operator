@@ -706,7 +706,7 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 
 		name := matchWorkspaceName.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))
 		if name == nil {
-			return nil, fmt.Errorf("OMS Agent configuration workspace group was not found")
+			return nil, fmt.Errorf("OMS Agent configuration workspace name was not found")
 		}
 		logAnalyticsWorkspaceName := name[1]
 		upstreamSpec.LogAnalyticsWorkspaceName = to.StringPtr(logAnalyticsWorkspaceName)
