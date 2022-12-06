@@ -18,7 +18,7 @@ const (
 )
 
 // Please keep in sync with
-//https://github.com/Azure/azure-cli/blob/release/src/azure-cli/azure/cli/command_modules/acs/custom.py#L3091
+// https://github.com/Azure/azure-cli/blob/release/src/azure-cli/azure/cli/command_modules/acs/custom.py#L3091
 var locationToOmsRegionCodeMap = map[string]string{
 	"australiasoutheast": "ASE",
 	"australiaeast":      "EAU",
@@ -61,7 +61,7 @@ var locationToOmsRegionCodeMap = map[string]string{
 }
 
 // Please keep in sync with
-//https://github.com/Azure/azure-cli/blob/release/src/azure-cli/azure/cli/command_modules/acs/custom.py#L3126
+// https://github.com/Azure/azure-cli/blob/release/src/azure-cli/azure/cli/command_modules/acs/custom.py#L3126
 var regionToOmsRegionMap = map[string]string{
 	"australiacentral":   "australiacentral",
 	"australiacentral2":  "australiacentral",

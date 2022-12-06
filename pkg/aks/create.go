@@ -67,13 +67,13 @@ func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient *contai
 	// values from the managed cluster if they are non nil.
 
 	/*
-	The following fields are managed in Rancher but are NOT configurable on update
-	- Name
-	- Location
-	- DNSPrefix
-	- EnablePrivateCluster
-	- LoadBalancerProfile
-	 */
+		The following fields are managed in Rancher but are NOT configurable on update
+		- Name
+		- Location
+		- DNSPrefix
+		- EnablePrivateCluster
+		- LoadBalancerProfile
+	*/
 
 	// Update kubernetes version
 	// If a cluster is imported, we may not have the kubernetes version set on the spec.
@@ -102,7 +102,7 @@ func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient *contai
 		for index := range *managedCluster.APIServerAccessProfile.AuthorizedIPRanges {
 			ipRange := (*managedCluster.APIServerAccessProfile.AuthorizedIPRanges)[index]
 
-			if !hasAuthorizedIpRange(ipRange, aksCluster.APIServerAccessProfile.AuthorizedIPRanges) {
+			if !hasAuthorizedIPRange(ipRange, aksCluster.APIServerAccessProfile.AuthorizedIPRanges) {
 				*aksCluster.APIServerAccessProfile.AuthorizedIPRanges = append(*aksCluster.APIServerAccessProfile.AuthorizedIPRanges, ipRange)
 			}
 		}
@@ -338,7 +338,6 @@ func CreateManagedCluster(ctx context.Context, cred *Credentials, spec *aksv1.AK
 	return managedCluster, nil
 }
 
-
 // CreateOrUpdateAgentPool creates a new pool(s) in AKS. If one already exists it updates the upstream node pool with
 // any provided updates.
 func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient *containerservice.AgentPoolsClient, spec *aksv1.AKSClusterConfigSpec, np *aksv1.AKSNodePool) error {
@@ -387,12 +386,11 @@ func hasAgentPoolProfile(name *string, agentPoolProfiles *[]containerservice.Man
 	return false
 }
 
-func hasAuthorizedIpRange(name string, authorizedIpRanges *[]string) bool {
-	for _, ipRange := range *authorizedIpRanges {
+func hasAuthorizedIPRange(name string, authorizedIPRanges *[]string) bool {
+	for _, ipRange := range *authorizedIPRanges {
 		if ipRange == name {
 			return true
 		}
 	}
 	return false
 }
-

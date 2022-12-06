@@ -108,7 +108,7 @@ func Register(
 	aks.OnRemove(ctx, controllerRemoveName, controller.OnAksConfigRemoved)
 }
 
-func (h *Handler) OnAksConfigChanged(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
+func (h *Handler) OnAksConfigChanged(_ string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
 	if config == nil || config.DeletionTimestamp != nil {
 		return nil, nil
 	}
@@ -127,7 +127,7 @@ func (h *Handler) OnAksConfigChanged(key string, config *aksv1.AKSClusterConfig)
 	}
 }
 
-func (h *Handler) OnAksConfigRemoved(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
+func (h *Handler) OnAksConfigRemoved(_ string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
 	if config.Spec.Imported {
 		logrus.Infof("Cluster [%s] is imported, will not delete AKS cluster", config.Spec.ClusterName)
 		return config, nil
@@ -759,13 +759,15 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			// state for the tags and if so, log the response and move on. Any upstream tags regenerated on the cluster
 			// by Azure will be synced back to rancher.
 			upstreamTags := containerservice.TagsObject{}
-			err = retry.OnError(retry.DefaultBackoff, func(err error) bool {
+			if err := retry.OnError(retry.DefaultBackoff, func(err error) bool {
 				return strings.HasSuffix(err.Error(), "asynchronous operation has not completed")
 			}, func() error {
 				managedCluster, err := response.Result(*resourceClusterClient)
 				upstreamTags.Tags = managedCluster.Tags
 				return err
-			})
+			}); err != nil {
+				return config, fmt.Errorf("failed to update tags for cluster [%s]: %w", config.Spec.ClusterName, err)
+			}
 
 			if !reflect.DeepEqual(tags, upstreamTags) && response.Response().StatusCode == http.StatusOK {
 				logrus.Infof("Tags were not updated as expected for cluster [%s], expected %s, actual %s, moving on", config.Spec.ClusterName, to.StringMap(tags.Tags), to.StringMap(upstreamTags.Tags))
