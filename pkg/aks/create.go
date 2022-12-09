@@ -8,28 +8,29 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-10-01/resources"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	"github.com/sirupsen/logrus"
 )
 
-func CreateResourceGroup(ctx context.Context, groupsClient *resources.GroupsClient, spec *aksv1.AKSClusterConfigSpec) error {
+func CreateResourceGroup(ctx context.Context, groupsClient services.ResourceGroupsClientInterface, spec *aksv1.AKSClusterConfigSpec) error {
 	_, err := groupsClient.CreateOrUpdate(
 		ctx,
 		spec.ResourceGroup,
 		resources.Group{
 			Name:     to.StringPtr(spec.ResourceGroup),
 			Location: to.StringPtr(spec.ResourceLocation),
-		})
-
+		},
+	)
 	return err
 }
 
 // CreateCluster creates a new managed Kubernetes cluster. In this case, there will be no existing upstream cluster.
 // We are provisioning a brand new one.
-func CreateCluster(ctx context.Context, cred *Credentials, clusterClient *containerservice.ManagedClustersClient,
+func CreateCluster(ctx context.Context, cred *Credentials, clusterClient services.ManagedClustersClientInterface, workplaceClient services.WorkplacesClientInterface,
 	spec *aksv1.AKSClusterConfigSpec, phase string) error {
 
-	managedCluster, err := CreateManagedCluster(ctx, cred, spec, phase)
+	managedCluster, err := createManagedCluster(ctx, cred, workplaceClient, spec, phase)
 	if err != nil {
 		return err
 	}
@@ -46,11 +47,11 @@ func CreateCluster(ctx context.Context, cred *Credentials, clusterClient *contai
 
 // UpdateCluster updates an existing managed Kubernetes cluster. Before updating, it pulls any existing configuration
 // and then only updates managed fields.
-func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient *containerservice.ManagedClustersClient,
+func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient services.ManagedClustersClientInterface, workplaceClient services.WorkplacesClientInterface,
 	spec *aksv1.AKSClusterConfigSpec, phase string) error {
 
 	// Create a new managed cluster from the AKS cluster config
-	managedCluster, err := CreateManagedCluster(ctx, cred, spec, phase)
+	managedCluster, err := createManagedCluster(ctx, cred, workplaceClient, spec, phase)
 	if err != nil {
 		return err
 	}
@@ -167,8 +168,8 @@ func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient *contai
 	return err
 }
 
-// CreateManagedCluster creates a new managed Kubernetes cluster.
-func CreateManagedCluster(ctx context.Context, cred *Credentials, spec *aksv1.AKSClusterConfigSpec, phase string) (containerservice.ManagedCluster, error) {
+// createManagedCluster creates a new managed Kubernetes cluster.
+func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClient services.WorkplacesClientInterface, spec *aksv1.AKSClusterConfigSpec, phase string) (containerservice.ManagedCluster, error) {
 	managedCluster := containerservice.ManagedCluster{}
 
 	// Get tags from config spec
@@ -277,12 +278,7 @@ func CreateManagedCluster(ctx context.Context, cred *Credentials, spec *aksv1.AK
 			Enabled: spec.Monitoring,
 		}
 
-		operationInsightsWorkspaceClient, err := NewOperationInsightsWorkspaceClient(cred)
-		if err != nil {
-			return managedCluster, err
-		}
-
-		logAnalyticsWorkspaceResourceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx, operationInsightsWorkspaceClient,
+		logAnalyticsWorkspaceResourceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx, workplacesClient,
 			spec.ResourceLocation, spec.ResourceGroup, to.String(spec.LogAnalyticsWorkspaceGroup), to.String(spec.LogAnalyticsWorkspaceName))
 		if err != nil {
 			return managedCluster, err
@@ -340,7 +336,7 @@ func CreateManagedCluster(ctx context.Context, cred *Credentials, spec *aksv1.AK
 
 // CreateOrUpdateAgentPool creates a new pool(s) in AKS. If one already exists it updates the upstream node pool with
 // any provided updates.
-func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient *containerservice.AgentPoolsClient, spec *aksv1.AKSClusterConfigSpec, np *aksv1.AKSNodePool) error {
+func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient services.AgentPoolsClientInterface, spec *aksv1.AKSClusterConfigSpec, np *aksv1.AKSNodePool) error {
 	agentProfile := &containerservice.ManagedClusterAgentPoolProfileProperties{
 		Count:               np.Count,
 		MaxPods:             np.MaxPods,

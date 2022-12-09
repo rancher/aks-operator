@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/rancher/aks-operator/pkg/aks"
+	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	v10 "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io/v1"
 	"github.com/rancher/aks-operator/pkg/utils"
@@ -86,8 +87,18 @@ type Handler struct {
 	aksCC           v10.AKSClusterConfigClient
 	aksEnqueueAfter func(namespace, name string, duration time.Duration)
 	aksEnqueue      func(namespace, name string)
+	azureClients    azureClients
 	secrets         wranglerv1.SecretClient
 	secretsCache    wranglerv1.SecretCache
+}
+
+type azureClients struct {
+	credentials aks.Credentials
+
+	clustersClient       services.ManagedClustersClientInterface
+	resourceGroupsClient services.ResourceGroupsClientInterface
+	agentPoolsClient     services.AgentPoolsClientInterface
+	workplacesClient     services.WorkplacesClientInterface
 }
 
 func Register(
@@ -113,6 +124,10 @@ func (h *Handler) OnAksConfigChanged(_ string, config *aksv1.AKSClusterConfig) (
 		return nil, nil
 	}
 
+	if err := h.getClients(config); err != nil {
+		return config, fmt.Errorf("error getting Azure clients: %w", err)
+	}
+
 	switch config.Status.Phase {
 	case aksConfigImportingPhase:
 		return h.importCluster(config)
@@ -128,6 +143,10 @@ func (h *Handler) OnAksConfigChanged(_ string, config *aksv1.AKSClusterConfig) (
 }
 
 func (h *Handler) OnAksConfigRemoved(_ string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
+	if err := h.getClients(config); err != nil {
+		return config, fmt.Errorf("error getting Azure clients: %w", err)
+	}
+
 	if config.Spec.Imported {
 		logrus.Infof("Cluster [%s] is imported, will not delete AKS cluster", config.Spec.ClusterName)
 		return config, nil
@@ -143,23 +162,13 @@ func (h *Handler) OnAksConfigRemoved(_ string, config *aksv1.AKSClusterConfig) (
 
 	logrus.Infof("Removing cluster [%s]", config.Spec.ClusterName)
 
-	credentials, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
-	if err != nil {
-		return config, err
-	}
-
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return config, err
-	}
-
-	clusterExists, err := aks.ExistsCluster(ctx, resourceClusterClient, &config.Spec)
+	clusterExists, err := aks.ExistsCluster(ctx, h.azureClients.clustersClient, &config.Spec)
 	if err != nil && strings.Contains(err.Error(), "unauthorized") {
 		logrus.Infof("user does not have permissions to access cluster [%s]: %s", config.Spec.ClusterName, err)
 	}
 
 	if clusterExists {
-		if err = aks.RemoveCluster(ctx, resourceClusterClient, &config.Spec); err != nil {
+		if err = aks.RemoveCluster(ctx, h.azureClients.clustersClient, &config.Spec); err != nil {
 			return config, fmt.Errorf("error removing cluster [%s] message %v", config.Spec.ClusterName, err)
 		}
 	}
@@ -221,19 +230,9 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 
 	logrus.Infof("Creating cluster [%s]", config.Spec.ClusterName)
 
-	credentials, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
-	if err != nil {
-		return config, err
-	}
-
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return config, err
-	}
-
 	logrus.Infof("Checking if cluster [%s] exists", config.Spec.ClusterName)
 
-	clusterExists, err := aks.ExistsCluster(ctx, resourceClusterClient, &config.Spec)
+	clusterExists, err := aks.ExistsCluster(ctx, h.azureClients.clustersClient, &config.Spec)
 	if err != nil && strings.Contains(err.Error(), "unauthorized") {
 		logrus.Infof("user does not have permissions to access cluster [%s]: %s", config.Spec.ClusterName, err)
 	}
@@ -242,21 +241,16 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 		return config, fmt.Errorf("cluster [%s] already exists in AKS. Update configuration or import the existing one", config.Spec.ClusterName)
 	}
 
-	resourceGroupsClient, err := aks.NewResourceGroupClient(credentials)
-	if err != nil {
-		return config, err
-	}
-
 	logrus.Infof("Checking if resource group [%s] exists", config.Spec.ResourceGroup)
 
-	resourceGroupExists, err := aks.ExistsResourceGroup(ctx, resourceGroupsClient, config.Spec.ResourceGroup)
+	resourceGroupExists, err := aks.ExistsResourceGroup(ctx, h.azureClients.resourceGroupsClient, config.Spec.ResourceGroup)
 	if err != nil && strings.Contains(err.Error(), "unauthorized") {
 		logrus.Infof("user does not have permissions to access resource group [%s]: %s", config.Spec.ResourceGroup, err)
 	}
 
 	if !resourceGroupExists {
 		logrus.Infof("Creating resource group [%s] for cluster [%s]", config.Spec.ResourceGroup, config.Spec.ClusterName)
-		err = aks.CreateResourceGroup(ctx, resourceGroupsClient, &config.Spec)
+		err = aks.CreateResourceGroup(ctx, h.azureClients.resourceGroupsClient, &config.Spec)
 		if err != nil {
 			return config, fmt.Errorf("error creating resource group [%s] with message %v", config.Spec.ResourceGroup, err)
 		}
@@ -265,7 +259,7 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 
 	logrus.Infof("Creating AKS cluster [%s]", config.Spec.ClusterName)
 
-	err = aks.CreateCluster(ctx, credentials, resourceClusterClient, &config.Spec, config.Status.Phase)
+	err = aks.CreateCluster(ctx, &h.azureClients.credentials, h.azureClients.clustersClient, h.azureClients.workplacesClient, &config.Spec, config.Status.Phase)
 	if err != nil {
 		return config, fmt.Errorf("error failed to create cluster: %v ", err)
 	}
@@ -296,17 +290,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	credentials, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
-	if err != nil {
-		return config, err
-	}
-
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return config, err
-	}
-
-	result, err := resourceClusterClient.Get(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName)
+	result, err := h.azureClients.clustersClient.Get(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName)
 	if err != nil {
 		return config, err
 	}
@@ -360,7 +344,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	}
 
 	logrus.Infof("Checking configuration for cluster [%s]", config.Spec.ClusterName)
-	upstreamSpec, err := BuildUpstreamClusterState(ctx, h.secretsCache, h.secrets, &config.Spec)
+	upstreamSpec, err := h.BuildUpstreamClusterState(ctx, h.secretsCache, h.secrets, &config.Spec)
 	if err != nil {
 		return config, err
 	}
@@ -483,17 +467,7 @@ func (h *Handler) waitForCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	credentials, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
-	if err != nil {
-		return config, err
-	}
-
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return config, err
-	}
-
-	result, err := resourceClusterClient.Get(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName)
+	result, err := h.azureClients.clustersClient.Get(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName)
 	if err != nil {
 		return config, err
 	}
@@ -514,7 +488,7 @@ func (h *Handler) waitForCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 		return h.aksCC.UpdateStatus(config)
 	}
 
-	logrus.Infof("Waiting for cluster [%s] to finish creating", config.Name)
+	logrus.Infof("Waiting for cluster [%s] to finish creating, cluster state: %s", config.Name, clusterState)
 	h.aksEnqueueAfter(config.Namespace, config.Name, wait*time.Second)
 
 	return config, nil
@@ -536,7 +510,7 @@ func (h *Handler) enqueueUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 // createCASecret creates a secret containing ca and endpoint. These can be used to create a kubeconfig via
 // the go sdk
 func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterConfig) error {
-	kubeConfig, err := GetClusterKubeConfig(ctx, h.secretsCache, h.secrets, &config.Spec)
+	kubeConfig, err := h.GetClusterKubeConfig(ctx, h.secretsCache, h.secrets, &config.Spec)
 	if err != nil {
 		return err
 	}
@@ -565,16 +539,8 @@ func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterCo
 	return err
 }
 
-func GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
-	credentials, err := aks.GetSecrets(secretsCache, secretClient, spec)
-	if err != nil {
-		return nil, err
-	}
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return nil, err
-	}
-	accessProfile, err := resourceClusterClient.GetAccessProfile(ctx, spec.ResourceGroup, spec.ClusterName, "clusterAdmin")
+func (h *Handler) GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
+	accessProfile, err := h.azureClients.clustersClient.GetAccessProfile(ctx, spec.ResourceGroup, spec.ClusterName, "clusterAdmin")
 	if err != nil {
 		return nil, err
 	}
@@ -588,18 +554,10 @@ func GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCac
 
 // BuildUpstreamClusterState creates an AKSClusterConfigSpec (spec for the AKS cluster state) from the existing
 // cluster configuration.
-func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
+func (h *Handler) BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
 	upstreamSpec := &aksv1.AKSClusterConfigSpec{}
 
-	credentials, err := aks.GetSecrets(secretsCache, secretClient, spec)
-	if err != nil {
-		return nil, err
-	}
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return nil, err
-	}
-	clusterState, err := resourceClusterClient.Get(ctx, spec.ResourceGroup, spec.ClusterName)
+	clusterState, err := h.azureClients.clustersClient.Get(ctx, spec.ResourceGroup, spec.ClusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -731,16 +689,6 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache,
 	secretClient wranglerv1.SecretClient,
 	config *aksv1.AKSClusterConfig, upstreamSpec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfig, error) {
-	credentials, err := aks.GetSecrets(secretsCache, secretClient, &config.Spec)
-	if err != nil {
-		return config, err
-	}
-
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return config, err
-	}
-
 	// check tags for update
 	if config.Spec.Tags != nil {
 
@@ -749,7 +697,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			tags := containerservice.TagsObject{
 				Tags: *to.StringMapPtr(config.Spec.Tags),
 			}
-			response, err := resourceClusterClient.UpdateTags(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName, tags)
+			response, err := h.azureClients.clustersClient.UpdateTags(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName, tags)
 			if err != nil {
 				return config, err
 			}
@@ -762,7 +710,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			if err := retry.OnError(retry.DefaultBackoff, func(err error) bool {
 				return strings.HasSuffix(err.Error(), "asynchronous operation has not completed")
 			}, func() error {
-				managedCluster, err := response.Result(*resourceClusterClient)
+				managedCluster, err := h.azureClients.clustersClient.AsyncUpdateTagsResult(response)
 				upstreamTags.Tags = managedCluster.Tags
 				return err
 			}); err != nil {
@@ -811,19 +759,14 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 	}
 
 	if updateAksCluster {
-		resourceGroupsClient, err := aks.NewResourceGroupClient(credentials)
-		if err != nil {
-			return config, err
-		}
-
-		resourceGroupExists, err := aks.ExistsResourceGroup(ctx, resourceGroupsClient, config.Spec.ResourceGroup)
+		resourceGroupExists, err := aks.ExistsResourceGroup(ctx, h.azureClients.resourceGroupsClient, config.Spec.ResourceGroup)
 		if err != nil && strings.Contains(err.Error(), "unauthorized") {
 			logrus.Infof("user does not have permissions to access resource group [%s]: %s", config.Spec.ResourceGroup, err)
 		}
 
 		if !resourceGroupExists {
 			logrus.Infof("Resource group [%s] does not exist, creating", config.Spec.ResourceGroup)
-			if err = aks.CreateResourceGroup(ctx, resourceGroupsClient, &config.Spec); err != nil {
+			if err = aks.CreateResourceGroup(ctx, h.azureClients.resourceGroupsClient, &config.Spec); err != nil {
 				return config, fmt.Errorf("error during updating resource group %v", err)
 			}
 			logrus.Infof("Resource group [%s] updated successfully", config.Spec.ResourceGroup)
@@ -837,7 +780,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 				clusterSpecCopy.NodePools = append(clusterSpecCopy.NodePools, n)
 			}
 		}
-		err = aks.UpdateCluster(ctx, credentials, resourceClusterClient, clusterSpecCopy, config.Status.Phase)
+		err = aks.UpdateCluster(ctx, &h.azureClients.credentials, h.azureClients.clustersClient, h.azureClients.workplacesClient, clusterSpecCopy, config.Status.Phase)
 		if err != nil {
 			return config, fmt.Errorf("failed to update cluster: %v", err)
 		}
@@ -845,11 +788,6 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 	}
 
 	if config.Spec.NodePools != nil {
-		agentPoolClient, err := aks.NewAgentPoolClient(credentials)
-		if err != nil {
-			return config, err
-		}
-
 		downstreamNodePools, err := utils.BuildNodePoolMap(config.Spec.NodePools, config.Spec.ClusterName)
 		if err != nil {
 			return config, err
@@ -898,7 +836,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			}
 
 			if updateNodePool {
-				err = aks.CreateOrUpdateAgentPool(ctx, agentPoolClient, &config.Spec, np)
+				err = aks.CreateOrUpdateAgentPool(ctx, h.azureClients.agentPoolsClient, &config.Spec, np)
 				if err != nil {
 					return config, fmt.Errorf("failed to update cluster: %v", err)
 				}
@@ -910,7 +848,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 		for npName := range upstreamNodePools {
 			if _, ok := downstreamNodePools[npName]; !ok {
 				logrus.Infof("Removing node pool [%s] from cluster [%s]", npName, config.Spec.ClusterName)
-				err = aks.RemoveAgentPool(ctx, agentPoolClient, &config.Spec, upstreamNodePools[npName])
+				err = aks.RemoveAgentPool(ctx, h.azureClients.agentPoolsClient, &config.Spec, upstreamNodePools[npName])
 				if err != nil {
 					return config, fmt.Errorf("failed to remove node pool: %v", err)
 				}
@@ -928,5 +866,44 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 	}
 
 	logrus.Infof("Configuration for cluster [%s] was verified", config.Spec.ClusterName)
-	return config, err
+	return config, nil
+}
+
+func (h *Handler) getClients(config *aksv1.AKSClusterConfig) error {
+	credentials, err := aks.GetSecrets(h.secretsCache, h.secrets, &config.Spec)
+	if err != nil {
+		return fmt.Errorf("error getting credentials: %w", err)
+	}
+
+	authorizer, err := aks.NewClientAuthorizer(credentials)
+	if err != nil {
+		return fmt.Errorf("error creating authorizer: %w", err)
+	}
+
+	clustersClient, err := services.NewManagedClustersClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	if err != nil {
+		return fmt.Errorf("error creating managed cluster client: %w", err)
+	}
+	rgClient, err := services.NewResourceGroupsClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	if err != nil {
+		return fmt.Errorf("error creating resource group client: %w", err)
+	}
+	agentPoolsClient, err := services.NewAgentPoolClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	if err != nil {
+		return fmt.Errorf("error creating agent pool client: %w", err)
+	}
+	workplacesClient, err := services.NewWorkplacesClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	if err != nil {
+		return fmt.Errorf("error creating workplace client: %w", err)
+	}
+
+	h.azureClients = azureClients{
+		credentials:          *credentials,
+		clustersClient:       clustersClient,
+		resourceGroupsClient: rgClient,
+		agentPoolsClient:     agentPoolsClient,
+		workplacesClient:     workplacesClient,
+	}
+
+	return nil
 }
