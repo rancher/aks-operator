@@ -8,6 +8,17 @@ MOCKGEN_VER := v1.6.0
 MOCKGEN_BIN := mockgen
 MOCKGEN := $(TOOLS_BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER)
 
+.dapper:
+	@echo Downloading dapper
+	@curl -sL https://releases.rancher.com/dapper/latest/dapper-`uname -s`-`uname -m` > .dapper.tmp
+	@@chmod +x .dapper.tmp
+	@./.dapper.tmp -v
+	@mv .dapper.tmp .dapper
+
+.PHONY: $(TARGETS)
+$(TARGETS): .dapper
+	./.dapper $@
+
 $(MOCKGEN): ## Build mockgen from tools folder.
 	GOBIN=$(BIN_DIR) $(GO_INSTALL) github.com/golang/mock/mockgen $(MOCKGEN_BIN) $(MOCKGEN_VER)
 
@@ -22,17 +33,6 @@ generate-go: $(MOCKGEN)
 .PHONY: test
 test:
 	go test ./...
-
-.dapper:
-	@echo Downloading dapper
-	@curl -sL https://releases.rancher.com/dapper/latest/dapper-`uname -s`-`uname -m` > .dapper.tmp
-	@@chmod +x .dapper.tmp
-	@./.dapper.tmp -v
-	@mv .dapper.tmp .dapper
-
-.PHONY: $(TARGETS)
-$(TARGETS): .dapper
-	./.dapper $@
 
 .PHONY: clean
 clean:
