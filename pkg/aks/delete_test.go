@@ -12,14 +12,14 @@ import (
 
 var _ = Describe("RemoveCluster", func() {
 	var (
-		mockCtrl          *gomock.Controller
+		mockController    *gomock.Controller
 		clusterClientMock *mock_services.MockManagedClustersClientInterface
 		clusterSpec       *aksv1.AKSClusterConfigSpec
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(GinkgoT())
-		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockCtrl)
+		mockController = gomock.NewController(GinkgoT())
+		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
 		clusterSpec = &aksv1.AKSClusterConfigSpec{
 			ResourceGroup: "resourcegroup",
 			ClusterName:   "clustername",
@@ -27,7 +27,7 @@ var _ = Describe("RemoveCluster", func() {
 	})
 
 	AfterEach(func() {
-		mockCtrl.Finish()
+		mockController.Finish()
 	})
 
 	It("should successfully delete cluster", func() {

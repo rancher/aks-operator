@@ -54,12 +54,13 @@ func newManagedCluster(ctx context.Context, cred *Credentials, workplacesClient 
 		},
 	}
 
-	managedCluster.Tags = make(map[string]*string)
+	tags := make(map[string]*string)
 	for key, val := range spec.Tags {
 		if val != "" {
-			managedCluster.Tags[key] = to.StringPtr(val)
+			tags[key] = to.StringPtr(val)
 		}
 	}
+	managedCluster.Tags = tags
 
 	networkProfile := &containerservice.NetworkProfile{
 		NetworkPolicy: containerservice.NetworkPolicy(to.String(spec.NetworkPolicy)),

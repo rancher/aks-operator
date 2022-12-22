@@ -14,7 +14,7 @@ import (
 
 var _ = Describe("updateCluster", func() {
 	var (
-		mockCtrl             *gomock.Controller
+		mockController       *gomock.Controller
 		workplacesClientMock *mock_services.MockWorkplacesClientInterface
 		clusterSpec          *aksv1.AKSClusterConfigSpec
 		cred                 *Credentials
@@ -22,8 +22,8 @@ var _ = Describe("updateCluster", func() {
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(GinkgoT())
-		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockCtrl)
+		mockController = gomock.NewController(GinkgoT())
+		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
 		clusterSpec = &aksv1.AKSClusterConfigSpec{
 			ResourceGroup:     "test-rg",
 			ClusterName:       "test-cluster",
@@ -61,10 +61,10 @@ var _ = Describe("updateCluster", func() {
 	})
 
 	AfterEach(func() {
-		mockCtrl.Finish()
+		mockController.Finish()
 	})
 
-	It("should succefully update cluster", func() {
+	It("should successfully update cluster", func() {
 		desiredCluster, err := newManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
 		Expect(err).ToNot(HaveOccurred())
 
@@ -179,16 +179,16 @@ var _ = Describe("updateCluster", func() {
 
 var _ = Describe("UpdateCluster", func() {
 	var (
-		mockCtrl             *gomock.Controller
+		mockController       *gomock.Controller
 		workplacesClientMock *mock_services.MockWorkplacesClientInterface
 		clusterClientMock    *mock_services.MockManagedClustersClientInterface
 		clusterSpec          *aksv1.AKSClusterConfigSpec
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(GinkgoT())
-		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockCtrl)
-		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockCtrl)
+		mockController = gomock.NewController(GinkgoT())
+		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
+		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
 		clusterSpec = &aksv1.AKSClusterConfigSpec{
 			ResourceGroup: "test-rg",
 			ClusterName:   "test-cluster",
@@ -196,7 +196,7 @@ var _ = Describe("UpdateCluster", func() {
 	})
 
 	AfterEach(func() {
-		mockCtrl.Finish()
+		mockController.Finish()
 	})
 
 	It("should successfully update cluster", func() {

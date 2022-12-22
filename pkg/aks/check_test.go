@@ -35,16 +35,16 @@ func Test_generateUniqueLogWorkspace(t *testing.T) {
 var _ = Describe("checkLogAnalyticsWorkspaceForMonitoring", func() {
 	var (
 		workplacesClientMock *mock_services.MockWorkplacesClientInterface
-		mockCtrl             *gomock.Controller
+		mockController       *gomock.Controller
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(GinkgoT())
-		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockCtrl)
+		mockController = gomock.NewController(GinkgoT())
+		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
 	})
 
 	AfterEach(func() {
-		mockCtrl.Finish()
+		mockController.Finish()
 	})
 
 	It("should return workspaceID if workspace already exists", func() {

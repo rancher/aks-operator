@@ -17,40 +17,40 @@ import (
 
 var _ = Describe("CreateResourceGroup", func() {
 	var (
-		mockCtrl          *gomock.Controller
-		rgClientMock      *mock_services.MockResourceGroupsClientInterface
-		resourceGroupName = "test-rg"
-		location          = "eastus"
+		mockController          *gomock.Controller
+		mockResourceGroupClient *mock_services.MockResourceGroupsClientInterface
+		resourceGroupName       = "test-rg"
+		location                = "eastus"
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(GinkgoT())
-		rgClientMock = mock_services.NewMockResourceGroupsClientInterface(mockCtrl)
+		mockController = gomock.NewController(GinkgoT())
+		mockResourceGroupClient = mock_services.NewMockResourceGroupsClientInterface(mockController)
 	})
 
 	AfterEach(func() {
-		mockCtrl.Finish()
+		mockController.Finish()
 	})
 
-	It("should succefully create a resource group", func() {
-		rgClientMock.EXPECT().CreateOrUpdate(ctx, resourceGroupName, resources.Group{
+	It("should successfully create a resource group", func() {
+		mockResourceGroupClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, resources.Group{
 			Name:     to.StringPtr(resourceGroupName),
 			Location: to.StringPtr(location),
 		}).Return(resources.Group{}, nil)
 
-		Expect(CreateResourceGroup(ctx, rgClientMock, &aksv1.AKSClusterConfigSpec{
+		Expect(CreateResourceGroup(ctx, mockResourceGroupClient, &aksv1.AKSClusterConfigSpec{
 			ResourceGroup:    resourceGroupName,
 			ResourceLocation: location,
 		})).To(Succeed())
 	})
 
 	It("should catch error when resource group creation fails", func() {
-		rgClientMock.EXPECT().CreateOrUpdate(ctx, resourceGroupName, resources.Group{
+		mockResourceGroupClient.EXPECT().CreateOrUpdate(ctx, resourceGroupName, resources.Group{
 			Name:     to.StringPtr(resourceGroupName),
 			Location: to.StringPtr(location),
 		}).Return(resources.Group{}, errors.New("failed to create resource group"))
 
-		err := CreateResourceGroup(ctx, rgClientMock, &aksv1.AKSClusterConfigSpec{
+		err := CreateResourceGroup(ctx, mockResourceGroupClient, &aksv1.AKSClusterConfigSpec{
 			ResourceGroup:    resourceGroupName,
 			ResourceLocation: location,
 		})
@@ -61,15 +61,15 @@ var _ = Describe("CreateResourceGroup", func() {
 
 var _ = Describe("newManagedCluster", func() {
 	var (
-		mockCtrl             *gomock.Controller
+		mockController       *gomock.Controller
 		workplacesClientMock *mock_services.MockWorkplacesClientInterface
 		clusterSpec          *aksv1.AKSClusterConfigSpec
 		cred                 *Credentials
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(GinkgoT())
-		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockCtrl)
+		mockController = gomock.NewController(GinkgoT())
+		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
 		clusterSpec = &aksv1.AKSClusterConfigSpec{
 			ResourceLocation: "eastus",
 			Tags: map[string]string{
@@ -119,7 +119,7 @@ var _ = Describe("newManagedCluster", func() {
 	})
 
 	AfterEach(func() {
-		mockCtrl.Finish()
+		mockController.Finish()
 	})
 
 	It("should successfully create a managed cluster", func() {
@@ -181,7 +181,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(managedCluster.APIServerAccessProfile.EnablePrivateCluster).To(Equal(clusterSpec.PrivateCluster))
 	})
 
-	It("should succefully create managed cluster with custom load balancer sku", func() {
+	It("should successfully create managed cluster with custom load balancer sku", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -192,7 +192,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(managedCluster.NetworkProfile.LoadBalancerSku).To(Equal(containerservice.Basic))
 	})
 
-	It("should succefully create managed cluster with custom network plugin", func() {
+	It("should successfully create managed cluster with custom network plugin", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -207,7 +207,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(managedCluster.NetworkProfile.PodCidr).To(BeNil())
 	})
 
-	It("should succefully create managed cluster with custom virtual network resource group", func() {
+	It("should successfully create managed cluster with custom virtual network resource group", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -221,7 +221,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(to.String(agentPoolProfiles[0].VnetSubnetID)).To(ContainSubstring(to.String(clusterSpec.VirtualNetworkResourceGroup)))
 	})
 
-	It("should succefully create managed cluster with orchestrator version", func() {
+	It("should successfully create managed cluster with orchestrator version", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -235,7 +235,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(to.String(agentPoolProfiles[0].OrchestratorVersion)).To(ContainSubstring(to.String(clusterSpec.NodePools[0].OrchestratorVersion)))
 	})
 
-	It("should succefully create managed cluster with no availability zones set", func() {
+	It("should successfully create managed cluster with no availability zones set", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -248,7 +248,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(agentPoolProfiles[0].AvailabilityZones).To(BeNil())
 	})
 
-	It("should succefully create managed cluster with no autoscaling enabled", func() {
+	It("should successfully create managed cluster with no autoscaling enabled", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -263,7 +263,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(agentPoolProfiles[0].MinCount).To(BeNil())
 	})
 
-	It("should succefully create managed cluster with no custom virtual network", func() {
+	It("should successfully create managed cluster with no custom virtual network", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -277,7 +277,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(agentPoolProfiles[0].VnetSubnetID).To(BeNil())
 	})
 
-	It("should succefully create managed cluster with no linux profile", func() {
+	It("should successfully create managed cluster with no linux profile", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -290,7 +290,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(managedCluster.LinuxProfile).To(BeNil())
 	})
 
-	It("should succefully create managed cluster with no http application routing", func() {
+	It("should successfully create managed cluster with no http application routing", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -302,7 +302,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(managedCluster.AddonProfiles).ToNot(HaveKey("httpApplicationRouting"))
 	})
 
-	It("should succefully create managed cluster with no monitoring enabled", func() {
+	It("should successfully create managed cluster with no monitoring enabled", func() {
 		workplacesClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(operationalinsights.Workspace{}, nil).Times(0)
 		clusterSpec.Monitoring = nil
 		managedCluster, err := newManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
@@ -311,7 +311,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(managedCluster.AddonProfiles).ToNot(HaveKey("omsagent"))
 	})
 
-	It("should succefully create managed cluster when phase is set to active", func() {
+	It("should successfully create managed cluster when phase is set to active", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -336,16 +336,16 @@ var _ = Describe("newManagedCluster", func() {
 
 var _ = Describe("CreateCluster", func() {
 	var (
-		mockCtrl             *gomock.Controller
+		mockController       *gomock.Controller
 		workplacesClientMock *mock_services.MockWorkplacesClientInterface
 		clusterClientMock    *mock_services.MockManagedClustersClientInterface
 		clusterSpec          *aksv1.AKSClusterConfigSpec
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(GinkgoT())
-		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockCtrl)
-		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockCtrl)
+		mockController = gomock.NewController(GinkgoT())
+		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
+		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
 		clusterSpec = &aksv1.AKSClusterConfigSpec{
 			ClusterName:   "test-cluster",
 			ResourceGroup: "test-rg",
@@ -353,10 +353,10 @@ var _ = Describe("CreateCluster", func() {
 	})
 
 	AfterEach(func() {
-		mockCtrl.Finish()
+		mockController.Finish()
 	})
 
-	It("should succefully create managed cluster", func() {
+	It("should successfully create managed cluster", func() {
 		clusterClientMock.EXPECT().CreateOrUpdate(
 			ctx, clusterSpec.ResourceGroup, clusterSpec.ClusterName, gomock.Any()).Return(containerservice.ManagedClustersCreateOrUpdateFuture{}, nil)
 		Expect(CreateCluster(ctx, &Credentials{}, clusterClientMock, workplacesClientMock, clusterSpec, "test-phase")).To(Succeed())
@@ -371,15 +371,15 @@ var _ = Describe("CreateCluster", func() {
 
 var _ = Describe("CreateOrUpdateAgentPool", func() {
 	var (
-		mockCtrl            *gomock.Controller
+		mockController      *gomock.Controller
 		agentPoolClientMock *mock_services.MockAgentPoolsClientInterface
 		clusterSpec         *aksv1.AKSClusterConfigSpec
 		nodePoolSpec        *aksv1.AKSNodePool
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(GinkgoT())
-		agentPoolClientMock = mock_services.NewMockAgentPoolsClientInterface(mockCtrl)
+		mockController = gomock.NewController(GinkgoT())
+		agentPoolClientMock = mock_services.NewMockAgentPoolsClientInterface(mockController)
 		clusterSpec = &aksv1.AKSClusterConfigSpec{
 			ClusterName:   "test-cluster",
 			ResourceGroup: "test-rg",
@@ -402,10 +402,10 @@ var _ = Describe("CreateOrUpdateAgentPool", func() {
 	})
 
 	AfterEach(func() {
-		mockCtrl.Finish()
+		mockController.Finish()
 	})
 
-	It("should succefully create agent pool", func() {
+	It("should successfully create agent pool", func() {
 		agentPoolClientMock.EXPECT().CreateOrUpdate(
 			ctx, clusterSpec.ResourceGroup, clusterSpec.ClusterName, to.String(nodePoolSpec.Name),
 			containerservice.AgentPool{
