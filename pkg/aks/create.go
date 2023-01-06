@@ -91,6 +91,9 @@ func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient service
 
 	// Add/update addon profiles (this will keep separate profiles added by AKS). This code will also add/update addon
 	// profiles for http application routing and monitoring.
+	if aksCluster.AddonProfiles == nil {
+		aksCluster.AddonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{}
+	}
 	for profile := range managedCluster.AddonProfiles {
 		aksCluster.AddonProfiles[profile] = managedCluster.AddonProfiles[profile]
 	}
