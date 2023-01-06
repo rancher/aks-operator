@@ -659,6 +659,7 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 			upstreamNP.MaxCount = np.MaxCount
 			upstreamNP.MinCount = np.MinCount
 		}
+		upstreamNP.VnetSubnetID = np.VnetSubnetID
 		upstreamSpec.NodePools = append(upstreamSpec.NodePools, upstreamNP)
 	}
 
@@ -861,6 +862,10 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, secretsCache w
 			updateNodePool := false
 			upstreamNodePool, ok := upstreamNodePools[npName]
 			if ok {
+				if upstreamNodePool.VnetSubnetID != nil {
+					np.VnetSubnetID = upstreamNodePool.VnetSubnetID
+				}
+
 				if to.Bool(np.EnableAutoScaling) {
 					// Count can't be updated when EnableAutoScaling is true, so don't send anything.
 					np.Count = nil

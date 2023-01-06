@@ -355,6 +355,7 @@ func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient *containerserv
 		EnableAutoScaling:   np.EnableAutoScaling,
 		MinCount:            np.MinCount,
 		MaxCount:            np.MaxCount,
+		VnetSubnetID:        np.VnetSubnetID,
 	}
 
 	_, err := agentPoolClient.CreateOrUpdate(ctx, spec.ResourceGroup, spec.ClusterName, to.String(np.Name), containerservice.AgentPool{
