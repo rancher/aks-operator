@@ -84,4 +84,5 @@ type AKSNodePool struct {
 	MaxCount            *int32    `json:"maxCount,omitempty"`
 	MinCount            *int32    `json:"minCount,omitempty"`
 	EnableAutoScaling   *bool     `json:"enableAutoScaling,omitempty"`
+	VnetSubnetID        *string   `json:"vnetSubnetID,omitempty" norman:"pointer"`
 }

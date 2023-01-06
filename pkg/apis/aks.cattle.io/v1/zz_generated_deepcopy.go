@@ -303,6 +303,11 @@ func (in *AKSNodePool) DeepCopyInto(out *AKSNodePool) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.VnetSubnetID != nil {
+		in, out := &in.VnetSubnetID, &out.VnetSubnetID
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 
