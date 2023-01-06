@@ -8,6 +8,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/operationalinsights/mgmt/2020-08-01/operationalinsights"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/rancher/aks-operator/pkg/aks/services"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -112,7 +113,7 @@ var regionToOmsRegionMap = map[string]string{
 	"chinanorth2": "chinaeast2",
 }
 
-func CheckLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client *operationalinsights.WorkspacesClient,
+func CheckLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client services.WorkplacesClientInterface,
 	location string, group string, wsg string, wsn string) (workspaceID string, err error) {
 
 	workspaceRegion, ok := regionToOmsRegionMap[location]
@@ -159,7 +160,7 @@ func CheckLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client *operat
 	}
 
 	err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
-		ret, err := asyncRet.Result(*client)
+		ret, err := client.AsyncCreateUpdateResult(asyncRet)
 		if err != nil {
 			return false, err
 		}

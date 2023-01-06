@@ -41,6 +41,10 @@ Delete the AKS cluster
 
     kubectl delete -f examples/create-aks.yaml
 
+Running unit tests
+
+    make test
+
 ## Develop
 
 The easiest way to debug and develop the AKS operator is to replace the default operator on a running Rancher instance with your local one.
