@@ -617,6 +617,7 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, spec *aksv1.AKS
 			upstreamNP.MaxCount = np.MaxCount
 			upstreamNP.MinCount = np.MinCount
 		}
+		upstreamNP.VnetSubnetID = np.VnetSubnetID
 		upstreamSpec.NodePools = append(upstreamSpec.NodePools, upstreamNP)
 	}
 
@@ -797,6 +798,10 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 			updateNodePool := false
 			upstreamNodePool, ok := upstreamNodePools[npName]
 			if ok {
+				if upstreamNodePool.VnetSubnetID != nil {
+					np.VnetSubnetID = upstreamNodePool.VnetSubnetID
+				}
+
 				if to.Bool(np.EnableAutoScaling) {
 					// Count can't be updated when EnableAutoScaling is true, so don't send anything.
 					np.Count = nil
