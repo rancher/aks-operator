@@ -70,48 +70,8 @@ var _ = Describe("newManagedCluster", func() {
 	BeforeEach(func() {
 		mockController = gomock.NewController(GinkgoT())
 		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
-		clusterSpec = &aksv1.AKSClusterConfigSpec{
-			ResourceLocation: "eastus",
-			Tags: map[string]string{
-				"test-tag": "test-value",
-			},
-			NetworkPolicy:           to.StringPtr("calico"),
-			NetworkPlugin:           to.StringPtr("azure"),
-			NetworkDNSServiceIP:     to.StringPtr("test-dns-service-ip"),
-			NetworkDockerBridgeCIDR: to.StringPtr("test-docker-bridge-cidr"),
-			NetworkServiceCIDR:      to.StringPtr("test-service-cidr"),
-			NetworkPodCIDR:          to.StringPtr("test-pod-cidr"),
-			ResourceGroup:           "test-rg",
-			VirtualNetwork:          to.StringPtr("test-virtual-network"),
-			Subnet:                  to.StringPtr("test-subnet"),
-			NodePools: []aksv1.AKSNodePool{
-				{
-					Name:                to.StringPtr("test-node-pool"),
-					Count:               to.Int32Ptr(1),
-					MaxPods:             to.Int32Ptr(1),
-					OsDiskSizeGB:        to.Int32Ptr(1),
-					OsDiskType:          "Ephemeral",
-					OsType:              "Linux",
-					VMSize:              "Standard_D2_v2",
-					Mode:                "System",
-					OrchestratorVersion: to.StringPtr("test-orchestrator-version"),
-					AvailabilityZones:   to.StringSlicePtr([]string{"test-availability-zone"}),
-					EnableAutoScaling:   to.BoolPtr(true),
-					MinCount:            to.Int32Ptr(1),
-					MaxCount:            to.Int32Ptr(2),
-				},
-			},
-			LinuxAdminUsername:         to.StringPtr("test-admin-username"),
-			LinuxSSHPublicKey:          to.StringPtr("test-ssh-public-key"),
-			HTTPApplicationRouting:     to.BoolPtr(true),
-			Monitoring:                 to.BoolPtr(true),
-			KubernetesVersion:          to.StringPtr("test-kubernetes-version"),
-			DNSPrefix:                  to.StringPtr("test-dns-prefix"),
-			AuthorizedIPRanges:         to.StringSlicePtr([]string{"test-authorized-ip-range"}),
-			PrivateCluster:             to.BoolPtr(true),
-			LogAnalyticsWorkspaceGroup: to.StringPtr("test-log-analytics-workspace-group"),
-			LogAnalyticsWorkspaceName:  to.StringPtr("test-log-analytics-workspace-name"),
-		}
+		clusterSpec = newTestClusterSpec()
+		clusterSpec.Monitoring = to.BoolPtr(true)
 		cred = &Credentials{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
@@ -346,10 +306,7 @@ var _ = Describe("CreateCluster", func() {
 		mockController = gomock.NewController(GinkgoT())
 		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
 		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
-		clusterSpec = &aksv1.AKSClusterConfigSpec{
-			ClusterName:   "test-cluster",
-			ResourceGroup: "test-rg",
-		}
+		clusterSpec = newTestClusterSpec()
 	})
 
 	AfterEach(func() {
@@ -380,10 +337,7 @@ var _ = Describe("CreateOrUpdateAgentPool", func() {
 	BeforeEach(func() {
 		mockController = gomock.NewController(GinkgoT())
 		agentPoolClientMock = mock_services.NewMockAgentPoolsClientInterface(mockController)
-		clusterSpec = &aksv1.AKSClusterConfigSpec{
-			ClusterName:   "test-cluster",
-			ResourceGroup: "test-rg",
-		}
+		clusterSpec = newTestClusterSpec()
 		nodePoolSpec = &aksv1.AKSNodePool{
 			Name:                to.StringPtr("test-nodepool"),
 			Count:               to.Int32Ptr(1),
@@ -436,3 +390,48 @@ var _ = Describe("CreateOrUpdateAgentPool", func() {
 		Expect(CreateOrUpdateAgentPool(ctx, agentPoolClientMock, clusterSpec, nodePoolSpec)).ToNot(Succeed())
 	})
 })
+
+func newTestClusterSpec() *aksv1.AKSClusterConfigSpec {
+	return &aksv1.AKSClusterConfigSpec{
+		ResourceLocation: "eastus",
+		Tags: map[string]string{
+			"test-tag": "test-value",
+		},
+		NetworkPolicy:           to.StringPtr("calico"),
+		NetworkPlugin:           to.StringPtr("azure"),
+		NetworkDNSServiceIP:     to.StringPtr("test-dns-service-ip"),
+		NetworkDockerBridgeCIDR: to.StringPtr("test-docker-bridge-cidr"),
+		NetworkServiceCIDR:      to.StringPtr("test-service-cidr"),
+		NetworkPodCIDR:          to.StringPtr("test-pod-cidr"),
+		ResourceGroup:           "test-rg",
+		VirtualNetwork:          to.StringPtr("test-virtual-network"),
+		Subnet:                  to.StringPtr("test-subnet"),
+		NodePools: []aksv1.AKSNodePool{
+			{
+				Name:                to.StringPtr("test-node-pool"),
+				Count:               to.Int32Ptr(1),
+				MaxPods:             to.Int32Ptr(1),
+				OsDiskSizeGB:        to.Int32Ptr(1),
+				OsDiskType:          "Ephemeral",
+				OsType:              "Linux",
+				VMSize:              "Standard_D2_v2",
+				Mode:                "System",
+				OrchestratorVersion: to.StringPtr("test-orchestrator-version"),
+				AvailabilityZones:   to.StringSlicePtr([]string{"test-availability-zone"}),
+				EnableAutoScaling:   to.BoolPtr(true),
+				MinCount:            to.Int32Ptr(1),
+				MaxCount:            to.Int32Ptr(2),
+			},
+		},
+		LinuxAdminUsername:         to.StringPtr("test-admin-username"),
+		LinuxSSHPublicKey:          to.StringPtr("test-ssh-public-key"),
+		HTTPApplicationRouting:     to.BoolPtr(true),
+		Monitoring:                 to.BoolPtr(false),
+		KubernetesVersion:          to.StringPtr("test-kubernetes-version"),
+		DNSPrefix:                  to.StringPtr("test-dns-prefix"),
+		AuthorizedIPRanges:         to.StringSlicePtr([]string{"test-authorized-ip-range"}),
+		PrivateCluster:             to.BoolPtr(true),
+		LogAnalyticsWorkspaceGroup: to.StringPtr("test-log-analytics-workspace-group"),
+		LogAnalyticsWorkspaceName:  to.StringPtr("test-log-analytics-workspace-name"),
+	}
+}
