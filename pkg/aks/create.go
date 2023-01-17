@@ -90,6 +90,9 @@ func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient *contai
 
 	// Add/update addon profiles (this will keep separate profiles added by AKS). This code will also add/update addon
 	// profiles for http application routing and monitoring.
+	if aksCluster.AddonProfiles == nil {
+		aksCluster.AddonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{}
+	}
 	for profile := range managedCluster.AddonProfiles {
 		aksCluster.AddonProfiles[profile] = managedCluster.AddonProfiles[profile]
 	}
@@ -355,6 +358,7 @@ func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient *containerserv
 		EnableAutoScaling:   np.EnableAutoScaling,
 		MinCount:            np.MinCount,
 		MaxCount:            np.MaxCount,
+		VnetSubnetID:        np.VnetSubnetID,
 	}
 
 	_, err := agentPoolClient.CreateOrUpdate(ctx, spec.ResourceGroup, spec.ClusterName, to.String(np.Name), containerservice.AgentPool{
