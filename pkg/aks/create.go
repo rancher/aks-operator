@@ -10,7 +10,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
-	"github.com/sirupsen/logrus"
 )
 
 func CreateResourceGroup(ctx context.Context, groupsClient services.ResourceGroupsClientInterface, spec *aksv1.AKSClusterConfigSpec) error {
@@ -45,135 +44,11 @@ func CreateCluster(ctx context.Context, cred *Credentials, clusterClient service
 	return err
 }
 
-// UpdateCluster updates an existing managed Kubernetes cluster. Before updating, it pulls any existing configuration
-// and then only updates managed fields.
-func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient services.ManagedClustersClientInterface, workplaceClient services.WorkplacesClientInterface,
-	spec *aksv1.AKSClusterConfigSpec, phase string) error {
-
-	// Create a new managed cluster from the AKS cluster config
-	managedCluster, err := createManagedCluster(ctx, cred, workplaceClient, spec, phase)
-	if err != nil {
-		return err
-	}
-
-	// Pull the upstream cluster state
-	aksCluster, err := clusterClient.Get(ctx, spec.ResourceGroup, spec.ClusterName)
-	if err != nil {
-		logrus.Errorf("Error getting upstream AKS cluster by name [%s]: %s", spec.ClusterName, err.Error())
-		return err
-	}
-
-	// Upstream cluster state was successfully pulled. Merge in updates without overwriting upstream fields: we never
-	// want to overwrite preconfigured values in Azure with nil values. So only update fields pulled from AKS with
-	// values from the managed cluster if they are non nil.
-
-	/*
-		The following fields are managed in Rancher but are NOT configurable on update
-		- Name
-		- Location
-		- DNSPrefix
-		- EnablePrivateCluster
-		- LoadBalancerProfile
-	*/
-
-	// Update kubernetes version
-	// If a cluster is imported, we may not have the kubernetes version set on the spec.
-	if managedCluster.KubernetesVersion != nil {
-		aksCluster.KubernetesVersion = managedCluster.KubernetesVersion
-	}
-
-	// Add/update agent pool profiles
-	for _, ap := range *managedCluster.AgentPoolProfiles {
-		if !hasAgentPoolProfile(ap.Name, aksCluster.AgentPoolProfiles) {
-			*aksCluster.AgentPoolProfiles = append(*aksCluster.AgentPoolProfiles, ap)
-		}
-	}
-
-	// Add/update addon profiles (this will keep separate profiles added by AKS). This code will also add/update addon
-	// profiles for http application routing and monitoring.
-	if aksCluster.AddonProfiles == nil {
-		aksCluster.AddonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{}
-	}
-	for profile := range managedCluster.AddonProfiles {
-		aksCluster.AddonProfiles[profile] = managedCluster.AddonProfiles[profile]
-	}
-
-	// Auth IP ranges
-	// note: there could be authorized IP ranges set in AKS that haven't propagated yet when this update is done. Add
-	// ranges from Rancher to any ones already set in AKS.
-	if managedCluster.APIServerAccessProfile != nil && managedCluster.APIServerAccessProfile.AuthorizedIPRanges != nil {
-
-		for index := range *managedCluster.APIServerAccessProfile.AuthorizedIPRanges {
-			ipRange := (*managedCluster.APIServerAccessProfile.AuthorizedIPRanges)[index]
-
-			if !hasAuthorizedIPRange(ipRange, aksCluster.APIServerAccessProfile.AuthorizedIPRanges) {
-				*aksCluster.APIServerAccessProfile.AuthorizedIPRanges = append(*aksCluster.APIServerAccessProfile.AuthorizedIPRanges, ipRange)
-			}
-		}
-	}
-
-	// Linux profile
-	if managedCluster.LinuxProfile != nil {
-		aksCluster.LinuxProfile = managedCluster.LinuxProfile
-	}
-
-	// Network profile
-	if managedCluster.NetworkProfile != nil {
-		np := managedCluster.NetworkProfile
-		if np.NetworkPlugin != "" {
-			aksCluster.NetworkProfile.NetworkPlugin = np.NetworkPlugin
-		}
-		if np.NetworkPolicy != "" {
-			aksCluster.NetworkProfile.NetworkPolicy = np.NetworkPolicy
-		}
-		if np.NetworkMode != "" {
-			aksCluster.NetworkProfile.NetworkMode = np.NetworkMode
-		}
-		if np.DNSServiceIP != nil {
-			aksCluster.NetworkProfile.DNSServiceIP = np.DNSServiceIP
-		}
-		if np.DockerBridgeCidr != nil {
-			aksCluster.NetworkProfile.DockerBridgeCidr = np.DockerBridgeCidr
-		}
-		if np.PodCidr != nil {
-			aksCluster.NetworkProfile.PodCidr = np.PodCidr
-		}
-		if np.ServiceCidr != nil {
-			aksCluster.NetworkProfile.ServiceCidr = np.ServiceCidr
-		}
-		if np.OutboundType != "" {
-			aksCluster.NetworkProfile.OutboundType = np.OutboundType
-		}
-		if np.LoadBalancerSku != "" {
-			aksCluster.NetworkProfile.LoadBalancerSku = np.LoadBalancerSku
-		}
-		// LoadBalancerProfile is not configurable in Rancher so there won't be subfield conflicts. Just pull it from
-		// the state in AKS.
-	}
-
-	// Service principal client id and secret
-	if managedCluster.ServicePrincipalProfile != nil { // operator phase is 'updating' or 'active'
-		aksCluster.ServicePrincipalProfile = managedCluster.ServicePrincipalProfile
-	}
-
-	// Tags
-	if managedCluster.Tags != nil {
-		aksCluster.Tags = managedCluster.Tags
-	}
-
-	_, err = clusterClient.CreateOrUpdate(
-		ctx,
-		spec.ResourceGroup,
-		spec.ClusterName,
-		aksCluster,
-	)
-
-	return err
-}
-
 // createManagedCluster creates a new managed Kubernetes cluster.
 func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClient services.WorkplacesClientInterface, spec *aksv1.AKSClusterConfigSpec, phase string) (containerservice.ManagedCluster, error) {
-	managedCluster := containerservice.ManagedCluster{}
+	managedCluster := containerservice.ManagedCluster{
+		ManagedClusterProperties: &containerservice.ManagedClusterProperties{},
+	}
 
 	// Get tags from config spec
 	tags := make(map[string]*string)
@@ -281,7 +156,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			Enabled: spec.Monitoring,
 		}
 
-		logAnalyticsWorkspaceResourceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx, workplacesClient,
+		logAnalyticsWorkspaceResourceID, err := checkLogAnalyticsWorkspaceForMonitoring(ctx, workplacesClient,
 			spec.ResourceLocation, spec.ResourceGroup, to.String(spec.LogAnalyticsWorkspaceGroup), to.String(spec.LogAnalyticsWorkspaceName))
 		if err != nil {
 			return managedCluster, err
@@ -323,15 +198,18 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	}
 
 	if spec.AuthorizedIPRanges != nil {
-		managedCluster.APIServerAccessProfile = &containerservice.ManagedClusterAPIServerAccessProfile{
-			AuthorizedIPRanges: spec.AuthorizedIPRanges,
+		if managedCluster.APIServerAccessProfile == nil {
+			managedCluster.APIServerAccessProfile = &containerservice.ManagedClusterAPIServerAccessProfile{}
 		}
+		managedCluster.APIServerAccessProfile.AuthorizedIPRanges = spec.AuthorizedIPRanges
+
 	}
 
 	if to.Bool(spec.PrivateCluster) {
-		managedCluster.APIServerAccessProfile = &containerservice.ManagedClusterAPIServerAccessProfile{
-			EnablePrivateCluster: spec.PrivateCluster,
+		if managedCluster.APIServerAccessProfile == nil {
+			managedCluster.APIServerAccessProfile = &containerservice.ManagedClusterAPIServerAccessProfile{}
 		}
+		managedCluster.APIServerAccessProfile.EnablePrivateCluster = spec.PrivateCluster
 	}
 
 	return managedCluster, nil
