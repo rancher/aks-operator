@@ -30,7 +30,12 @@ var _ = Describe("updateCluster", func() {
 			KubernetesVersion: to.StringPtr("test-version"),
 			NodePools: []aksv1.AKSNodePool{
 				{
-					Name: to.StringPtr("test-nodepool"),
+					Name:       to.StringPtr("test-nodepool"),
+					MaxSurge:   to.StringPtr("13%"),
+					NodeTaints: to.StringSlicePtr([]string{"node=taint:NoSchedule"}),
+					NodeLabels: map[string]*string{
+						"node-label": to.StringPtr("test-value"),
+					},
 				},
 			},
 			AuthorizedIPRanges:      to.StringSlicePtr([]string{"test-ip-range"}),
@@ -76,6 +81,12 @@ var _ = Describe("updateCluster", func() {
 		Expect(agentPoolProfiles).To(HaveLen(1))
 		Expect(agentPoolProfiles[0].Name).To(Equal(clusterSpec.NodePools[0].Name))
 		Expect(agentPoolProfiles[0].OrchestratorVersion).To(Equal(clusterSpec.KubernetesVersion))
+		Expect(agentPoolProfiles[0].UpgradeSettings.MaxSurge).To(Equal(clusterSpec.NodePools[0].MaxSurge))
+		expectedNodeTaints := *agentPoolProfiles[0].NodeTaints
+		clusterSpecNodeTaints := *clusterSpec.NodePools[0].NodeTaints
+		Expect(expectedNodeTaints).To(HaveLen(1))
+		Expect(expectedNodeTaints[0]).To(Equal(clusterSpecNodeTaints[0]))
+		Expect(agentPoolProfiles[0].NodeLabels).To(HaveKeyWithValue("node-label", to.StringPtr("test-value")))
 		Expect(updatedCluster.APIServerAccessProfile).ToNot(BeNil())
 		authorizedIPranges := *updatedCluster.APIServerAccessProfile.AuthorizedIPRanges
 		Expect(authorizedIPranges).To(HaveLen(1))

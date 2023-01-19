@@ -109,8 +109,14 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			VMSize:              containerservice.VMSizeTypes(np.VMSize),
 			Mode:                containerservice.AgentPoolMode(np.Mode),
 			OrchestratorVersion: np.OrchestratorVersion,
+			NodeLabels:          np.NodeLabels,
+			NodeTaints:          np.NodeTaints,
 		}
-
+		if np.MaxSurge != nil {
+			agentProfile.UpgradeSettings = &containerservice.AgentPoolUpgradeSettings{
+				MaxSurge: np.MaxSurge,
+			}
+		}
 		if np.AvailabilityZones != nil && len(*np.AvailabilityZones) > 0 {
 			agentProfile.AvailabilityZones = np.AvailabilityZones
 		}
@@ -233,6 +239,14 @@ func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient services.Agent
 		MinCount:            np.MinCount,
 		MaxCount:            np.MaxCount,
 		VnetSubnetID:        np.VnetSubnetID,
+		NodeLabels:          np.NodeLabels,
+		NodeTaints:          np.NodeTaints,
+	}
+
+	if np.MaxSurge != nil {
+		agentProfile.UpgradeSettings = &containerservice.AgentPoolUpgradeSettings{
+			MaxSurge: np.MaxSurge,
+		}
 	}
 
 	_, err := agentPoolClient.CreateOrUpdate(ctx, spec.ResourceGroup, spec.ClusterName, to.String(np.Name), containerservice.AgentPool{
