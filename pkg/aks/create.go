@@ -156,7 +156,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			Enabled: spec.Monitoring,
 		}
 
-		logAnalyticsWorkspaceResourceID, err := checkLogAnalyticsWorkspaceForMonitoring(ctx, workplacesClient,
+		logAnalyticsWorkspaceResourceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx, workplacesClient,
 			spec.ResourceLocation, spec.ResourceGroup, to.String(spec.LogAnalyticsWorkspaceGroup), to.String(spec.LogAnalyticsWorkspaceName))
 		if err != nil {
 			return managedCluster, err

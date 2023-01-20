@@ -344,7 +344,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	}
 
 	logrus.Infof("Checking configuration for cluster [%s]", config.Spec.ClusterName)
-	upstreamSpec, err := h.buildUpstreamClusterState(ctx, &config.Spec)
+	upstreamSpec, err := h.BuildUpstreamClusterState(ctx, &config.Spec)
 	if err != nil {
 		return config, err
 	}
@@ -510,7 +510,7 @@ func (h *Handler) enqueueUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 // createCASecret creates a secret containing ca and endpoint. These can be used to create a kubeconfig via
 // the go sdk
 func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterConfig) error {
-	kubeConfig, err := h.getClusterKubeConfig(ctx, &config.Spec)
+	kubeConfig, err := h.GetClusterKubeConfig(ctx, &config.Spec)
 	if err != nil {
 		return err
 	}
@@ -539,7 +539,7 @@ func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterCo
 	return err
 }
 
-func (h *Handler) getClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
+func (h *Handler) GetClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
 	accessProfile, err := h.azureClients.clustersClient.GetAccessProfile(ctx, spec.ResourceGroup, spec.ClusterName, "clusterAdmin")
 	if err != nil {
 		return nil, err
@@ -554,7 +554,7 @@ func (h *Handler) getClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClust
 
 // buildUpstreamClusterState creates an AKSClusterConfigSpec (spec for the AKS cluster state) from the existing
 // cluster configuration.
-func (h *Handler) buildUpstreamClusterState(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
+func (h *Handler) BuildUpstreamClusterState(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
 	upstreamSpec := &aksv1.AKSClusterConfigSpec{}
 
 	clusterState, err := h.azureClients.clustersClient.Get(ctx, spec.ResourceGroup, spec.ClusterName)

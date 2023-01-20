@@ -113,7 +113,7 @@ var regionToOmsRegionMap = map[string]string{
 	"chinanorth2": "chinaeast2",
 }
 
-func checkLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client services.WorkplacesClientInterface,
+func CheckLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client services.WorkplacesClientInterface,
 	location string, group string, wsg string, wsn string) (workspaceID string, err error) {
 
 	workspaceRegion, ok := regionToOmsRegionMap[location]

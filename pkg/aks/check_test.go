@@ -32,7 +32,7 @@ func Test_generateUniqueLogWorkspace(t *testing.T) {
 	}
 }
 
-var _ = Describe("checkLogAnalyticsWorkspaceForMonitoring", func() {
+var _ = Describe("CheckLogAnalyticsWorkspaceForMonitoring", func() {
 	var (
 		workplacesClientMock *mock_services.MockWorkplacesClientInterface
 		mockController       *gomock.Controller
@@ -54,7 +54,7 @@ var _ = Describe("checkLogAnalyticsWorkspaceForMonitoring", func() {
 		workplacesClientMock.EXPECT().Get(ctx, workspaceResourceGroup, workspaceName).Return(operationalinsights.Workspace{
 			ID: &id,
 		}, nil)
-		workspaceID, err := checkLogAnalyticsWorkspaceForMonitoring(ctx,
+		workspaceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx,
 			workplacesClientMock,
 			"eastus", workspaceResourceGroup, "", workspaceName)
 		Expect(err).NotTo(HaveOccurred())
@@ -80,7 +80,7 @@ var _ = Describe("checkLogAnalyticsWorkspaceForMonitoring", func() {
 			ID: &id,
 		}, nil)
 
-		workspaceID, err := checkLogAnalyticsWorkspaceForMonitoring(ctx,
+		workspaceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx,
 			workplacesClientMock,
 			"eastus", workspaceResourceGroup, "", workspaceName)
 
@@ -92,7 +92,7 @@ var _ = Describe("checkLogAnalyticsWorkspaceForMonitoring", func() {
 		workplacesClientMock.EXPECT().Get(ctx, gomock.Any(), gomock.Any()).Return(operationalinsights.Workspace{}, errors.New("not found"))
 		workplacesClientMock.EXPECT().CreateOrUpdate(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(operationalinsights.WorkspacesCreateOrUpdateFuture{}, errors.New("error"))
 
-		_, err := checkLogAnalyticsWorkspaceForMonitoring(ctx,
+		_, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx,
 			workplacesClientMock,
 			"eastus", "workspaceResourceGroup", "", "workspaceName")
 
@@ -104,7 +104,7 @@ var _ = Describe("checkLogAnalyticsWorkspaceForMonitoring", func() {
 		workplacesClientMock.EXPECT().CreateOrUpdate(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(operationalinsights.WorkspacesCreateOrUpdateFuture{}, nil)
 		workplacesClientMock.EXPECT().AsyncCreateUpdateResult(gomock.Any()).Return(operationalinsights.Workspace{}, errors.New("error"))
 
-		_, err := checkLogAnalyticsWorkspaceForMonitoring(ctx,
+		_, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx,
 			workplacesClientMock,
 			"eastus", "workspaceResourceGroup", "", "workspaceName")
 
