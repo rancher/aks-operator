@@ -92,7 +92,7 @@ func GetSecrets(secretsCache wranglerv1.SecretCache, secretClient wranglerv1.Sec
 	cred.BaseURL = spec.BaseURL
 
 	if cred.TenantID == "" {
-		cred.TenantID, err = getCachedTenantID(secretClient, cred.SubscriptionID, secret)
+		cred.TenantID, err = GetCachedTenantID(secretClient, cred.SubscriptionID, secret)
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +105,7 @@ type secretClient interface {
 	Update(*v1.Secret) (*v1.Secret, error)
 }
 
-func getCachedTenantID(secretClient secretClient, subscriptionID string, secret *v1.Secret) (string, error) {
+func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret *v1.Secret) (string, error) {
 	annotations := secret.GetAnnotations()
 	tenantAnno, timestamp := annotations[tenantIDAnnotation], annotations[tenantIDTimestampAnnotation]
 	if tenantAnno != "" && timestamp != "" {
