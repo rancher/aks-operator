@@ -107,6 +107,9 @@ type secretClient interface {
 
 func getCachedTenantID(secretClient secretClient, subscriptionID string, secret *v1.Secret) (string, error) {
 	annotations := secret.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
 	tenantAnno, timestamp := annotations[tenantIDAnnotation], annotations[tenantIDTimestampAnnotation]
 	if tenantAnno != "" && timestamp != "" {
 		parsedTime, err := time.Parse(time.RFC3339, timestamp)
@@ -124,8 +127,9 @@ func getCachedTenantID(secretClient secretClient, subscriptionID string, secret 
 	if err != nil {
 		return "", err
 	}
-	secret.Annotations[tenantIDAnnotation] = tenantID
-	secret.Annotations[tenantIDTimestampAnnotation] = time.Now().UTC().Format(time.RFC3339)
+	annotations[tenantIDAnnotation] = tenantID
+	annotations[tenantIDTimestampAnnotation] = time.Now().UTC().Format(time.RFC3339)
+	secret.Annotations = annotations
 	_, err = secretClient.Update(secret)
 	if errors.IsConflict(err) {
 		// Ignore errors when updating the secret object. If the secret cannot be updated

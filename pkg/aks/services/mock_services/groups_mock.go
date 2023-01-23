@@ -65,3 +65,18 @@ func (mr *MockResourceGroupsClientInterfaceMockRecorder) CreateOrUpdate(ctx, res
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrUpdate", reflect.TypeOf((*MockResourceGroupsClientInterface)(nil).CreateOrUpdate), ctx, resourceGroupName, resourceGroup)
 }
+
+// Delete mocks base method.
+func (m *MockResourceGroupsClientInterface) Delete(ctx context.Context, resourceGroupName string) (resources.GroupsDeleteFuture, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, resourceGroupName)
+	ret0, _ := ret[0].(resources.GroupsDeleteFuture)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockResourceGroupsClientInterfaceMockRecorder) Delete(ctx, resourceGroupName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockResourceGroupsClientInterface)(nil).Delete), ctx, resourceGroupName)
+}
