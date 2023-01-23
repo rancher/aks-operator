@@ -1,0 +1,31 @@
+apiVersion: aks.cattle.io/v1
+kind: AKSClusterConfig
+metadata:
+  namespace: default
+spec:
+  azureCredentialSecret: default:azure-credentials
+  clusterName: cluster
+  dnsPrefix: basic-cluster-dns
+  imported: false
+  kubernetesVersion: 1.24.6
+  linuxAdminUsername: azureuser
+  loadBalancerSku: Standard
+  networkPlugin: kubenet
+  nodePools:
+  - availabilityZones:
+    - "1"
+    - "2"
+    - "3"
+    count: 1
+    enableAutoScaling: false
+    maxPods: 110
+    mode: System
+    name: agentpool
+    orchestratorVersion: 1.24.6
+    osDiskSizeGB: 30
+    osDiskType: Managed
+    osType: Linux
+    vmSize: Standard_B4ms
+  privateCluster: false
+  resourceLocation: eastus
+
