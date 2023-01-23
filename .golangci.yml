@@ -2,6 +2,8 @@ run:
   timeout: 5m
   skip-files:
     - "zz_generated_*"
+  skip-dirs:
+    - pkg/generated
   tests: false
 output:
   format: github-actions
