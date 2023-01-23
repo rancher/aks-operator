@@ -42,11 +42,6 @@ generate:
 	$(MAKE) generate-go
 	$(MAKE) generate-crd
 
-.PHONY: test
-test:
-	go test ./...
-
-
 .PHONY: $(TARGETS)
 $(TARGETS): .dapper
 	./.dapper $@
@@ -108,15 +103,15 @@ charts:
 setup-kind:
 	KUBE_VERSION=${KUBE_VERSION} $(ROOT_DIR)/scripts/setup-kind-cluster.sh
 
-e2e-tests: $(GINKGO) setup-kind
-	@export EXTERNAL_IP=`kubectl get nodes -o jsonpath='{.items[].status.addresses[?(@.type == "InternalIP")].address}'` && \
+e2e-tests: $(GINKGO) charts
+	export EXTERNAL_IP=`kubectl get nodes -o jsonpath='{.items[].status.addresses[?(@.type == "InternalIP")].address}'` && \
 	export BRIDGE_IP="172.18.0.1" && \
 	export CONFIG_PATH=$(E2E_CONF_FILE) && \
 	export OPERATOR_CHART=$(OPERATOR_CHART) && \
 	export CRD_CHART=$(CRD_CHART) && \
 	cd $(ROOT_DIR)/test && $(GINKGO) -r -v ./e2e
 
-kind-e2e-tests: charts setup-kind docker-build-e2e
+kind-e2e-tests: docker-build-e2e setup-kind
 	kind load docker-image --name $(CLUSTER_NAME) ${REPO}:${TAG}
 	$(MAKE) e2e-tests
 
