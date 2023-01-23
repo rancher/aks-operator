@@ -1,0 +1,25 @@
+FROM registry.suse.com/bci/golang:1.19 AS build
+RUN zypper -n install -l openssl-devel
+WORKDIR /src
+COPY go.mod go.sum /src/
+RUN go mod download
+COPY main.go /src/
+COPY controller /src/controller
+COPY pkg /src/pkg
+FROM build AS build-operator
+ARG TAG=v0.0.0
+ARG COMMIT=""
+ARG COMMITDATE=""
+ENV CGO_ENABLED=0
+RUN go build  \
+    -ldflags "-w -s  \
+    -X github.com/rancher/aks-operator/pkg/version.Version=$TAG  \
+    -X github.com/rancher/aks-operator/pkg/version.Commit=$COMMIT  \
+    -X github.com/rancher/aks-operator/pkg/version.CommitDate=$COMMITDATE"  \
+    -o /usr/sbin/aks-operator .
+
+FROM scratch AS aks-operator
+COPY --from=build /var/lib/ca-certificates/ca-bundle.pem /etc/ssl/certs/ca-certificates.crt
+COPY --from=build-operator /usr/sbin/aks-operator /usr/sbin/aks-operator
+ENTRYPOINT ["/usr/sbin/aks-operator"]
+
