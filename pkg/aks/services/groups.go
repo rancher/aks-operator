@@ -10,6 +10,7 @@ import (
 type ResourceGroupsClientInterface interface {
 	CreateOrUpdate(ctx context.Context, resourceGroupName string, resourceGroup resources.Group) (resources.Group, error)
 	CheckExistence(ctx context.Context, resourceGroupName string) (result autorest.Response, err error)
+	Delete(ctx context.Context, resourceGroupName string) (result resources.GroupsDeleteFuture, err error)
 }
 
 type resourceGroupsClient struct {
@@ -30,4 +31,8 @@ func (cl *resourceGroupsClient) CreateOrUpdate(ctx context.Context, resourceGrou
 
 func (cl *resourceGroupsClient) CheckExistence(ctx context.Context, resourceGroupName string) (result autorest.Response, err error) {
 	return cl.groupsClient.CheckExistence(ctx, resourceGroupName)
+}
+
+func (cl *resourceGroupsClient) Delete(ctx context.Context, resourceGroupName string) (result resources.GroupsDeleteFuture, err error) {
+	return cl.groupsClient.Delete(ctx, resourceGroupName)
 }
