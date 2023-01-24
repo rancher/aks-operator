@@ -634,6 +634,14 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 			upstreamNP.MinCount = np.MinCount
 		}
 		upstreamNP.VnetSubnetID = np.VnetSubnetID
+		upstreamNP.NodeLabels = make(map[string]*string)
+		if len(np.NodeLabels) != 0 {
+			upstreamNP.NodeLabels = np.NodeLabels
+		}
+		upstreamNP.NodeTaints = np.NodeTaints
+		if np.UpgradeSettings != nil && np.UpgradeSettings.MaxSurge != nil {
+			upstreamNP.MaxSurge = np.UpgradeSettings.MaxSurge
+		}
 		upstreamSpec.NodePools = append(upstreamSpec.NodePools, upstreamNP)
 	}
 
@@ -847,6 +855,22 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				}
 				if np.OrchestratorVersion != nil && to.String(np.OrchestratorVersion) != to.String(upstreamNodePool.OrchestratorVersion) {
 					logrus.Infof("Updating orchestrator version in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					updateNodePool = true
+				}
+				if np.NodeLabels != nil {
+					if !reflect.DeepEqual(np.NodeLabels, upstreamNodePool.NodeLabels) {
+						logrus.Infof("Updating labels in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+						updateNodePool = true
+					}
+				}
+				if np.NodeTaints != nil {
+					if !reflect.DeepEqual(np.NodeTaints, upstreamNodePool.NodeTaints) {
+						logrus.Infof("Updating node taints in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+						updateNodePool = true
+					}
+				}
+				if np.MaxSurge != nil && to.String(np.MaxSurge) != to.String(upstreamNodePool.MaxSurge) {
+					logrus.Infof("Updating max surge in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
 					updateNodePool = true
 				}
 			} else {
