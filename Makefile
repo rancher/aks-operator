@@ -52,6 +52,9 @@ $(MOCKGEN):
 $(GINKGO):
 	GOBIN=$(BIN_DIR) $(GO_INSTALL) github.com/onsi/ginkgo/v2/ginkgo $(GINKGO_BIN) $(GINKGO_VER)
 
+$(GO_APIDIFF):
+	GOBIN=$(BIN_DIR) $(GO_INSTALL) github.com/joelanford/go-apidiff $(GO_APIDIFF_BIN) $(GO_APIDIFF_VER)
+
 .PHONY: operator
 operator:
 	go build -o bin/aks-operator main.go
@@ -100,9 +103,11 @@ charts:
 	$(MAKE) operator-chart
 	$(MAKE) crd-chart
 
+.PHONY: setup-kind
 setup-kind:
 	KUBE_VERSION=${KUBE_VERSION} $(ROOT_DIR)/scripts/setup-kind-cluster.sh
 
+.PHONY: e2e-tests
 e2e-tests: $(GINKGO) charts
 	export EXTERNAL_IP=`kubectl get nodes -o jsonpath='{.items[].status.addresses[?(@.type == "InternalIP")].address}'` && \
 	export BRIDGE_IP="172.18.0.1" && \
@@ -111,6 +116,7 @@ e2e-tests: $(GINKGO) charts
 	export CRD_CHART=$(CRD_CHART) && \
 	cd $(ROOT_DIR)/test && $(GINKGO) -r -v ./e2e
 
+.PHONY: kind-e2e-tests
 kind-e2e-tests: docker-build-e2e setup-kind
 	kind load docker-image --name $(CLUSTER_NAME) ${REPO}:${TAG}
 	$(MAKE) e2e-tests
