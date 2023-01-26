@@ -13,7 +13,7 @@ require (
 	github.com/onsi/gomega v1.24.1
 	github.com/rancher/lasso v0.0.0-20221202205459-e7138f16489c
 	github.com/rancher/machine v0.15.0-rancher98
-	github.com/rancher/wrangler v1.0.1-0.20221202234327-1cafffeaa9a1
+	github.com/rancher/wrangler v1.0.2
 	github.com/rancher/wrangler-api v0.6.1-0.20200427172631-a7c2f09b783e
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.0
