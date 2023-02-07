@@ -22,7 +22,7 @@ MOCKGEN_VER := v1.6.0
 MOCKGEN_BIN := mockgen
 MOCKGEN := $(BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER)
 
-GINKGO_VER := v2.5.1
+GINKGO_VER := v2.8.0
 GINKGO_BIN := ginkgo
 GINKGO := $(BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
 
@@ -65,7 +65,7 @@ generate-go: $(MOCKGEN)
 
 .PHONY: test
 test: $(GINKGO)
-	$(GINKGO) -v -r --trace --race ./pkg/... ./controller/...
+	$(GINKGO) -v -r -p --trace --race ./pkg/... ./controller/...
 
 .PHONY: clean
 clean:
