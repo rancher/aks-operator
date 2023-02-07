@@ -62,15 +62,17 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		}
 	}
 
-	networkProfile := &containerservice.NetworkProfile{
-		NetworkPolicy: containerservice.NetworkPolicy(to.String(spec.NetworkPolicy)),
-	}
+	networkProfile := &containerservice.NetworkProfile{}
 
-	switch containerservice.NetworkPolicy(to.String(spec.NetworkPolicy)) {
-	case containerservice.NetworkPolicyCalico:
-		if containerservice.NetworkPlugin(to.String(spec.NetworkPlugin)) != containerservice.Kubenet {
-			return nil, fmt.Errorf("networkPolicy 'calico' is only supported with networkPlugin 'kubenet'")
-		}
+	switch to.String(spec.NetworkPolicy) {
+	case string(containerservice.NetworkPolicyAzure):
+		networkProfile.NetworkPolicy = containerservice.NetworkPolicyAzure
+	case string(containerservice.NetworkPolicyCalico):
+		networkProfile.NetworkPolicy = containerservice.NetworkPolicyCalico
+	case "":
+		networkProfile.NetworkPolicy = ""
+	default:
+		return nil, fmt.Errorf("networkPolicy '%s' is not supported", to.String(spec.NetworkPolicy))
 	}
 
 	switch to.String(spec.NetworkPlugin) {
@@ -82,6 +84,10 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		networkProfile.NetworkPlugin = containerservice.Kubenet
 	default:
 		return nil, fmt.Errorf("networkPlugin '%s' is not supported", to.String(spec.NetworkPlugin))
+	}
+
+	if networkProfile.NetworkPlugin == containerservice.Kubenet && to.String(spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) {
+		return nil, fmt.Errorf("network plugin Kubenet is not compatible with network policy Azure")
 	}
 
 	switch to.String(spec.LoadBalancerSKU) { // TODO: only standard is supported for now, find a way to validate this

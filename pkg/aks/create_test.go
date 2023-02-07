@@ -300,10 +300,10 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should fail if network policy is calico and network plugin is not kubenet", func() {
+	It("should fail if network policy is azure and network plugin is kubenet", func() {
 		workplacesClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(operationalinsights.Workspace{}, nil).Times(0)
-		clusterSpec.NetworkPlugin = to.StringPtr("azure")
-		clusterSpec.NetworkPolicy = to.StringPtr("calico")
+		clusterSpec.NetworkPlugin = to.StringPtr("kubenet")
+		clusterSpec.NetworkPolicy = to.StringPtr("azure")
 		_, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).To(HaveOccurred())
 	})
