@@ -64,6 +64,7 @@ const (
 	azureCredentialsSecretName = "azure-credentials"
 	cattleSystemNamespace      = "cattle-system"
 	rancherName                = "rancher"
+	aksClusterConfigNamespace  = "cattle-global-data"
 )
 
 // Test configuration
@@ -293,24 +294,33 @@ var _ = AfterSuite(func() {
 	By("Getting AKS Clusters")
 
 	aksClusterList := &aksv1.AKSClusterConfigList{}
-	Expect(cl.List(ctx, aksClusterList, &runtimeclient.ListOptions{
-		Namespace: "default",
-	})).To(Succeed())
+	Expect(cl.List(ctx, aksClusterList, &runtimeclient.ListOptions{})).To(Succeed())
 
 	for _, aksCluster := range aksClusterList.Items {
 		output, err := yaml.Marshal(aksCluster)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(os.WriteFile(filepath.Join(e2eCfg.ArtifactsDir, aksCluster.Name+".yaml"), redactSensitiveData([]byte(output)), 0644)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(e2eCfg.ArtifactsDir, "eks-cluster-config-"+aksCluster.Name+".yaml"), redactSensitiveData([]byte(output)), 0644)).To(Succeed())
 	}
 
-	By("Cleaning up AKS Clusters")
+	By("Getting Rancher Clusters")
 
-	for _, aksCluster := range aksClusterList.Items {
-		Expect(cl.Delete(ctx, &aksCluster)).To(Succeed())
+	rancherClusterList := &managementv3.ClusterList{}
+	Expect(cl.List(ctx, rancherClusterList, &runtimeclient.ListOptions{})).To(Succeed())
+
+	for _, rancherCluster := range rancherClusterList.Items {
+		output, err := yaml.Marshal(rancherCluster)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(os.WriteFile(filepath.Join(e2eCfg.ArtifactsDir, "rancher-cluster-"+rancherCluster.Name+".yaml"), redactSensitiveData([]byte(output)), 0644)).To(Succeed())
+	}
+
+	By("Cleaning up Rancher Clusters")
+
+	for _, rancherCluster := range rancherClusterList.Items {
+		Expect(cl.Delete(ctx, &rancherCluster)).To(Succeed())
 		Eventually(func() error {
 			return cl.Get(ctx, runtimeclient.ObjectKey{
-				Name:      aksCluster.Name,
-				Namespace: aksCluster.Namespace,
+				Name:      rancherCluster.Name,
+				Namespace: rancherCluster.Namespace,
 			}, &aksv1.AKSClusterConfig{})
 		}, waitLong, pollInterval).ShouldNot(Succeed())
 	}
