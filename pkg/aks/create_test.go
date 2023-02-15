@@ -163,7 +163,8 @@ var _ = Describe("newManagedCluster", func() {
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
 			}, nil)
-		clusterSpec.NetworkPlugin = to.StringPtr("")
+		clusterSpec.NetworkPlugin = to.StringPtr("kubenet")
+		clusterSpec.NetworkPolicy = to.StringPtr("calico")
 		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(managedCluster.NetworkProfile.NetworkPlugin).To(Equal(containerservice.Kubenet))
@@ -298,6 +299,14 @@ var _ = Describe("newManagedCluster", func() {
 		_, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).To(HaveOccurred())
 	})
+
+	It("should fail if network policy is azure and network plugin is kubenet", func() {
+		workplacesClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(operationalinsights.Workspace{}, nil).Times(0)
+		clusterSpec.NetworkPlugin = to.StringPtr("kubenet")
+		clusterSpec.NetworkPolicy = to.StringPtr("azure")
+		_, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
+		Expect(err).To(HaveOccurred())
+	})
 })
 
 var _ = Describe("CreateCluster", func() {
@@ -413,7 +422,7 @@ func newTestClusterSpec() *aksv1.AKSClusterConfigSpec {
 		Tags: map[string]string{
 			"test-tag": "test-value",
 		},
-		NetworkPolicy:           to.StringPtr("calico"),
+		NetworkPolicy:           to.StringPtr("azure"),
 		NetworkPlugin:           to.StringPtr("azure"),
 		NetworkDNSServiceIP:     to.StringPtr("test-dns-service-ip"),
 		NetworkDockerBridgeCIDR: to.StringPtr("test-docker-bridge-cidr"),

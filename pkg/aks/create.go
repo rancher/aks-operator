@@ -10,6 +10,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
+	"github.com/sirupsen/logrus"
 )
 
 func CreateResourceGroup(ctx context.Context, groupsClient services.ResourceGroupsClientInterface, spec *aksv1.AKSClusterConfigSpec) error {
@@ -38,104 +39,136 @@ func CreateCluster(ctx context.Context, cred *Credentials, clusterClient service
 		ctx,
 		spec.ResourceGroup,
 		spec.ClusterName,
-		managedCluster,
+		*managedCluster,
 	)
 
 	return err
 }
 
 // createManagedCluster creates a new managed Kubernetes cluster.
-func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClient services.WorkplacesClientInterface, spec *aksv1.AKSClusterConfigSpec, phase string) (containerservice.ManagedCluster, error) {
-	managedCluster := containerservice.ManagedCluster{
-		ManagedClusterProperties: &containerservice.ManagedClusterProperties{},
+func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClient services.WorkplacesClientInterface, spec *aksv1.AKSClusterConfigSpec, phase string) (*containerservice.ManagedCluster, error) {
+	managedCluster := &containerservice.ManagedCluster{
+		Name:     to.StringPtr(spec.ClusterName),
+		Location: to.StringPtr(spec.ResourceLocation),
+		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
+			KubernetesVersion: spec.KubernetesVersion,
+		},
 	}
 
-	// Get tags from config spec
-	tags := make(map[string]*string)
+	managedCluster.Tags = make(map[string]*string)
 	for key, val := range spec.Tags {
 		if val != "" {
-			tags[key] = to.StringPtr(val)
+			managedCluster.Tags[key] = to.StringPtr(val)
 		}
 	}
 
-	// Get network profile from config spec
-	var vmNetSubnetID *string
-	networkProfile := &containerservice.NetworkProfile{
-		NetworkPlugin:   containerservice.Kubenet,
-		NetworkPolicy:   containerservice.NetworkPolicy(to.String(spec.NetworkPolicy)),
-		LoadBalancerSku: containerservice.Standard,
+	networkProfile := &containerservice.NetworkProfile{}
+
+	switch to.String(spec.NetworkPolicy) {
+	case string(containerservice.NetworkPolicyAzure):
+		networkProfile.NetworkPolicy = containerservice.NetworkPolicyAzure
+	case string(containerservice.NetworkPolicyCalico):
+		networkProfile.NetworkPolicy = containerservice.NetworkPolicyCalico
+	case "":
+		networkProfile.NetworkPolicy = ""
+	default:
+		return nil, fmt.Errorf("networkPolicy '%s' is not supported", to.String(spec.NetworkPolicy))
 	}
 
-	if spec.LoadBalancerSKU != nil {
-		networkProfile.LoadBalancerSku = containerservice.LoadBalancerSku(to.String(spec.LoadBalancerSKU))
+	switch to.String(spec.NetworkPlugin) {
+	case string(containerservice.Azure):
+		networkProfile.NetworkPlugin = containerservice.Azure
+	case string(containerservice.Kubenet):
+		networkProfile.NetworkPlugin = containerservice.Kubenet
+	case "":
+		networkProfile.NetworkPlugin = containerservice.Kubenet
+	default:
+		return nil, fmt.Errorf("networkPlugin '%s' is not supported", to.String(spec.NetworkPlugin))
 	}
 
+	if networkProfile.NetworkPlugin == containerservice.Kubenet && to.String(spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) {
+		return nil, fmt.Errorf("network plugin Kubenet is not compatible with network policy Azure")
+	}
+
+	switch to.String(spec.LoadBalancerSKU) { // TODO: only standard is supported for now, find a way to validate this
+	case string(containerservice.Standard):
+		networkProfile.LoadBalancerSku = containerservice.Standard
+	case string(containerservice.Basic):
+		logrus.Warnf("loadBalancerSKU 'basic' is not supported")
+		networkProfile.LoadBalancerSku = containerservice.Basic
+	case "":
+		networkProfile.LoadBalancerSku = containerservice.Standard
+	}
+
+	virtualNetworkResourceGroup := spec.ResourceGroup
 	if containerservice.NetworkPlugin(to.String(spec.NetworkPlugin)) == containerservice.Azure {
-		networkProfile.NetworkPlugin = containerservice.NetworkPlugin(to.String(spec.NetworkPlugin))
-		virtualNetworkResourceGroup := spec.ResourceGroup
-
 		// If a virtual network resource group is set, use it, otherwise assume it is the same as the cluster
-		if spec.VirtualNetworkResourceGroup != nil {
+		if to.String(spec.VirtualNetworkResourceGroup) != "" {
 			virtualNetworkResourceGroup = to.String(spec.VirtualNetworkResourceGroup)
 		}
-
-		vmNetSubnetID = to.StringPtr(fmt.Sprintf(
-			"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/virtualNetworks/%s/subnets/%s",
-			cred.SubscriptionID,
-			virtualNetworkResourceGroup,
-			to.String(spec.VirtualNetwork),
-			to.String(spec.Subnet),
-		))
 
 		networkProfile.DNSServiceIP = spec.NetworkDNSServiceIP
 		networkProfile.DockerBridgeCidr = spec.NetworkDockerBridgeCIDR
 		networkProfile.ServiceCidr = spec.NetworkServiceCIDR
 		networkProfile.PodCidr = spec.NetworkPodCIDR
 	}
+	managedCluster.ManagedClusterProperties.NetworkProfile = networkProfile
 
-	// Get agent pool profile from config spec
-	agentPoolProfiles := make([]containerservice.ManagedClusterAgentPoolProfile, 0, len(spec.NodePools))
+	agentPoolProfiles := []containerservice.ManagedClusterAgentPoolProfile{}
 	for _, np := range spec.NodePools {
-		if np.OrchestratorVersion == nil {
-			np.OrchestratorVersion = spec.KubernetesVersion
-		}
 		agentProfile := containerservice.ManagedClusterAgentPoolProfile{
-			Name:                np.Name,
-			Count:               np.Count,
-			MaxPods:             np.MaxPods,
-			OsDiskSizeGB:        np.OsDiskSizeGB,
-			OsDiskType:          containerservice.OSDiskType(np.OsDiskType),
-			OsType:              containerservice.OSType(np.OsType),
-			VMSize:              containerservice.VMSizeTypes(np.VMSize),
-			Mode:                containerservice.AgentPoolMode(np.Mode),
-			OrchestratorVersion: np.OrchestratorVersion,
-			NodeLabels:          np.NodeLabels,
-			NodeTaints:          np.NodeTaints,
+			Name:         np.Name,
+			Count:        np.Count,
+			MaxPods:      np.MaxPods,
+			OsDiskSizeGB: np.OsDiskSizeGB,
+			OsDiskType:   containerservice.OSDiskType(np.OsDiskType),
+			OsType:       containerservice.OSType(np.OsType),
+			VMSize:       containerservice.VMSizeTypes(np.VMSize),
+			Mode:         containerservice.AgentPoolMode(np.Mode),
+			NodeLabels:   np.NodeLabels,
+			NodeTaints:   np.NodeTaints,
 		}
+
 		if np.MaxSurge != nil {
 			agentProfile.UpgradeSettings = &containerservice.AgentPoolUpgradeSettings{
 				MaxSurge: np.MaxSurge,
 			}
 		}
+
+		agentProfile.OrchestratorVersion = spec.KubernetesVersion
+		if to.String(np.OrchestratorVersion) != "" {
+			agentProfile.OrchestratorVersion = np.OrchestratorVersion
+		}
 		if np.AvailabilityZones != nil && len(*np.AvailabilityZones) > 0 {
 			agentProfile.AvailabilityZones = np.AvailabilityZones
 		}
 
-		if np.EnableAutoScaling != nil && *np.EnableAutoScaling {
+		if to.StringSlice(np.AvailabilityZones) != nil {
+			agentProfile.AvailabilityZones = np.AvailabilityZones
+		}
+
+		if to.Bool(np.EnableAutoScaling) {
 			agentProfile.EnableAutoScaling = np.EnableAutoScaling
 			agentProfile.MaxCount = np.MaxCount
 			agentProfile.MinCount = np.MinCount
 		}
+
 		if hasCustomVirtualNetwork(spec) {
-			agentProfile.VnetSubnetID = vmNetSubnetID
+			agentProfile.VnetSubnetID = to.StringPtr(fmt.Sprintf(
+				"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/virtualNetworks/%s/subnets/%s",
+				cred.SubscriptionID,
+				virtualNetworkResourceGroup,
+				to.String(spec.VirtualNetwork),
+				to.String(spec.Subnet),
+			))
 		}
+
 		agentPoolProfiles = append(agentPoolProfiles, agentProfile)
 	}
+	managedCluster.ManagedClusterProperties.AgentPoolProfiles = &agentPoolProfiles
 
-	// Get linux profile from config spec
-	var linuxProfile *containerservice.LinuxProfile
 	if hasLinuxProfile(spec) {
-		linuxProfile = &containerservice.LinuxProfile{
+		managedCluster.ManagedClusterProperties.LinuxProfile = &containerservice.LinuxProfile{
 			AdminUsername: spec.LinuxAdminUsername,
 			SSH: &containerservice.SSHConfiguration{
 				PublicKeys: &[]containerservice.SSHPublicKey{
@@ -148,24 +181,24 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	}
 
 	// Get addon profile from config spec
-	addonProfiles := make(map[string]*containerservice.ManagedClusterAddonProfile, 0)
+	managedCluster.ManagedClusterProperties.AddonProfiles = map[string]*containerservice.ManagedClusterAddonProfile{}
 
 	if hasHTTPApplicationRoutingSupport(spec) {
-		addonProfiles["httpApplicationRouting"] = &containerservice.ManagedClusterAddonProfile{
+		managedCluster.ManagedClusterProperties.AddonProfiles["httpApplicationRouting"] = &containerservice.ManagedClusterAddonProfile{
 			Enabled: spec.HTTPApplicationRouting,
 		}
 	}
 
 	// Get monitoring from config spec
 	if to.Bool(spec.Monitoring) {
-		addonProfiles["omsAgent"] = &containerservice.ManagedClusterAddonProfile{
+		managedCluster.ManagedClusterProperties.AddonProfiles["omsAgent"] = &containerservice.ManagedClusterAddonProfile{
 			Enabled: spec.Monitoring,
 		}
 
 		logAnalyticsWorkspaceResourceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx, workplacesClient,
 			spec.ResourceLocation, spec.ResourceGroup, to.String(spec.LogAnalyticsWorkspaceGroup), to.String(spec.LogAnalyticsWorkspaceName))
 		if err != nil {
-			return managedCluster, err
+			return nil, err
 		}
 
 		if !strings.HasPrefix(logAnalyticsWorkspaceResourceID, "/") {
@@ -173,23 +206,9 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		}
 		logAnalyticsWorkspaceResourceID = strings.TrimSuffix(logAnalyticsWorkspaceResourceID, "/")
 
-		addonProfiles["omsAgent"].Config = map[string]*string{
+		managedCluster.ManagedClusterProperties.AddonProfiles["omsAgent"].Config = map[string]*string{
 			"logAnalyticsWorkspaceResourceID": to.StringPtr(logAnalyticsWorkspaceResourceID),
 		}
-	}
-
-	// Create a new managed cluster
-	managedCluster = containerservice.ManagedCluster{
-		Name:     to.StringPtr(spec.ClusterName),
-		Location: to.StringPtr(spec.ResourceLocation),
-		Tags:     tags,
-		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
-			KubernetesVersion: spec.KubernetesVersion,
-			AgentPoolProfiles: &agentPoolProfiles,
-			LinuxProfile:      linuxProfile,
-			NetworkProfile:    networkProfile,
-			AddonProfiles:     addonProfiles,
-		},
 	}
 
 	if phase != "updating" && phase != "active" {
@@ -199,7 +218,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		}
 	}
 
-	if spec.DNSPrefix != nil {
+	if to.String(spec.DNSPrefix) != "" {
 		managedCluster.DNSPrefix = spec.DNSPrefix
 	}
 
@@ -208,7 +227,6 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			managedCluster.APIServerAccessProfile = &containerservice.ManagedClusterAPIServerAccessProfile{}
 		}
 		managedCluster.APIServerAccessProfile.AuthorizedIPRanges = spec.AuthorizedIPRanges
-
 	}
 
 	if to.Bool(spec.PrivateCluster) {
@@ -267,22 +285,4 @@ func hasLinuxProfile(spec *aksv1.AKSClusterConfigSpec) bool {
 func hasHTTPApplicationRoutingSupport(spec *aksv1.AKSClusterConfigSpec) bool {
 	// HttpApplicationRouting is not supported in azure china cloud
 	return !strings.HasPrefix(spec.ResourceLocation, "china")
-}
-
-func hasAgentPoolProfile(name *string, agentPoolProfiles *[]containerservice.ManagedClusterAgentPoolProfile) bool {
-	for _, ap := range *agentPoolProfiles {
-		if *ap.Name == *name {
-			return true
-		}
-	}
-	return false
-}
-
-func hasAuthorizedIPRange(name string, authorizedIPRanges *[]string) bool {
-	for _, ipRange := range *authorizedIPRanges {
-		if ipRange == name {
-			return true
-		}
-	}
-	return false
 }
