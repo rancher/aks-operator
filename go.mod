@@ -10,7 +10,7 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.9.22
 	github.com/Azure/go-autorest/autorest/to v0.4.1-0.20210111195520-9fc88b15294e
 	github.com/onsi/ginkgo/v2 v2.8.1
-	github.com/onsi/gomega v1.26.0
+	github.com/onsi/gomega v1.27.1
 	github.com/rancher/lasso v0.0.0-20221202205459-e7138f16489c
 	github.com/rancher/machine v0.15.0-rancher98
 	github.com/rancher/wrangler v1.0.2
