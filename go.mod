@@ -11,9 +11,9 @@ require (
 	github.com/Azure/go-autorest/autorest/to v0.4.1-0.20210111195520-9fc88b15294e
 	github.com/onsi/ginkgo/v2 v2.8.1
 	github.com/onsi/gomega v1.27.1
-	github.com/rancher/lasso v0.0.0-20221202205459-e7138f16489c
+	github.com/rancher/lasso v0.0.0-20221227210133-6ea88ca2fbcc
 	github.com/rancher/machine v0.15.0-rancher98
-	github.com/rancher/wrangler v1.0.2
+	github.com/rancher/wrangler v1.0.1-0.20230131212012-76adc44fca0c
 	github.com/rancher/wrangler-api v0.6.1-0.20200427172631-a7c2f09b783e
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
