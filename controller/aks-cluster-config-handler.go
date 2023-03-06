@@ -510,7 +510,7 @@ func (h *Handler) enqueueUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 // createCASecret creates a secret containing ca and endpoint. These can be used to create a kubeconfig via
 // the go sdk
 func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterConfig) error {
-	kubeConfig, err := GetClusterKubeConfig(ctx, h.secretsCache, h.secrets, &config.Spec)
+	kubeConfig, err := h.getClusterKubeConfig(ctx, &config.Spec)
 	if err != nil {
 		return err
 	}
@@ -539,16 +539,8 @@ func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterCo
 	return err
 }
 
-func GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
-	credentials, err := aks.GetSecrets(secretsCache, secretClient, spec)
-	if err != nil {
-		return nil, err
-	}
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return nil, err
-	}
-	accessProfile, err := resourceClusterClient.GetAccessProfile(ctx, spec.ResourceGroup, spec.ClusterName, "clusterAdmin")
+func (h *Handler) getClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
+	accessProfile, err := h.azureClients.clustersClient.GetAccessProfile(ctx, spec.ResourceGroup, spec.ClusterName, "clusterAdmin")
 	if err != nil {
 		return nil, err
 	}
