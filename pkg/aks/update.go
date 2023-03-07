@@ -175,7 +175,9 @@ func validateUpdate(desiredCluster containerservice.ManagedCluster, actualCluste
 		return false
 	}
 
-	if desiredCluster.ManagedClusterProperties != nil && actualCluster.ManagedClusterProperties != nil && to.String(desiredCluster.DNSPrefix) != to.String(actualCluster.DNSPrefix) {
+	if desiredCluster.ManagedClusterProperties != nil && actualCluster.ManagedClusterProperties != nil &&
+		desiredCluster.DNSPrefix != nil && actualCluster.DNSPrefix != nil &&
+		to.String(desiredCluster.DNSPrefix) != to.String(actualCluster.DNSPrefix) {
 		logrus.Warnf("Cluster DNS prefix update from [%s] to [%s] is not supported", *actualCluster.DNSPrefix, *desiredCluster.DNSPrefix)
 		return false
 	}
