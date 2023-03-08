@@ -1,0 +1,38 @@
+---
+name: "Update AKS Operator version in Rancher" 
+
+on:
+  workflow_dispatch:
+    inputs:
+      rancher-branch:
+        description: Rancher branch
+        required: true
+        default: release/v2.7
+      aks-operator-tag:
+        description: AKS Operator release tag
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  updatecli:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19.x
+      - name: Install Updatecli in the runner
+        uses: updatecli/updatecli-action@v2
+      - name: Update aks operator dependency in rancher
+        run: "updatecli apply --config ./.updatecli/updatecli.d/bump-rancher-dep.yaml"
+        env:
+          UPDATECLI_GITHUB_ACTOR: ${{ github.actor }}
+          UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATECLI_RANCHER_BRANCH: ${{ github.event.inputs.rancher-branch }}
+          UPDATECLI_AKS_OPERATOR_TAG: ${{ github.event.inputs.aks-operator-tag }}
