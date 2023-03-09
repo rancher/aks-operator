@@ -356,7 +356,7 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	// Check for existing AKSClusterConfigs with the same display name
 	aksConfigs, err := h.aksCC.List(config.Namespace, v15.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("cannot list AKSClusterConfig for display name check")
+		return fmt.Errorf("cannot list AKSClusterConfig for display name check: %w", err)
 	}
 	for _, c := range aksConfigs.Items {
 		if c.Spec.ClusterName == config.Spec.ClusterName && c.Name != config.Name {
@@ -552,20 +552,10 @@ func (h *Handler) getClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClust
 	return config, nil
 }
 
-// buildUpstreamClusterState creates an AKSClusterConfigSpec (spec for the AKS cluster state) from the existing
-// cluster configuration.
-func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
+func (h *Handler) buildUpstreamClusterState(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
 	upstreamSpec := &aksv1.AKSClusterConfigSpec{}
 
-	credentials, err := aks.GetSecrets(secretsCache, secretClient, spec)
-	if err != nil {
-		return nil, err
-	}
-	resourceClusterClient, err := aks.NewClusterClient(credentials)
-	if err != nil {
-		return nil, err
-	}
-	clusterState, err := resourceClusterClient.Get(ctx, spec.ResourceGroup, spec.ClusterName)
+	clusterState, err := h.azureClients.clustersClient.Get(ctx, spec.ResourceGroup, spec.ClusterName)
 	if err != nil {
 		return nil, err
 	}
