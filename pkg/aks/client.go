@@ -57,7 +57,7 @@ func NewClientAuthorizer(cred *Credentials) (autorest.Authorizer, error) {
 	return autorest.NewBearerAuthorizer(spToken), nil
 }
 
-func GetSecrets(secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*Credentials, error) {
+func GetSecrets(_ wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*Credentials, error) {
 	var cred Credentials
 
 	if spec.AzureCredentialSecret == "" {
