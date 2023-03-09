@@ -26,6 +26,16 @@ GINKGO_VER := v2.8.0
 GINKGO_BIN := ginkgo
 GINKGO := $(BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
 
+SETUP_ENVTEST_VER := v0.0.0-20211110210527-619e6b92dab9
+SETUP_ENVTEST_BIN := setup-envtest
+SETUP_ENVTEST := $(BIN_DIR)/$(SETUP_ENVTEST_BIN)-$(SETUP_ENVTEST_VER)
+
+ifeq ($(shell go env GOOS),darwin) # Use the darwin/amd64 binary until an arm64 version is available
+	KUBEBUILDER_ASSETS ?= $(shell $(SETUP_ENVTEST) use --use-env -p path --arch amd64 $(KUBEBUILDER_ENVTEST_KUBERNETES_VERSION))
+else
+	KUBEBUILDER_ASSETS ?= $(shell $(SETUP_ENVTEST) use --use-env -p path $(KUBEBUILDER_ENVTEST_KUBERNETES_VERSION))
+endif
+
 .dapper:
 	@echo Downloading dapper
 	@curl -sL https://releases.rancher.com/dapper/latest/dapper-`uname -s`-`uname -m` > .dapper.tmp
@@ -55,6 +65,9 @@ $(GINKGO):
 $(GO_APIDIFF):
 	GOBIN=$(BIN_DIR) $(GO_INSTALL) github.com/joelanford/go-apidiff $(GO_APIDIFF_BIN) $(GO_APIDIFF_VER)
 
+$(SETUP_ENVTEST): 
+	GOBIN=$(BIN_DIR) $(GO_INSTALL) sigs.k8s.io/controller-runtime/tools/setup-envtest $(SETUP_ENVTEST_BIN) $(SETUP_ENVTEST_VER)
+
 .PHONY: operator
 operator:
 	go build -o bin/aks-operator main.go
@@ -64,8 +77,8 @@ generate-go: $(MOCKGEN)
 	go generate ./pkg/aks/...
 
 .PHONY: test
-test: $(GINKGO)
-	$(GINKGO) -v -r -p --trace --race ./pkg/... ./controller/...
+test: $(SETUP_ENVTEST) $(GINKGO)
+	KUBEBUILDER_ASSETS="$(KUBEBUILDER_ASSETS)" $(GINKGO) -v -r -p --trace --race ./pkg/... ./controller/...
 
 .PHONY: clean
 clean:
