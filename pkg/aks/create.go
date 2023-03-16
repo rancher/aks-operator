@@ -101,7 +101,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	}
 
 	virtualNetworkResourceGroup := spec.ResourceGroup
-	if containerservice.NetworkPlugin(to.String(spec.NetworkPlugin)) == containerservice.Azure {
+	if containerservice.NetworkPlugin(to.String(spec.NetworkPlugin)) == containerservice.Azure || containerservice.NetworkPlugin(to.String(spec.NetworkPlugin)) == containerservice.Kubenet {
 		// If a virtual network resource group is set, use it, otherwise assume it is the same as the cluster
 		if to.String(spec.VirtualNetworkResourceGroup) != "" {
 			virtualNetworkResourceGroup = to.String(spec.VirtualNetworkResourceGroup)
