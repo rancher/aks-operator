@@ -17,6 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -56,7 +57,7 @@ func NewClientAuthorizer(cred *Credentials) (autorest.Authorizer, error) {
 	return autorest.NewBearerAuthorizer(spToken), nil
 }
 
-func GetSecrets(secretsCache wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*Credentials, error) {
+func GetSecrets(_ wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*Credentials, error) {
 	var cred Credentials
 
 	if spec.AzureCredentialSecret == "" {
@@ -64,7 +65,7 @@ func GetSecrets(secretsCache wranglerv1.SecretCache, secretClient wranglerv1.Sec
 	}
 
 	ns, id := utils.ParseSecretName(spec.AzureCredentialSecret)
-	secret, err := secretsCache.Get(ns, id)
+	secret, err := secretClient.Get(ns, id, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("couldn't find secret [%s] in namespace [%s]", id, ns)
 	}
