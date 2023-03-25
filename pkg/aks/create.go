@@ -64,6 +64,15 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 
 	networkProfile := &containerservice.NetworkProfile{}
 
+	switch to.String(spec.OutboundType) {
+	case string(containerservice.LoadBalancer):
+		networkProfile.OutboundType = containerservice.LoadBalancer
+	case string(containerservice.UserDefinedRouting):
+		networkProfile.OutboundType = containerservice.UserDefinedRouting
+	case "":
+		networkProfile.OutboundType = containerservice.LoadBalancer
+	}
+
 	switch to.String(spec.NetworkPolicy) {
 	case string(containerservice.NetworkPolicyAzure):
 		networkProfile.NetworkPolicy = containerservice.NetworkPolicyAzure
@@ -97,7 +106,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		logrus.Warnf("loadBalancerSKU 'basic' is not supported")
 		networkProfile.LoadBalancerSku = containerservice.Basic
 	case "":
-		networkProfile.LoadBalancerSku = containerservice.Standard
+		networkProfile.LoadBalancerSku = ""
 	}
 
 	virtualNetworkResourceGroup := spec.ResourceGroup

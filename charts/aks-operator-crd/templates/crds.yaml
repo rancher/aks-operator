@@ -143,6 +143,9 @@ spec:
                   type: object
                 nullable: true
                 type: array
+              outboundType:
+                nullable: true
+                type: string
               podCidr:
                 nullable: true
                 type: string

@@ -639,6 +639,7 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 		upstreamSpec.NetworkServiceCIDR = networkProfile.ServiceCidr
 		upstreamSpec.NetworkPolicy = to.StringPtr(string(networkProfile.NetworkPolicy))
 		upstreamSpec.NetworkPodCIDR = networkProfile.PodCidr
+		upstreamSpec.OutboundType = to.StringPtr(string(networkProfile.OutboundType))
 		upstreamSpec.LoadBalancerSKU = to.StringPtr(string(networkProfile.LoadBalancerSku))
 	}
 
