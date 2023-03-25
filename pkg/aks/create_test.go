@@ -88,17 +88,19 @@ var _ = Describe("newManagedCluster", func() {
 				ID: to.StringPtr("test-workspace-id"),
 			}, nil)
 
+		clusterSpec.LoadBalancerSKU = to.StringPtr("standard")
 		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(managedCluster.Tags).To(HaveKeyWithValue("test-tag", to.StringPtr("test-value")))
 		Expect(managedCluster.NetworkProfile.NetworkPolicy).To(Equal(containerservice.NetworkPolicy(to.String(clusterSpec.NetworkPolicy))))
-		Expect(managedCluster.NetworkProfile.LoadBalancerSku).To(Equal(containerservice.Standard))
+		Expect(managedCluster.NetworkProfile.LoadBalancerSku).To(Equal(containerservice.LoadBalancerSku(to.String(clusterSpec.LoadBalancerSKU))))
 		Expect(managedCluster.NetworkProfile.NetworkPlugin).To(Equal(containerservice.NetworkPlugin(to.String(clusterSpec.NetworkPlugin))))
 		Expect(managedCluster.NetworkProfile.DNSServiceIP).To(Equal(clusterSpec.NetworkDNSServiceIP))
 		Expect(managedCluster.NetworkProfile.DockerBridgeCidr).To(Equal(clusterSpec.NetworkDockerBridgeCIDR))
 		Expect(managedCluster.NetworkProfile.ServiceCidr).To(Equal(clusterSpec.NetworkServiceCIDR))
 		Expect(managedCluster.NetworkProfile.PodCidr).To(Equal(clusterSpec.NetworkPodCIDR))
+		Expect(managedCluster.NetworkProfile.OutboundType).To(Equal(containerservice.LoadBalancer))
 		agentPoolProfiles := *managedCluster.AgentPoolProfiles
 		Expect(agentPoolProfiles).To(HaveLen(1))
 		Expect(agentPoolProfiles[0].Name).To(Equal(clusterSpec.NodePools[0].Name))
@@ -158,7 +160,18 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(managedCluster.NetworkProfile.LoadBalancerSku).To(Equal(containerservice.Basic))
 	})
 
-	It("should successfully create managed cluster with custom network plugin no network profile", func() {
+	It("should successfully create managed cluster with outboundtype userdefinedrouting", func() {
+		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
+			Return(operationalinsights.Workspace{
+				ID: to.StringPtr("test-workspace-id"),
+			}, nil)
+		clusterSpec.OutboundType = to.StringPtr("userDefinedRouting")
+		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(managedCluster.NetworkProfile.OutboundType).To(Equal(containerservice.UserDefinedRouting))
+	})
+
+	It("should successfully create managed cluster with custom network plugin without network profile", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
 				ID: to.StringPtr("test-workspace-id"),
@@ -171,12 +184,12 @@ var _ = Describe("newManagedCluster", func() {
 		clusterSpec.NetworkPodCIDR = to.StringPtr("")
 
 		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
+		Expect(err).ToNot(HaveOccurred())
 		Expect(managedCluster.NetworkProfile.NetworkPlugin).To(Equal(containerservice.Kubenet))
 		Expect(managedCluster.NetworkProfile.DNSServiceIP).To(Equal(clusterSpec.NetworkDNSServiceIP))
 		Expect(managedCluster.NetworkProfile.DockerBridgeCidr).To(Equal(clusterSpec.NetworkDockerBridgeCIDR))
 		Expect(managedCluster.NetworkProfile.ServiceCidr).To(Equal(clusterSpec.NetworkServiceCIDR))
 		Expect(managedCluster.NetworkProfile.PodCidr).To(Equal(clusterSpec.NetworkPodCIDR))
-		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("should successfully create managed cluster with custom network plugin", func() {

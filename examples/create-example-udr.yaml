@@ -11,7 +11,7 @@ spec:
   azureCredentialSecret: "REPLACE_WITH_K8S_SECRETS_NAME"
   privateCluster: false,
   linuxAdminUsername: "rancher-user",
-  loadBalancerSku: "standard"
+  loadBalancerSku: ""
   sshPublicKey: "REPLACE_WITH_SSH_PUBLIC_KEY",
   kubernetesVersion: "1.19.9"
   nodePools:
@@ -36,4 +36,4 @@ spec:
     minCount: 1
     maxCount: 6
     availabilityZones: [ "1", "2", "3" ]
-  outboundType: "loadBalancer"
+  outboundType: "userDefinedRouting"
