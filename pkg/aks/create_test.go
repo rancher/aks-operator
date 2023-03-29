@@ -158,6 +158,27 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(managedCluster.NetworkProfile.LoadBalancerSku).To(Equal(containerservice.Basic))
 	})
 
+	It("should successfully create managed cluster with custom network plugin no network profile", func() {
+		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
+			Return(operationalinsights.Workspace{
+				ID: to.StringPtr("test-workspace-id"),
+			}, nil)
+		clusterSpec.NetworkPlugin = to.StringPtr("kubenet")
+		clusterSpec.NetworkPolicy = to.StringPtr("calico")
+		clusterSpec.NetworkDNSServiceIP = to.StringPtr("")
+		clusterSpec.NetworkDockerBridgeCIDR = to.StringPtr("")
+		clusterSpec.NetworkServiceCIDR = to.StringPtr("")
+		clusterSpec.NetworkPodCIDR = to.StringPtr("")
+
+		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
+		Expect(managedCluster.NetworkProfile.NetworkPlugin).To(Equal(containerservice.Kubenet))
+		Expect(managedCluster.NetworkProfile.DNSServiceIP).To(Equal(clusterSpec.NetworkDNSServiceIP))
+		Expect(managedCluster.NetworkProfile.DockerBridgeCidr).To(Equal(clusterSpec.NetworkDockerBridgeCIDR))
+		Expect(managedCluster.NetworkProfile.ServiceCidr).To(Equal(clusterSpec.NetworkServiceCIDR))
+		Expect(managedCluster.NetworkProfile.PodCidr).To(Equal(clusterSpec.NetworkPodCIDR))
+		Expect(err).ToNot(HaveOccurred())
+	})
+
 	It("should successfully create managed cluster with custom network plugin", func() {
 		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
 			Return(operationalinsights.Workspace{
@@ -168,10 +189,10 @@ var _ = Describe("newManagedCluster", func() {
 		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(managedCluster.NetworkProfile.NetworkPlugin).To(Equal(containerservice.Kubenet))
-		Expect(managedCluster.NetworkProfile.DNSServiceIP).To(BeNil())
-		Expect(managedCluster.NetworkProfile.DockerBridgeCidr).To(BeNil())
-		Expect(managedCluster.NetworkProfile.ServiceCidr).To(BeNil())
-		Expect(managedCluster.NetworkProfile.PodCidr).To(BeNil())
+		Expect(managedCluster.NetworkProfile.DNSServiceIP).To(Equal(clusterSpec.NetworkDNSServiceIP))
+		Expect(managedCluster.NetworkProfile.DockerBridgeCidr).To(Equal(clusterSpec.NetworkDockerBridgeCIDR))
+		Expect(managedCluster.NetworkProfile.ServiceCidr).To(Equal(clusterSpec.NetworkServiceCIDR))
+		Expect(managedCluster.NetworkProfile.PodCidr).To(Equal(clusterSpec.NetworkPodCIDR))
 	})
 
 	It("should successfully create managed cluster with custom virtual network resource group", func() {
