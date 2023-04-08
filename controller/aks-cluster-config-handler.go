@@ -579,8 +579,8 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, spec *aksv1.AKS
 	}
 
 	// set BaseURL && AuthBaseURL
-	upstreamSpec.AuthBaseURL = credentials.AuthBaseURL
-	upstreamSpec.BaseURL = credentials.BaseURL
+	upstreamSpec.AuthBaseURL = spec.AuthBaseURL
+	upstreamSpec.BaseURL = spec.BaseURL
 
 	// set AgentPool profile
 	for _, np := range *clusterState.AgentPoolProfiles {
