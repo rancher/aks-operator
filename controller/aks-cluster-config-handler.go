@@ -578,6 +578,10 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, spec *aksv1.AKS
 		upstreamSpec.Tags = to.StringMap(clusterState.Tags)
 	}
 
+	// set BaseURL && AuthBaseURL
+	upstreamSpec.AuthBaseURL = credentials.AuthBaseURL
+	upstreamSpec.BaseURL = credentials.BaseURL
+
 	// set AgentPool profile
 	for _, np := range *clusterState.AgentPoolProfiles {
 		var upstreamNP aksv1.AKSNodePool
