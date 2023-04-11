@@ -11,6 +11,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/rancher/aks-operator/pkg/aks"
 	"github.com/rancher/aks-operator/pkg/aks/services/mock_services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	aksv1controllers "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io"
@@ -749,6 +750,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		handler           *Handler
 		mockController    *gomock.Controller
 		clusterClientMock *mock_services.MockManagedClustersClientInterface
+		credentials       *aks.Credentials
 		aksConfig         *aksv1.AKSClusterConfig
 		clusterState      *containerservice.ManagedCluster
 	)
@@ -756,6 +758,11 @@ var _ = Describe("buildUpstreamClusterState", func() {
 	BeforeEach(func() {
 		mockController = gomock.NewController(GinkgoT())
 		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
+
+		credentials = &aks.Credentials{
+			AuthBaseURL: to.StringPtr("test"),
+			BaseURL:     to.StringPtr("test"),
+		}
 
 		aksConfig = &aksv1.AKSClusterConfig{
 			ObjectMeta: metav1.ObjectMeta{
@@ -839,7 +846,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 	It("should build upstream cluster state", func() {
 		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(*clusterState, nil)
 
-		upstreamSpec, err := handler.buildUpstreamClusterState(ctx, &aksConfig.Spec)
+		upstreamSpec, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(upstreamSpec).NotTo(BeNil())
 
@@ -884,7 +891,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 	It("should fail if azure client fails to get cluster", func() {
 		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(*clusterState, errors.New("error"))
 
-		_, err := handler.buildUpstreamClusterState(ctx, &aksConfig.Spec)
+		_, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -892,7 +899,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		clusterState.KubernetesVersion = nil
 		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(*clusterState, nil)
 
-		_, err := handler.buildUpstreamClusterState(ctx, &aksConfig.Spec)
+		_, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -900,7 +907,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		clusterState.DNSPrefix = nil
 		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(*clusterState, nil)
 
-		_, err := handler.buildUpstreamClusterState(ctx, &aksConfig.Spec)
+		_, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
 		Expect(err).To(HaveOccurred())
 	})
 })

@@ -61,5 +61,5 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 			clustersClient: clustersClient,
 		},
 	}
-	return h.buildUpstreamClusterState(ctx, spec)
+	return h.buildUpstreamClusterState(ctx, credentials, spec)
 }

@@ -552,7 +552,7 @@ func (h *Handler) getClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClust
 	return config, nil
 }
 
-func (h *Handler) buildUpstreamClusterState(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
+func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *aks.Credentials, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
 	upstreamSpec := &aksv1.AKSClusterConfigSpec{}
 
 	clusterState, err := h.azureClients.clustersClient.Get(ctx, spec.ResourceGroup, spec.ClusterName)
