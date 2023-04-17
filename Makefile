@@ -7,7 +7,7 @@ OPERATOR_CHART?=$(shell find $(ROOT_DIR) -type f -name "rancher-aks-operator-[0-
 CRD_CHART?=$(shell find $(ROOT_DIR) -type f -name "rancher-aks-operator-crd*.tgz" -print)
 CHART_VERSION?=$(subst v,,$(GIT_TAG))
 REPO?=ghcr.io/rancher/aks-operator
-KUBE_VERSION?="v1.24.6"
+KUBE_VERSION?="v1.25.8"
 CLUSTER_NAME?="operator-e2e"
 E2E_CONF_FILE ?= $(ROOT_DIR)/test/e2e/config/config.yaml
 
