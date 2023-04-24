@@ -908,6 +908,6 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(*clusterState, nil)
 
 		_, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
-		Expect(err).To(HaveOccurred())
+		Expect(err).ToNot(HaveOccurred())
 	})
 })

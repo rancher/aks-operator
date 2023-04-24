@@ -567,10 +567,9 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 	upstreamSpec.KubernetesVersion = clusterState.KubernetesVersion
 
 	// set DNS prefix
-	if clusterState.DNSPrefix == nil {
-		return nil, fmt.Errorf("cannot detect cluster [%s] upstream DNS prefix", spec.ClusterName)
+	if clusterState.DNSPrefix != nil {
+		upstreamSpec.DNSPrefix = clusterState.DNSPrefix
 	}
-	upstreamSpec.DNSPrefix = clusterState.DNSPrefix
 
 	// set tags
 	upstreamSpec.Tags = make(map[string]string)
