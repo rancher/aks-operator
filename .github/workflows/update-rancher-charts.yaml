@@ -54,7 +54,7 @@ jobs:
         with:
           token: ${{secrets.CI_BOT_TOKEN}}
           push-to-fork: highlander-ci-bot/charts
-          title: 'Update A to v${{github.event.inputs.new_aks_operator}}'
+          title: 'Update AKS to v${{github.event.inputs.new_aks_operator}}'
           body: |
             Update AKS operator to v${{github.event.inputs.new_aks_operator}}
 

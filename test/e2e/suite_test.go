@@ -301,7 +301,7 @@ var _ = AfterSuite(func() {
 	for _, aksCluster := range aksClusterList.Items {
 		output, err := yaml.Marshal(aksCluster)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(os.WriteFile(filepath.Join(e2eCfg.ArtifactsDir, "eks-cluster-config-"+aksCluster.Name+".yaml"), redactSensitiveData([]byte(output)), 0644)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(e2eCfg.ArtifactsDir, "aks-cluster-config-"+aksCluster.Name+".yaml"), redactSensitiveData([]byte(output)), 0644)).To(Succeed())
 	}
 
 	By("Getting Rancher Clusters")
