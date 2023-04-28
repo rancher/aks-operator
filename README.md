@@ -2,59 +2,42 @@
 
 AKS operator is a Kubernetes CRD controller that controls cluster provisioning in Azure Kubernetes Service using an AKSClusterConfig defined by a Custom Resource Definition.
 
-## Latest TAG version
-
-    TAG=v1.0-rc1 make
-
 ## Build
 
-    go build -o aks-operator main.go
+Operator binary can be built using the following command:
 
-## Test
+```bash
+    make operator
+```
 
-Deploy the CRD
+## Deploy operator from source
 
-    export KUBECONFIG=<kubeconfig_path>
-    kubectl apply -f crds/aksclusterconfig.yaml
+You can use the following command to deploy a Kind cluster with Rancher manager and operator:
 
-Edit the CRD
+```bash
+    make kind-deploy-operator
+```
 
-    cp examples/create-example.yaml examples/create-aks.yaml
-    vim examples/create-aks.yaml
+After this, you can also downscale operator deployment and run operator from a local binary.
 
-Create AKS secret with clientID and clientSecret
+## Tests
 
-    export REPLACE_WITH_K8S_SECRETS_NAME=aks-secret
-    kubectl create secret generic $REPLACE_WITH_K8S_SECRETS_NAME --from-literal=azurecredentialConfig-subscriptionId=<REPLACE_WITH_SUBSCRIPTIONID> --from-literal=azurecredentialConfig-clientId=<REPLACE_WITH_CLIENTID> --from-literal=azurecredentialConfig-clientSecret=<REPLACE_WITH_CLIENTSECRET> --from-literal=azurecredentialConfig-environment=<REPLACE_WITH_AZURE_ENVIRONMENT>
+Running unit tests can be done using the following command:
 
-Start the AKS operator
-
-    ./aks-operator
-
-Apply the CRD
-
-    kubectl apply -f examples/create-aks.yaml
-
-Watch the logs
-
-Delete the AKS cluster
-
-    kubectl delete -f examples/create-aks.yaml
-
-Running unit tests
-
+```bash
     make test
+```
 
-## Develop
+For running e2e set the following variables and run:
 
-The easiest way to debug and develop the AKS operator is to replace the default operator on a running Rancher instance with your local one.
+```bash
+    export AZURE_CLIENT_ID="replace_with_your_client_id"
+    export AZURE_CLIENT_SECRET="replace_with_client_secret"
+    export AZURE_SUBSCRIPTION_ID="replace_with_subscription_id"
+    make kind-e2e-tests
+```
 
-* Run a local Rancher server
-* Provision an AKS cluster
-* Scale the aks-operator deployment to replicas=0 in the Rancher UI
-* Open the aks-operator repo in Goland, set `KUBECONFIG=<kubeconfig_path>` in Run Configuration Environment
-* Run the aks-operator in Debug Mode
-* Set breakpoints
+A Kind cluster will be created, and the e2e tests will be run against it.
 
 ## Release
 
@@ -70,12 +53,16 @@ A KEv2 operator should be released if
 
 Tag the latest commit on the `master` branch. For example, if latest tag is `v1.0.8-rc1` you would tag `v1.0.8-rc2`.
 
+```bash
     git pull upstream master --tags     // get the latest upstream changes (not your fork)
     git tag v1.0.8-rc2                  // tag HEAD
     git push upstream v1.0.8-rc2        // push the tag
+```
 
-Submit a [rancher/charts PR](https://github.com/rancher/charts/pull/2242) to update the operator and operator-crd chart versions.
-Submit a [rancher/rancher PR](https://github.com/rancher/rancher/pull/39745) to update the bundled chart.
+After pushing the release tag, you need to run 2 Github actions. You can find them in the Actions tab of the repo:
+
+* `Update AKS operator in rancher/rancher` - This action will update the AKS operator in rancher/rancher repo. It will bump go dependencies.
+* `Update AKS Operator in rancher/charts` - This action will update the AKS operator in rancher/charts repo. It will bump the chart version.
 
 #### How do I unRC?
 
