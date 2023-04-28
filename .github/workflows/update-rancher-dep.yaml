@@ -1,38 +1,56 @@
----
-name: "Update AKS Operator version in Rancher" 
-
+name: Update AKS operator in rancher/rancher
 on:
   workflow_dispatch:
     inputs:
-      rancher-branch:
-        description: Rancher branch
+      ref:
+        description: "Branch to use for GitHub action workflow"
         required: true
-        default: release/v2.7
-      aks-operator-tag:
-        description: AKS Operator release tag
+        default: "master"
+      rancher_ref:
+        description: "Submit PR against the following rancher/rancher branch (e.g. release/v2.7)"
         required: true
+        default: "release/v2.7"
+      new_aks:
+        description: "New AKS operator version (e.g. 1.1.0-rc2), don't include the 'v'"
+        required: true
+        default: ""
 
-permissions:
-  contents: write
-  pull-requests: write
+env:
+  GOARCH: amd64
+  CGO_ENABLED: 0
+  SETUP_GO_VERSION: '1.19.*'
 
 jobs:
-  updatecli:
+  create-rancher-pr:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install Go
-        uses: actions/setup-go@v4
+      - uses: actions/checkout@v3
         with:
-          go-version: 1.19.x
-      - name: Install Updatecli in the runner
-        uses: updatecli/updatecli-action@v2
-      - name: Update aks operator dependency in rancher
-        run: "updatecli apply --config ./.updatecli/updatecli.d/bump-rancher-dep.yaml"
-        env:
-          UPDATECLI_GITHUB_ACTOR: ${{ github.actor }}
-          UPDATECLI_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPDATECLI_RANCHER_BRANCH: ${{ github.event.inputs.rancher-branch }}
-          UPDATECLI_AKS_OPERATOR_TAG: ${{ github.event.inputs.aks-operator-tag }}
+          fetch-depth: 0
+          ref: ${{github.event.inputs.ref}}
+          path: aks-operator
+      - name: Checkout rancher/rancher
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          repository: rancher/rancher
+          ref: ${{github.event.inputs.rancher_ref}}
+          path: rancher
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.SETUP_GO_VERSION }}
+      - name: Run release script
+        run: ./aks-operator/.github/scripts/update-rancher-dep.sh ${{github.event.inputs.new_aks}}
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{secrets.CI_BOT_TOKEN}}
+          push-to-fork: highlander-ci-bot/rancher
+          title: ' Update AKS operator to v${{github.event.inputs.new_aks}}'
+          body: |
+            Update AKS operator to v${{github.event.inputs.new_aks}}
+
+            Changelog: https://github.com/rancher/aks-operator/releases/tag/v${{github.event.inputs.new_aks}}
+          branch-suffix: timestamp
+          base: ${{github.event.inputs.rancher_ref}}
+          path: ./rancher/
