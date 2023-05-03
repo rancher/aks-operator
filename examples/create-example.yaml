@@ -10,10 +10,10 @@ spec:
   authBaseUrl: "https://login.microsoftonline.com"
   azureCredentialSecret: "REPLACE_WITH_K8S_SECRETS_NAME"
   dnsPrefix: "example-dns"
-  privateCluster: false,
-  linuxAdminUsername: "rancher-user",
+  privateCluster: false
+  linuxAdminUsername: "rancher-user"
   loadBalancerSku: "standard"
-  sshPublicKey: "REPLACE_WITH_SSH_PUBLIC_KEY",
+  sshPublicKey: "REPLACE_WITH_SSH_PUBLIC_KEY"
   kubernetesVersion: "1.19.9"
   nodePools:
   - name: "masters"
