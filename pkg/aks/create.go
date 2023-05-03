@@ -64,6 +64,15 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 
 	networkProfile := &containerservice.NetworkProfile{}
 
+	switch to.String(spec.OutboundType) {
+	case string(containerservice.LoadBalancer):
+		networkProfile.OutboundType = containerservice.LoadBalancer
+	case string(containerservice.UserDefinedRouting):
+		networkProfile.OutboundType = containerservice.UserDefinedRouting
+	case "":
+		networkProfile.OutboundType = containerservice.LoadBalancer
+	}
+
 	switch to.String(spec.NetworkPolicy) {
 	case string(containerservice.NetworkPolicyAzure):
 		networkProfile.NetworkPolicy = containerservice.NetworkPolicyAzure
@@ -90,14 +99,16 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		return nil, fmt.Errorf("network plugin Kubenet is not compatible with network policy Azure")
 	}
 
-	switch to.String(spec.LoadBalancerSKU) { // TODO: only standard is supported for now, find a way to validate this
-	case string(containerservice.Standard):
-		networkProfile.LoadBalancerSku = containerservice.Standard
-	case string(containerservice.Basic):
+	networkProfile.LoadBalancerSku = containerservice.Standard
+
+	if to.String(spec.LoadBalancerSKU) == string(containerservice.Basic) {
 		logrus.Warnf("loadBalancerSKU 'basic' is not supported")
 		networkProfile.LoadBalancerSku = containerservice.Basic
-	case "":
-		networkProfile.LoadBalancerSku = containerservice.Standard
+	}
+
+	// Disable standard loadbalancer for UserDefinedRouting and use routing created by user pre-defined table for egress
+	if to.String(spec.OutboundType) == string(containerservice.UserDefinedRouting) {
+		networkProfile.LoadBalancerSku = ""
 	}
 
 	virtualNetworkResourceGroup := spec.ResourceGroup
