@@ -7,7 +7,6 @@ OPERATOR_CHART?=$(shell find $(ROOT_DIR) -type f -name "rancher-aks-operator-[0-
 CRD_CHART?=$(shell find $(ROOT_DIR) -type f -name "rancher-aks-operator-crd*.tgz" -print)
 CHART_VERSION?=900 # Only used in e2e to avoid downgrades from rancher
 REPO?=ghcr.io/rancher/aks-operator
-KUBE_VERSION?="v1.25.8"
 CLUSTER_NAME?="aks-operator-e2e"
 E2E_CONF_FILE ?= $(ROOT_DIR)/test/e2e/config/config.yaml
 
@@ -120,7 +119,7 @@ charts:
 
 .PHONY: setup-kind
 setup-kind:
-	KUBE_VERSION=${KUBE_VERSION} CLUSTER_NAME=$(CLUSTER_NAME) $(ROOT_DIR)/scripts/setup-kind-cluster.sh
+	$(ROOT_DIR)/scripts/setup-kind-cluster.sh
 
 .PHONY: e2e-tests
 e2e-tests: $(GINKGO) charts
