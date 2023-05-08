@@ -9,7 +9,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 )
 
 // CleanupAndWait deletes all the given objects and waits for the cache to be updated accordingly.
-func CleanupAndWait(ctx context.Context, cl client.Client, objs ...client.Object) error {
+func CleanupAndWait(ctx context.Context, cl runtimeclient.Client, objs ...runtimeclient.Object) error {
 	if err := cleanup(ctx, cl, objs...); err != nil {
 		return err
 	}
@@ -35,8 +35,8 @@ func CleanupAndWait(ctx context.Context, cl client.Client, objs ...client.Object
 			continue
 		}
 
-		oCopy := o.DeepCopyObject().(client.Object)
-		key := client.ObjectKeyFromObject(o)
+		oCopy := o.DeepCopyObject().(runtimeclient.Object)
+		key := runtimeclient.ObjectKeyFromObject(o)
 		err := wait.ExponentialBackoff(
 			cacheSyncBackoff,
 			func() (done bool, err error) {
@@ -57,12 +57,12 @@ func CleanupAndWait(ctx context.Context, cl client.Client, objs ...client.Object
 }
 
 // cleanup deletes all the given objects.
-func cleanup(ctx context.Context, cl client.Client, objs ...client.Object) error {
+func cleanup(ctx context.Context, cl runtimeclient.Client, objs ...runtimeclient.Object) error {
 	errs := []error{}
 	for _, o := range objs {
-		copyObj := o.DeepCopyObject().(client.Object)
+		copyObj := o.DeepCopyObject().(runtimeclient.Object)
 
-		if err := cl.Get(ctx, client.ObjectKeyFromObject(o), copyObj); err != nil {
+		if err := cl.Get(ctx, runtimeclient.ObjectKeyFromObject(o), copyObj); err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
 			}

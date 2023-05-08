@@ -11,7 +11,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
 
@@ -24,7 +24,7 @@ func init() {
 	utilruntime.Must(aksv1.AddToScheme(scheme))
 }
 
-func StartEnvTest(testEnv *envtest.Environment) (*rest.Config, client.Client, error) {
+func StartEnvTest(testEnv *envtest.Environment) (*rest.Config, runtimeclient.Client, error) {
 	// Get the root of the current file to use in CRD paths.
 	_, filename, _, _ := goruntime.Caller(0) //nolint:dogsled
 	root := path.Join(path.Dir(filename), "..", "..", "..", "aks-operator")
@@ -46,7 +46,7 @@ func StartEnvTest(testEnv *envtest.Environment) (*rest.Config, client.Client, er
 		return nil, nil, errors.New("envtest.Environment.Start() returned nil config")
 	}
 
-	cl, err := client.New(cfg, client.Options{Scheme: scheme})
+	cl, err := runtimeclient.New(cfg, runtimeclient.Options{Scheme: scheme})
 	if err != nil {
 		return nil, nil, err
 	}

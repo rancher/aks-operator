@@ -29,7 +29,6 @@ func CreateResourceGroup(ctx context.Context, groupsClient services.ResourceGrou
 // We are provisioning a brand new one.
 func CreateCluster(ctx context.Context, cred *Credentials, clusterClient services.ManagedClustersClientInterface, workplaceClient services.WorkplacesClientInterface,
 	spec *aksv1.AKSClusterConfigSpec, phase string) error {
-
 	managedCluster, err := createManagedCluster(ctx, cred, workplaceClient, spec, phase)
 	if err != nil {
 		return err
