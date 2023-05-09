@@ -12,9 +12,6 @@ E2E_CONF_FILE ?= $(ROOT_DIR)/test/e2e/config/config.yaml
 
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BIN_DIR := $(abspath $(ROOT_DIR)/bin)
-
-ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-BIN_DIR := $(abspath $(ROOT_DIR)/bin)
 GO_INSTALL = ./scripts/go_install.sh
 
 MOCKGEN_VER := v1.6.0
