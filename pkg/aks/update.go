@@ -18,7 +18,6 @@ func UpdateClusterTags(ctx context.Context, clusterClient services.ManagedCluste
 // and then only updates managed fields.
 func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient services.ManagedClustersClientInterface, workplaceClient services.WorkplacesClientInterface,
 	spec *aksv1.AKSClusterConfigSpec, phase string) error {
-
 	// Create a new managed cluster from the AKS cluster config
 	desiredCluster, err := createManagedCluster(ctx, cred, workplaceClient, spec, phase)
 	if err != nil {

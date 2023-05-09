@@ -15,13 +15,13 @@ import (
 	"github.com/rancher/aks-operator/pkg/aks"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
-	v10 "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io/v1"
+	akscontrollers "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io/v1"
 	"github.com/rancher/aks-operator/pkg/utils"
 	wranglerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	v15 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/retry"
@@ -84,7 +84,7 @@ var matchWorkspaceGroup = regexp.MustCompile("/(?i)resourcegroups/(.+?)/")
 var matchWorkspaceName = regexp.MustCompile("/(?i)workspaces/(.+?)$")
 
 type Handler struct {
-	aksCC           v10.AKSClusterConfigClient
+	aksCC           akscontrollers.AKSClusterConfigClient
 	aksEnqueueAfter func(namespace, name string, duration time.Duration)
 	aksEnqueue      func(namespace, name string)
 	azureClients    azureClients
@@ -104,8 +104,7 @@ type azureClients struct {
 func Register(
 	ctx context.Context,
 	secrets wranglerv1.SecretController,
-	aks v10.AKSClusterConfigController) {
-
+	aks akscontrollers.AKSClusterConfigController) {
 	controller := &Handler{
 		aksCC:           aks,
 		aksEnqueue:      aks.Enqueue,
@@ -276,7 +275,7 @@ func (h *Handler) importCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 	logrus.Infof("Importing config for cluster [%s]", config.Spec.ClusterName)
 
 	if err := h.createCASecret(ctx, config); err != nil {
-		if !errors.IsAlreadyExists(err) {
+		if !apierrors.IsAlreadyExists(err) {
 			return config, err
 		}
 	}
@@ -354,7 +353,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 
 func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	// Check for existing AKSClusterConfigs with the same display name
-	aksConfigs, err := h.aksCC.List(config.Namespace, v15.ListOptions{})
+	aksConfigs, err := h.aksCC.List(config.Namespace, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("cannot list AKSClusterConfig for display name check: %w", err)
 	}
@@ -478,7 +477,7 @@ func (h *Handler) waitForCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	}
 	if clusterState == ClusterStatusSucceeded {
 		if err = h.createCASecret(ctx, config); err != nil {
-			if !errors.IsAlreadyExists(err) {
+			if !apierrors.IsAlreadyExists(err) {
 				return config, err
 			}
 		}
@@ -518,11 +517,11 @@ func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterCo
 	ca := base64.StdEncoding.EncodeToString(kubeConfig.CAData)
 
 	_, err = h.secrets.Create(
-		&v1.Secret{
-			ObjectMeta: v15.ObjectMeta{
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      config.Name,
 				Namespace: config.Namespace,
-				OwnerReferences: []v15.OwnerReference{
+				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion: aksv1.SchemeGroupVersion.String(),
 						Kind:       aksClusterConfigKind,
@@ -700,7 +699,6 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.AKSClusterConfig, upstreamSpec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfig, error) {
 	// check tags for update
 	if config.Spec.Tags != nil {
-
 		if !reflect.DeepEqual(config.Spec.Tags, upstreamSpec.Tags) {
 			logrus.Infof("Updating tags for cluster [%s]", config.Spec.ClusterName)
 			tags := containerservice.TagsObject{

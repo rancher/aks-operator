@@ -115,7 +115,6 @@ var regionToOmsRegionMap = map[string]string{
 
 func CheckLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client services.WorkplacesClientInterface,
 	location string, group string, wsg string, wsn string) (workspaceID string, err error) {
-
 	workspaceRegion, ok := regionToOmsRegionMap[location]
 	if !ok {
 		return "", fmt.Errorf("region %s not supported for Log Analytics workspace", location)
@@ -158,7 +157,7 @@ func CheckLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client service
 	if asyncErr != nil {
 		return "", asyncErr
 	}
-
+	workspaceID = ""
 	err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
 		ret, err := client.AsyncCreateUpdateResult(asyncRet)
 		if err != nil {
@@ -168,7 +167,10 @@ func CheckLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client service
 		workspaceID = *ret.ID
 		return true, nil
 	})
-	return
+	if err != nil {
+		return "", err
+	}
+	return workspaceID, nil
 }
 
 func generateUniqueLogWorkspace(workspaceName string) string {

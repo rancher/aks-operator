@@ -15,8 +15,8 @@ import (
 	"github.com/rancher/machine/drivers/azure/azureutil"
 	wranglerv1 "github.com/rancher/wrangler/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -109,10 +109,10 @@ func GetSecrets(_ wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, 
 }
 
 type secretClient interface {
-	Update(*v1.Secret) (*v1.Secret, error)
+	Update(*corev1.Secret) (*corev1.Secret, error)
 }
 
-func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret *v1.Secret) (string, error) {
+func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret *corev1.Secret) (string, error) {
 	annotations := secret.GetAnnotations()
 	if annotations == nil {
 		annotations = map[string]string{}
@@ -145,7 +145,7 @@ func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret 
 	annotations[tenantIDTimestampAnnotation] = time.Now().UTC().Format(time.RFC3339)
 	secret.Annotations = annotations
 	_, err = secretClient.Update(secret)
-	if errors.IsConflict(err) {
+	if apierrors.IsConflict(err) {
 		// Ignore errors when updating the secret object. If the secret cannot be updated
 		// (perhaps due to a conflict error), the tenant ID will be re-fetched on the next reconcile loop.
 		logrus.Debugf("encountered error while updating secret, ignoring: %v", err)
