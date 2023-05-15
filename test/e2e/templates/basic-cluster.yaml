@@ -7,7 +7,7 @@ spec:
   clusterName: cluster
   dnsPrefix: basic-cluster-dns
   imported: false
-  kubernetesVersion: 1.26.4
+  kubernetesVersion: 1.25.5
   linuxAdminUsername: azureuser
   loadBalancerSku: Standard
   networkPlugin: kubenet
@@ -21,7 +21,7 @@ spec:
     maxPods: 110
     mode: System
     name: agentpool
-    orchestratorVersion: 1.26.4
+    orchestratorVersion: 1.25.5
     osDiskSizeGB: 30
     osDiskType: Managed
     osType: Linux
