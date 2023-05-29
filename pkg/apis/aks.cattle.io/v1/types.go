@@ -48,6 +48,7 @@ type AKSClusterConfigSpec struct {
 	NetworkServiceCIDR          *string           `json:"serviceCidr" norman:"pointer"`
 	NetworkDockerBridgeCIDR     *string           `json:"dockerBridgeCidr" norman:"pointer"`
 	NetworkPodCIDR              *string           `json:"podCidr" norman:"pointer"`
+	NodeResourceGroup           *string           `json:"nodeResourceGroup,omitempty" norman:"pointer"`
 	OutboundType                *string           `json:"outboundType" norman:"pointer"`
 	LoadBalancerSKU             *string           `json:"loadBalancerSku" norman:"pointer"`
 	NetworkPolicy               *string           `json:"networkPolicy" norman:"pointer"`

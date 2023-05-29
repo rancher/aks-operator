@@ -214,6 +214,10 @@ func (h *Handler) recordError(onChange func(key string, config *aksv1.AKSCluster
 }
 
 func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
+	// TODO: delete this test
+	// ClusterName must be 1-63 characters long
+	// NodeResourceGroupName must be no greater than 80 characters in length
+	config.Spec.NodeResourceGroup = to.StringPtr("MC_csalas_from_rancher")
 	if err := h.validateConfig(config); err != nil {
 		return config, err
 	}
@@ -257,6 +261,7 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 	}
 
 	logrus.Infof("Creating AKS cluster [%s]", config.Spec.ClusterName)
+	logrus.Infof("Creating AKS cluster [%s] with node resource group [%s]", config.Spec.ClusterName, *config.Spec.NodeResourceGroup)
 
 	err = aks.CreateCluster(ctx, &h.azureClients.credentials, h.azureClients.clustersClient, h.azureClients.workplacesClient, &config.Spec, config.Status.Phase)
 	if err != nil {

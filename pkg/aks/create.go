@@ -33,6 +33,7 @@ func CreateCluster(ctx context.Context, cred *Credentials, clusterClient service
 	if err != nil {
 		return err
 	}
+	logrus.Infof("managedCluster in CreateCluster() is %s", *managedCluster.NodeResourceGroup)
 
 	_, err = clusterClient.CreateOrUpdate(
 		ctx,
@@ -60,6 +61,12 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			managedCluster.Tags[key] = to.StringPtr(val)
 		}
 	}
+
+	// TODO: new field NodeResourceGroupName
+	if len(to.String(spec.NodeResourceGroup)) > 80 {
+		return nil, fmt.Errorf("nodeResourceGroupName '%s' is too long, must be less than 80 characters", to.String(spec.NodeResourceGroup))
+	}
+	managedCluster.ManagedClusterProperties.NodeResourceGroup = spec.NodeResourceGroup
 
 	networkProfile := &containerservice.NetworkProfile{}
 
