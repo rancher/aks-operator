@@ -341,6 +341,31 @@ var _ = Describe("newManagedCluster", func() {
 		_, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).To(HaveOccurred())
 	})
+
+	It("should successfully create managed cluster with custom node resource group name", func() {
+		clusterSpec.NodeResourceGroup = to.StringPtr("test-node-resource-group-name")
+		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
+			Return(operationalinsights.Workspace{
+				ID: to.StringPtr("test-workspace-id"),
+			}, nil)
+		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "active")
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(managedCluster.ManagedClusterProperties.NodeResourceGroup).To(Equal(to.StringPtr("test-node-resource-group-name")))
+	})
+
+	It("should successfully create managed cluster with truncated default node resource group name over 80 characters", func() {
+		clusterSpec.ClusterName = "this-is-a-cluster-with-a-very-long-name-that-is-over-80-characters"
+		defaultResourceGroupName := "MC_" + clusterSpec.ResourceGroup + "_" + clusterSpec.ClusterName + "_" + clusterSpec.ResourceLocation
+		truncated := defaultResourceGroupName[:80]
+		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
+			Return(operationalinsights.Workspace{
+				ID: to.StringPtr("test-workspace-id"),
+			}, nil)
+		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "active")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(managedCluster.ManagedClusterProperties.NodeResourceGroup).To(Equal(to.StringPtr(truncated)))
+	})
 })
 
 var _ = Describe("CreateCluster", func() {
