@@ -13,6 +13,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	maxNodeResourceGroupNameLength = 80
+)
+
 func CreateResourceGroup(ctx context.Context, groupsClient services.ResourceGroupsClientInterface, spec *aksv1.AKSClusterConfigSpec) error {
 	_, err := groupsClient.CreateOrUpdate(
 		ctx,
@@ -60,6 +64,18 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			managedCluster.Tags[key] = to.StringPtr(val)
 		}
 	}
+
+	nodeResourceGroupName := ""
+	if to.String(spec.NodeResourceGroup) != "" {
+		nodeResourceGroupName = to.String(spec.NodeResourceGroup)
+	} else {
+		nodeResourceGroupName = fmt.Sprintf("MC_%s_%s_%s", spec.ResourceGroup, spec.ClusterName, spec.ResourceLocation)
+		if len(nodeResourceGroupName) > maxNodeResourceGroupNameLength {
+			logrus.Infof("Default node resource group name [%s] is too long: truncating to %d characters: [%s]", nodeResourceGroupName, maxNodeResourceGroupNameLength, nodeResourceGroupName[:maxNodeResourceGroupNameLength])
+			nodeResourceGroupName = nodeResourceGroupName[:maxNodeResourceGroupNameLength]
+		}
+	}
+	managedCluster.ManagedClusterProperties.NodeResourceGroup = to.StringPtr(nodeResourceGroupName)
 
 	networkProfile := &containerservice.NetworkProfile{}
 
