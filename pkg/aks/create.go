@@ -161,6 +161,10 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			}
 		}
 
+		if np.NodeTaints != nil && len(*np.NodeTaints) > 0 {
+			agentProfile.NodeTaints = np.NodeTaints
+		}
+
 		agentProfile.OrchestratorVersion = spec.KubernetesVersion
 		if to.String(np.OrchestratorVersion) != "" {
 			agentProfile.OrchestratorVersion = np.OrchestratorVersion
