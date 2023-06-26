@@ -18,7 +18,7 @@ MOCKGEN_VER := v1.6.0
 MOCKGEN_BIN := mockgen
 MOCKGEN := $(BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER)
 
-GINKGO_VER := v2.9.2
+GINKGO_VER := v2.11.0
 GINKGO_BIN := ginkgo
 GINKGO := $(BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
 
@@ -116,7 +116,7 @@ charts:
 
 .PHONY: setup-kind
 setup-kind:
-	$(ROOT_DIR)/scripts/setup-kind-cluster.sh
+	CLUSTER_NAME=$(CLUSTER_NAME) $(ROOT_DIR)/scripts/setup-kind-cluster.sh
 
 .PHONY: e2e-tests
 e2e-tests: $(GINKGO) charts
