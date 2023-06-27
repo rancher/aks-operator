@@ -622,7 +622,9 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 		if len(np.NodeLabels) != 0 {
 			upstreamNP.NodeLabels = np.NodeLabels
 		}
-		upstreamNP.NodeTaints = np.NodeTaints
+		if np.NodeTaints != nil {
+			upstreamNP.NodeTaints = np.NodeTaints
+		}
 		if np.UpgradeSettings != nil && np.UpgradeSettings.MaxSurge != nil {
 			upstreamNP.MaxSurge = np.UpgradeSettings.MaxSurge
 		}
@@ -848,9 +850,11 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					}
 				}
 				if np.NodeTaints != nil {
-					if !reflect.DeepEqual(np.NodeTaints, upstreamNodePool.NodeTaints) {
-						logrus.Infof("Updating node taints in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
-						updateNodePool = true
+					if !(len(*np.NodeTaints) == 0 && upstreamNodePool.NodeTaints == nil) {
+						if !reflect.DeepEqual(np.NodeTaints, upstreamNodePool.NodeTaints) {
+							logrus.Infof("Updating node taints in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+							updateNodePool = true
+						}
 					}
 				}
 				if np.MaxSurge != nil && to.String(np.MaxSurge) != to.String(upstreamNodePool.MaxSurge) {
