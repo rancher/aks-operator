@@ -65,6 +65,8 @@ type AKSClusterConfigSpec struct {
 	Monitoring                  *bool             `json:"monitoring"`
 	LogAnalyticsWorkspaceGroup  *string           `json:"logAnalyticsWorkspaceGroup" norman:"pointer"`
 	LogAnalyticsWorkspaceName   *string           `json:"logAnalyticsWorkspaceName" norman:"pointer"`
+	ManagedIdentity             *bool             `json:"managedIdentity" norman:"pointer"`
+	UserAssignedIdentity        *string           `json:"userAssignedIdentity" norman:"pointer"`
 }
 
 type AKSClusterConfigStatus struct {

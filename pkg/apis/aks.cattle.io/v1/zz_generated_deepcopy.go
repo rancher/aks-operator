@@ -232,6 +232,16 @@ func (in *AKSClusterConfigSpec) DeepCopyInto(out *AKSClusterConfigSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ManagedIdentity != nil {
+		in, out := &in.ManagedIdentity, &out.ManagedIdentity
+		*out = new(bool)
+		**out = **in
+	}
+	if in.UserAssignedIdentity != nil {
+		in, out := &in.UserAssignedIdentity, &out.UserAssignedIdentity
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

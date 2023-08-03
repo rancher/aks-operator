@@ -68,6 +68,9 @@ spec:
               logAnalyticsWorkspaceName:
                 nullable: true
                 type: string
+              managedIdentity:
+                nullable: true
+                type: boolean
               monitoring:
                 nullable: true
                 type: boolean
@@ -179,6 +182,9 @@ spec:
                   type: string
                 nullable: true
                 type: object
+              userAssignedIdentity:
+                nullable: true
+                type: string
               virtualNetwork:
                 nullable: true
                 type: string
