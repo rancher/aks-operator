@@ -691,6 +691,9 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 		if clusterState.APIServerAccessProfile.AuthorizedIPRanges != nil && *clusterState.APIServerAccessProfile.AuthorizedIPRanges != nil {
 			upstreamSpec.AuthorizedIPRanges = clusterState.APIServerAccessProfile.AuthorizedIPRanges
 		}
+		if clusterState.APIServerAccessProfile.PrivateDNSZone != nil {
+			upstreamSpec.PrivateDNSZone = clusterState.APIServerAccessProfile.PrivateDNSZone
+		}
 	}
 
 	return upstreamSpec, err

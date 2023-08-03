@@ -155,6 +155,9 @@ spec:
               privateCluster:
                 nullable: true
                 type: boolean
+              privateDnsZone:
+                nullable: true
+                type: string
               resourceGroup:
                 nullable: true
                 type: string

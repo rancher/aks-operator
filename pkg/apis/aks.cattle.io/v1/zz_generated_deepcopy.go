@@ -198,6 +198,11 @@ func (in *AKSClusterConfigSpec) DeepCopyInto(out *AKSClusterConfigSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.PrivateDNSZone != nil {
+		in, out := &in.PrivateDNSZone, &out.PrivateDNSZone
+		*out = new(string)
+		**out = **in
+	}
 	if in.AuthorizedIPRanges != nil {
 		in, out := &in.AuthorizedIPRanges, &out.AuthorizedIPRanges
 		*out = new([]string)

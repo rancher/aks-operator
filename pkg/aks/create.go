@@ -264,6 +264,10 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			managedCluster.APIServerAccessProfile = &containerservice.ManagedClusterAPIServerAccessProfile{}
 		}
 		managedCluster.APIServerAccessProfile.EnablePrivateCluster = spec.PrivateCluster
+		// Private DNS Zone ID can be set only for private cluster
+		if spec.PrivateDNSZone != nil {
+			managedCluster.APIServerAccessProfile.PrivateDNSZone = spec.PrivateDNSZone
+		}
 	}
 
 	if cred.TenantID != "" {
