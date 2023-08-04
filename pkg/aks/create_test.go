@@ -75,6 +75,7 @@ var _ = Describe("newManagedCluster", func() {
 		cred = &Credentials{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
+			TenantID:     "test-tenant-id",
 		}
 	})
 
@@ -147,6 +148,9 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(ipRanges).To(HaveLen(1))
 		Expect(ipRanges[0]).To(Equal(clusterSpecIPRanges[0]))
 		Expect(managedCluster.APIServerAccessProfile.EnablePrivateCluster).To(Equal(clusterSpec.PrivateCluster))
+		Expect(managedCluster.Identity).ToNot(BeNil())
+		Expect(managedCluster.Identity.Type).To(Equal(containerservice.ResourceIdentityTypeSystemAssigned))
+		Expect(managedCluster.Identity.TenantID).To(Equal(to.StringPtr(cred.TenantID)))
 	})
 
 	It("should successfully create managed cluster with custom load balancer sku", func() {
@@ -365,6 +369,18 @@ var _ = Describe("newManagedCluster", func() {
 		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "active")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(managedCluster.ManagedClusterProperties.NodeResourceGroup).To(Equal(to.StringPtr(truncated)))
+	})
+
+	It("should successfully create managed cluster with no TenantID provided", func() {
+		workplacesClientMock.EXPECT().Get(ctx, to.String(clusterSpec.LogAnalyticsWorkspaceGroup), to.String(clusterSpec.LogAnalyticsWorkspaceName)).
+			Return(operationalinsights.Workspace{
+				ID: to.StringPtr("test-workspace-id"),
+			}, nil)
+		cred.TenantID = ""
+		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(managedCluster.Identity).To(BeNil())
 	})
 })
 

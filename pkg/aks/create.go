@@ -266,6 +266,13 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		managedCluster.APIServerAccessProfile.EnablePrivateCluster = spec.PrivateCluster
 	}
 
+	if cred.TenantID != "" {
+		managedCluster.Identity = &containerservice.ManagedClusterIdentity{
+			TenantID: to.StringPtr(cred.TenantID),
+			Type:     containerservice.ResourceIdentityTypeSystemAssigned,
+		}
+	}
+
 	return managedCluster, nil
 }
 
