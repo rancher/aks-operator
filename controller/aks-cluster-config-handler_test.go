@@ -831,6 +831,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 				APIServerAccessProfile: &containerservice.ManagedClusterAPIServerAccessProfile{
 					EnablePrivateCluster: to.BoolPtr(true),
 					AuthorizedIPRanges:   to.StringSlicePtr([]string{"test"}),
+					PrivateDNSZone:       to.StringPtr("test-private-dns-zone-id"),
 				},
 			},
 			Tags: *to.StringMapPtr(map[string]string{"test": "test"}),
@@ -885,6 +886,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(Equal(to.StringPtr("test")))
 		Expect(upstreamSpec.LogAnalyticsWorkspaceName).To(Equal(to.StringPtr("test/resourcegroups/test/")))
 		Expect(upstreamSpec.PrivateCluster).To(Equal(to.BoolPtr(*clusterState.APIServerAccessProfile.EnablePrivateCluster)))
+		Expect(upstreamSpec.PrivateDNSZone).To(Equal(to.StringPtr(*clusterState.APIServerAccessProfile.PrivateDNSZone)))
 		Expect(upstreamSpec.AuthorizedIPRanges).To(Equal(clusterState.APIServerAccessProfile.AuthorizedIPRanges))
 	})
 

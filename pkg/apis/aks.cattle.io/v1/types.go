@@ -59,11 +59,14 @@ type AKSClusterConfigSpec struct {
 	Tags                        map[string]string `json:"tags"`
 	NodePools                   []AKSNodePool     `json:"nodePools"`
 	PrivateCluster              *bool             `json:"privateCluster"`
+	PrivateDNSZone              *string           `json:"privateDnsZone" norman:"pointer"`
 	AuthorizedIPRanges          *[]string         `json:"authorizedIpRanges" norman:"pointer"`
 	HTTPApplicationRouting      *bool             `json:"httpApplicationRouting"`
 	Monitoring                  *bool             `json:"monitoring"`
 	LogAnalyticsWorkspaceGroup  *string           `json:"logAnalyticsWorkspaceGroup" norman:"pointer"`
 	LogAnalyticsWorkspaceName   *string           `json:"logAnalyticsWorkspaceName" norman:"pointer"`
+	ManagedIdentity             *bool             `json:"managedIdentity" norman:"pointer"`
+	UserAssignedIdentity        *string           `json:"userAssignedIdentity" norman:"pointer"`
 }
 
 type AKSClusterConfigStatus struct {

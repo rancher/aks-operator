@@ -691,6 +691,18 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 		if clusterState.APIServerAccessProfile.AuthorizedIPRanges != nil && *clusterState.APIServerAccessProfile.AuthorizedIPRanges != nil {
 			upstreamSpec.AuthorizedIPRanges = clusterState.APIServerAccessProfile.AuthorizedIPRanges
 		}
+		if clusterState.APIServerAccessProfile.PrivateDNSZone != nil {
+			upstreamSpec.PrivateDNSZone = clusterState.APIServerAccessProfile.PrivateDNSZone
+		}
+	}
+	upstreamSpec.ManagedIdentity = to.BoolPtr(false)
+	if clusterState.Identity != nil {
+		upstreamSpec.ManagedIdentity = to.BoolPtr(true)
+		if clusterState.Identity.UserAssignedIdentities != nil {
+			for userAssignedID := range clusterState.Identity.UserAssignedIdentities {
+				upstreamSpec.UserAssignedIdentity = to.StringPtr(userAssignedID)
+			}
+		}
 	}
 
 	return upstreamSpec, err
