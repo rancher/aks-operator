@@ -30,20 +30,21 @@ fi
 find ./packages/rancher-aks-operator/ -type f -exec sed -i -e "s/${PREV_AKS_OPERATOR_VERSION}/${NEW_AKS_OPERATOR_VERSION}/g" {} \;
 find ./packages/rancher-aks-operator/ -type f -exec sed -i -e "s/version: ${PREV_CHART_VERSION}/version: ${NEW_CHART_VERSION}/g" {} \;
 
-if [ "${REPLACE}" == "true" ]; then
+if [ "${REPLACE}" == "true" ] && grep -q "rancher-aks-operator:" release.yaml; then
     sed -i -e "s/${PREV_CHART_VERSION}+up${PREV_AKS_OPERATOR_VERSION}/${NEW_CHART_VERSION}+up${NEW_AKS_OPERATOR_VERSION}/g" release.yaml
 else
-    sed -i -e "s/${PREV_CHART_VERSION}+up${PREV_AKS_OPERATOR_VERSION}/${PREV_CHART_VERSION}+up${PREV_AKS_OPERATOR_VERSION}\n  - ${NEW_CHART_VERSION}+up${NEW_AKS_OPERATOR_VERSION}/g" release.yaml
-    isChartPresent=$(cat release.yaml | grep -c "rancher-aks-operator:")
-    if [ $isChartPresent -eq 0 ]; then
-
-        cat <<< "rancher-aks-operator:
+    if grep -q "rancher-aks-operator:" release.yaml; then
+        sed -i -e "s/${PREV_CHART_VERSION}+up${PREV_AKS_OPERATOR_VERSION}/${PREV_CHART_VERSION}+up${PREV_AKS_OPERATOR_VERSION}\n  - ${NEW_CHART_VERSION}+up${NEW_AKS_OPERATOR_VERSION}/g" release.yaml
+    else
+        cat <<< "
+rancher-aks-operator:
 - ${PREV_CHART_VERSION}+up${PREV_AKS_OPERATOR_VERSION}
 - ${NEW_CHART_VERSION}+up${NEW_AKS_OPERATOR_VERSION}
 rancher-aks-operator-crd:
 - ${PREV_CHART_VERSION}+up${PREV_AKS_OPERATOR_VERSION}
 - ${NEW_CHART_VERSION}+up${NEW_AKS_OPERATOR_VERSION}" >> release.yaml
-
+    # remove empty line above rancher-aks-operator
+    sed -i -z -e  "s/[[:space:]]*\nrancher-aks-operator:/\nrancher-aks-operator:/g" release.yaml
     fi
 fi
 
