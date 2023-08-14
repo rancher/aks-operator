@@ -12,7 +12,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.10
 	github.com/rancher/lasso v0.0.0-20221227210133-6ea88ca2fbcc
-	github.com/rancher/machine v0.15.0-rancher100
+	github.com/rancher/machine v0.15.0-rancher102
 	github.com/rancher/wrangler v1.1.0
 	github.com/rancher/wrangler-api v0.6.1-0.20200427172631-a7c2f09b783e
 	github.com/sirupsen/logrus v1.9.3
