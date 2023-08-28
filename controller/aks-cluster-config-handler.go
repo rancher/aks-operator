@@ -873,6 +873,10 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					logrus.Infof("Updating max surge in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
 					updateNodePool = true
 				}
+				if np.Mode != "" && np.Mode != upstreamNodePool.Mode {
+					logrus.Infof("Updating mode in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					updateNodePool = true
+				}
 			} else {
 				logrus.Infof("Adding node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
 				updateNodePool = true
