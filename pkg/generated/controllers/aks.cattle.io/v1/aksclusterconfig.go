@@ -23,244 +23,29 @@ import (
 	"time"
 
 	v1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
-	"github.com/rancher/lasso/pkg/client"
-	"github.com/rancher/lasso/pkg/controller"
 	"github.com/rancher/wrangler/pkg/apply"
 	"github.com/rancher/wrangler/pkg/condition"
 	"github.com/rancher/wrangler/pkg/generic"
 	"github.com/rancher/wrangler/pkg/kv"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/tools/cache"
 )
 
-type AKSClusterConfigHandler func(string, *v1.AKSClusterConfig) (*v1.AKSClusterConfig, error)
-
+// AKSClusterConfigController interface for managing AKSClusterConfig resources.
 type AKSClusterConfigController interface {
-	generic.ControllerMeta
-	AKSClusterConfigClient
-
-	OnChange(ctx context.Context, name string, sync AKSClusterConfigHandler)
-	OnRemove(ctx context.Context, name string, sync AKSClusterConfigHandler)
-	Enqueue(namespace, name string)
-	EnqueueAfter(namespace, name string, duration time.Duration)
-
-	Cache() AKSClusterConfigCache
+	generic.ControllerInterface[*v1.AKSClusterConfig, *v1.AKSClusterConfigList]
 }
 
+// AKSClusterConfigClient interface for managing AKSClusterConfig resources in Kubernetes.
 type AKSClusterConfigClient interface {
-	Create(*v1.AKSClusterConfig) (*v1.AKSClusterConfig, error)
-	Update(*v1.AKSClusterConfig) (*v1.AKSClusterConfig, error)
-	UpdateStatus(*v1.AKSClusterConfig) (*v1.AKSClusterConfig, error)
-	Delete(namespace, name string, options *metav1.DeleteOptions) error
-	Get(namespace, name string, options metav1.GetOptions) (*v1.AKSClusterConfig, error)
-	List(namespace string, opts metav1.ListOptions) (*v1.AKSClusterConfigList, error)
-	Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.AKSClusterConfig, err error)
+	generic.ClientInterface[*v1.AKSClusterConfig, *v1.AKSClusterConfigList]
 }
 
+// AKSClusterConfigCache interface for retrieving AKSClusterConfig resources in memory.
 type AKSClusterConfigCache interface {
-	Get(namespace, name string) (*v1.AKSClusterConfig, error)
-	List(namespace string, selector labels.Selector) ([]*v1.AKSClusterConfig, error)
-
-	AddIndexer(indexName string, indexer AKSClusterConfigIndexer)
-	GetByIndex(indexName, key string) ([]*v1.AKSClusterConfig, error)
-}
-
-type AKSClusterConfigIndexer func(obj *v1.AKSClusterConfig) ([]string, error)
-
-type aKSClusterConfigController struct {
-	controller    controller.SharedController
-	client        *client.Client
-	gvk           schema.GroupVersionKind
-	groupResource schema.GroupResource
-}
-
-func NewAKSClusterConfigController(gvk schema.GroupVersionKind, resource string, namespaced bool, controller controller.SharedControllerFactory) AKSClusterConfigController {
-	c := controller.ForResourceKind(gvk.GroupVersion().WithResource(resource), gvk.Kind, namespaced)
-	return &aKSClusterConfigController{
-		controller: c,
-		client:     c.Client(),
-		gvk:        gvk,
-		groupResource: schema.GroupResource{
-			Group:    gvk.Group,
-			Resource: resource,
-		},
-	}
-}
-
-func FromAKSClusterConfigHandlerToHandler(sync AKSClusterConfigHandler) generic.Handler {
-	return func(key string, obj runtime.Object) (ret runtime.Object, err error) {
-		var v *v1.AKSClusterConfig
-		if obj == nil {
-			v, err = sync(key, nil)
-		} else {
-			v, err = sync(key, obj.(*v1.AKSClusterConfig))
-		}
-		if v == nil {
-			return nil, err
-		}
-		return v, err
-	}
-}
-
-func (c *aKSClusterConfigController) Updater() generic.Updater {
-	return func(obj runtime.Object) (runtime.Object, error) {
-		newObj, err := c.Update(obj.(*v1.AKSClusterConfig))
-		if newObj == nil {
-			return nil, err
-		}
-		return newObj, err
-	}
-}
-
-func UpdateAKSClusterConfigDeepCopyOnChange(client AKSClusterConfigClient, obj *v1.AKSClusterConfig, handler func(obj *v1.AKSClusterConfig) (*v1.AKSClusterConfig, error)) (*v1.AKSClusterConfig, error) {
-	if obj == nil {
-		return obj, nil
-	}
-
-	copyObj := obj.DeepCopy()
-	newObj, err := handler(copyObj)
-	if newObj != nil {
-		copyObj = newObj
-	}
-	if obj.ResourceVersion == copyObj.ResourceVersion && !equality.Semantic.DeepEqual(obj, copyObj) {
-		return client.Update(copyObj)
-	}
-
-	return copyObj, err
-}
-
-func (c *aKSClusterConfigController) AddGenericHandler(ctx context.Context, name string, handler generic.Handler) {
-	c.controller.RegisterHandler(ctx, name, controller.SharedControllerHandlerFunc(handler))
-}
-
-func (c *aKSClusterConfigController) AddGenericRemoveHandler(ctx context.Context, name string, handler generic.Handler) {
-	c.AddGenericHandler(ctx, name, generic.NewRemoveHandler(name, c.Updater(), handler))
-}
-
-func (c *aKSClusterConfigController) OnChange(ctx context.Context, name string, sync AKSClusterConfigHandler) {
-	c.AddGenericHandler(ctx, name, FromAKSClusterConfigHandlerToHandler(sync))
-}
-
-func (c *aKSClusterConfigController) OnRemove(ctx context.Context, name string, sync AKSClusterConfigHandler) {
-	c.AddGenericHandler(ctx, name, generic.NewRemoveHandler(name, c.Updater(), FromAKSClusterConfigHandlerToHandler(sync)))
-}
-
-func (c *aKSClusterConfigController) Enqueue(namespace, name string) {
-	c.controller.Enqueue(namespace, name)
-}
-
-func (c *aKSClusterConfigController) EnqueueAfter(namespace, name string, duration time.Duration) {
-	c.controller.EnqueueAfter(namespace, name, duration)
-}
-
-func (c *aKSClusterConfigController) Informer() cache.SharedIndexInformer {
-	return c.controller.Informer()
-}
-
-func (c *aKSClusterConfigController) GroupVersionKind() schema.GroupVersionKind {
-	return c.gvk
-}
-
-func (c *aKSClusterConfigController) Cache() AKSClusterConfigCache {
-	return &aKSClusterConfigCache{
-		indexer:  c.Informer().GetIndexer(),
-		resource: c.groupResource,
-	}
-}
-
-func (c *aKSClusterConfigController) Create(obj *v1.AKSClusterConfig) (*v1.AKSClusterConfig, error) {
-	result := &v1.AKSClusterConfig{}
-	return result, c.client.Create(context.TODO(), obj.Namespace, obj, result, metav1.CreateOptions{})
-}
-
-func (c *aKSClusterConfigController) Update(obj *v1.AKSClusterConfig) (*v1.AKSClusterConfig, error) {
-	result := &v1.AKSClusterConfig{}
-	return result, c.client.Update(context.TODO(), obj.Namespace, obj, result, metav1.UpdateOptions{})
-}
-
-func (c *aKSClusterConfigController) UpdateStatus(obj *v1.AKSClusterConfig) (*v1.AKSClusterConfig, error) {
-	result := &v1.AKSClusterConfig{}
-	return result, c.client.UpdateStatus(context.TODO(), obj.Namespace, obj, result, metav1.UpdateOptions{})
-}
-
-func (c *aKSClusterConfigController) Delete(namespace, name string, options *metav1.DeleteOptions) error {
-	if options == nil {
-		options = &metav1.DeleteOptions{}
-	}
-	return c.client.Delete(context.TODO(), namespace, name, *options)
-}
-
-func (c *aKSClusterConfigController) Get(namespace, name string, options metav1.GetOptions) (*v1.AKSClusterConfig, error) {
-	result := &v1.AKSClusterConfig{}
-	return result, c.client.Get(context.TODO(), namespace, name, result, options)
-}
-
-func (c *aKSClusterConfigController) List(namespace string, opts metav1.ListOptions) (*v1.AKSClusterConfigList, error) {
-	result := &v1.AKSClusterConfigList{}
-	return result, c.client.List(context.TODO(), namespace, result, opts)
-}
-
-func (c *aKSClusterConfigController) Watch(namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.client.Watch(context.TODO(), namespace, opts)
-}
-
-func (c *aKSClusterConfigController) Patch(namespace, name string, pt types.PatchType, data []byte, subresources ...string) (*v1.AKSClusterConfig, error) {
-	result := &v1.AKSClusterConfig{}
-	return result, c.client.Patch(context.TODO(), namespace, name, pt, data, result, metav1.PatchOptions{}, subresources...)
-}
-
-type aKSClusterConfigCache struct {
-	indexer  cache.Indexer
-	resource schema.GroupResource
-}
-
-func (c *aKSClusterConfigCache) Get(namespace, name string) (*v1.AKSClusterConfig, error) {
-	obj, exists, err := c.indexer.GetByKey(namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(c.resource, name)
-	}
-	return obj.(*v1.AKSClusterConfig), nil
-}
-
-func (c *aKSClusterConfigCache) List(namespace string, selector labels.Selector) (ret []*v1.AKSClusterConfig, err error) {
-
-	err = cache.ListAllByNamespace(c.indexer, namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.AKSClusterConfig))
-	})
-
-	return ret, err
-}
-
-func (c *aKSClusterConfigCache) AddIndexer(indexName string, indexer AKSClusterConfigIndexer) {
-	utilruntime.Must(c.indexer.AddIndexers(map[string]cache.IndexFunc{
-		indexName: func(obj interface{}) (strings []string, e error) {
-			return indexer(obj.(*v1.AKSClusterConfig))
-		},
-	}))
-}
-
-func (c *aKSClusterConfigCache) GetByIndex(indexName, key string) (result []*v1.AKSClusterConfig, err error) {
-	objs, err := c.indexer.ByIndex(indexName, key)
-	if err != nil {
-		return nil, err
-	}
-	result = make([]*v1.AKSClusterConfig, 0, len(objs))
-	for _, obj := range objs {
-		result = append(result, obj.(*v1.AKSClusterConfig))
-	}
-	return result, nil
+	generic.CacheInterface[*v1.AKSClusterConfig]
 }
 
 type AKSClusterConfigStatusHandler func(obj *v1.AKSClusterConfig, status v1.AKSClusterConfigStatus) (v1.AKSClusterConfigStatus, error)
@@ -273,7 +58,7 @@ func RegisterAKSClusterConfigStatusHandler(ctx context.Context, controller AKSCl
 		condition: condition,
 		handler:   handler,
 	}
-	controller.AddGenericHandler(ctx, name, FromAKSClusterConfigHandlerToHandler(statusHandler.sync))
+	controller.AddGenericHandler(ctx, name, generic.FromObjectHandlerToHandler(statusHandler.sync))
 }
 
 func RegisterAKSClusterConfigGeneratingHandler(ctx context.Context, controller AKSClusterConfigController, apply apply.Apply,

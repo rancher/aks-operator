@@ -21,6 +21,7 @@ package v1
 import (
 	v1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	"github.com/rancher/lasso/pkg/controller"
+	"github.com/rancher/wrangler/pkg/generic"
 	"github.com/rancher/wrangler/pkg/schemes"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -43,6 +44,6 @@ type version struct {
 	controllerFactory controller.SharedControllerFactory
 }
 
-func (c *version) AKSClusterConfig() AKSClusterConfigController {
-	return NewAKSClusterConfigController(schema.GroupVersionKind{Group: "aks.cattle.io", Version: "v1", Kind: "AKSClusterConfig"}, "aksclusterconfigs", true, c.controllerFactory)
+func (v *version) AKSClusterConfig() AKSClusterConfigController {
+	return generic.NewController[*v1.AKSClusterConfig, *v1.AKSClusterConfigList](schema.GroupVersionKind{Group: "aks.cattle.io", Version: "v1", Kind: "AKSClusterConfig"}, "aksclusterconfigs", true, v.controllerFactory)
 }
