@@ -28,6 +28,10 @@ Running unit tests can be done using the following command:
     make test
 ```
 
+### E2E
+
+We run e2e tests after every merged PR and periodically every 24 hours. They are triggered by a [Github action](.github/workflows/e2e-latest-rancher.yaml)
+
 For running e2e set the following variables and run:
 
 ```bash
