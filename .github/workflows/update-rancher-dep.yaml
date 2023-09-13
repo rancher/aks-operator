@@ -5,11 +5,11 @@ on:
       ref:
         description: "Branch to use for GitHub action workflow"
         required: true
-        default: "master"
+        default: "release-v2.8"
       rancher_ref:
-        description: "Submit PR against the following rancher/rancher branch (e.g. release/v2.7)"
+        description: "Submit PR against the following rancher/rancher branch (e.g. release/v2.8)"
         required: true
-        default: "release/v2.7"
+        default: "release/v2.8"
       new_aks:
         description: "New AKS operator version (e.g. 1.1.0-rc2), don't include the 'v'"
         required: true
@@ -18,7 +18,7 @@ on:
 env:
   GOARCH: amd64
   CGO_ENABLED: 0
-  SETUP_GO_VERSION: '1.20.*'
+  SETUP_GO_VERSION: '1.21.*'
 
 jobs:
   create-rancher-pr:
