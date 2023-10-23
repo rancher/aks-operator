@@ -233,13 +233,23 @@ var _ = Describe("validateConfig", func() {
 				DNSPrefix:             to.StringPtr("test"),
 				NodePools: []aksv1.AKSNodePool{
 					{
-						Name:         to.StringPtr("test"),
+						Name:         to.StringPtr("test1"),
 						Count:        to.Int32Ptr(1),
 						MaxPods:      to.Int32Ptr(1),
 						VMSize:       "test",
 						OsDiskSizeGB: to.Int32Ptr(1),
 						OsDiskType:   "test",
 						Mode:         "System",
+						OsType:       "test",
+					},
+					{
+						Name:         to.StringPtr("test2"),
+						Count:        to.Int32Ptr(1),
+						MaxPods:      to.Int32Ptr(1),
+						VMSize:       "test",
+						OsDiskSizeGB: to.Int32Ptr(1),
+						OsDiskType:   "test",
+						Mode:         "User",
 						OsType:       "test",
 					},
 				},
@@ -349,6 +359,12 @@ var _ = Describe("validateConfig", func() {
 
 	It("should fail to validate aks config if node pool name is empty", func() {
 		aksConfig.Spec.NodePools[0].Name = nil
+		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
+	})
+
+	It("should fail to validate aks config if node pool name is duplicated", func() {
+		aksConfig.Spec.NodePools[0].Name = to.StringPtr("test")
+		aksConfig.Spec.NodePools[1].Name = to.StringPtr("test")
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 	})
 
