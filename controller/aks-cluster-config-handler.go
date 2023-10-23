@@ -391,8 +391,16 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 		return fmt.Errorf(cannotBeNilError, "dnsPrefix", config.Spec.ClusterName)
 	}
 
+	nodeP := map[string]bool{}
 	systemMode := false
 	for _, np := range config.Spec.NodePools {
+		if np.Name == nil {
+			return fmt.Errorf(cannotBeNilError, "NodePool.Name", config.Spec.ClusterName)
+		}
+		if nodeP[*np.Name] {
+			return fmt.Errorf("NodePool names must be unique within the [%s] cluster to avoid duplication", config.Spec.ClusterName)
+		}
+		nodeP[*np.Name] = true
 		if np.Name == nil {
 			return fmt.Errorf(cannotBeNilError, "NodePool.Name", config.Spec.ClusterName)
 		}
