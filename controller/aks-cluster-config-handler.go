@@ -754,12 +754,16 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 		}
 	}
 
+	// build ClusterSpec for imported clusters from upstream config,
+	// otherwise ConfigSpec will be null
+	importedClusterSpec := upstreamSpec.DeepCopy()
 	updateAksCluster := false
 	// check Kubernetes version for update
 	if config.Spec.KubernetesVersion != nil {
 		if to.String(config.Spec.KubernetesVersion) != to.String(upstreamSpec.KubernetesVersion) {
 			logrus.Infof("Updating kubernetes version for cluster [%s]", config.Spec.ClusterName)
 			updateAksCluster = true
+			importedClusterSpec.KubernetesVersion = config.Spec.KubernetesVersion
 		}
 	}
 
@@ -768,6 +772,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 		if !reflect.DeepEqual(config.Spec.AuthorizedIPRanges, upstreamSpec.AuthorizedIPRanges) {
 			logrus.Infof("Updating authorized IP ranges for cluster [%s]", config.Spec.ClusterName)
 			updateAksCluster = true
+			importedClusterSpec.AuthorizedIPRanges = config.Spec.AuthorizedIPRanges
 		}
 	}
 
@@ -776,6 +781,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 		if to.Bool(config.Spec.HTTPApplicationRouting) != to.Bool(upstreamSpec.HTTPApplicationRouting) {
 			logrus.Infof("Updating HTTP application routing for cluster [%s]", config.Spec.ClusterName)
 			updateAksCluster = true
+			importedClusterSpec.HTTPApplicationRouting = config.Spec.HTTPApplicationRouting
 		}
 	}
 
@@ -784,6 +790,9 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 		if to.Bool(config.Spec.Monitoring) != to.Bool(upstreamSpec.Monitoring) {
 			logrus.Infof("Updating monitoring addon for cluster [%s]", config.Spec.ClusterName)
 			updateAksCluster = true
+			importedClusterSpec.Monitoring = config.Spec.Monitoring
+			importedClusterSpec.LogAnalyticsWorkspaceGroup = config.Spec.LogAnalyticsWorkspaceGroup
+			importedClusterSpec.LogAnalyticsWorkspaceName = config.Spec.LogAnalyticsWorkspaceName
 		}
 	}
 
@@ -803,6 +812,12 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 
 		upstreamNodePools, _ := utils.BuildNodePoolMap(upstreamSpec.NodePools, config.Spec.ClusterName)
 		clusterSpecCopy := config.Spec.DeepCopy()
+		if config.Spec.Imported {
+			clusterSpecCopy = importedClusterSpec
+			clusterSpecCopy.ResourceGroup = config.Spec.ResourceGroup
+			clusterSpecCopy.ResourceLocation = config.Spec.ResourceLocation
+			clusterSpecCopy.ClusterName = config.Spec.ClusterName
+		}
 		clusterSpecCopy.NodePools = make([]aksv1.AKSNodePool, 0, len(config.Spec.NodePools))
 		for _, n := range config.Spec.NodePools {
 			if _, ok := upstreamNodePools[*n.Name]; ok {
