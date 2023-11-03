@@ -16,7 +16,7 @@ import (
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	aksv1controllers "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io"
 	"github.com/rancher/aks-operator/pkg/test"
-	"github.com/rancher/wrangler/pkg/generated/controllers/core"
+	"github.com/rancher/wrangler/v2/pkg/generated/controllers/core"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
