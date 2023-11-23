@@ -7,6 +7,7 @@ updates:
   directory: "/"
   schedule:
       interval: "weekly"
+  target-branch: "release-v2.8"
 # Go
 - package-ecosystem: "gomod"
   directory: "/"
