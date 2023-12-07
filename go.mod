@@ -14,7 +14,7 @@ require (
 	github.com/Azure/go-autorest/autorest/to v0.4.1-0.20210111195520-9fc88b15294e
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46
 	github.com/golang/mock v1.6.0
-	github.com/onsi/ginkgo/v2 v2.13.1
+	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/onsi/gomega v1.29.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher-sandbox/ele-testhelpers v0.0.0-20221213084338-a8ffdd2b87e3
