@@ -5,7 +5,7 @@ go 1.20
 replace k8s.io/client-go => k8s.io/client-go v0.25.4
 
 require (
-	github.com/Azure/azure-sdk-for-go v55.7.0+incompatible
+	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/go-autorest/autorest/adal v0.9.23
 	github.com/Azure/go-autorest/autorest/to v0.4.1-0.20210111195520-9fc88b15294e
