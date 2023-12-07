@@ -18,6 +18,7 @@ updates:
   # together with controller-runtime.
   - dependency-name: "k8s.io/*"
   - dependency-name: "go.etcd.io/*"
+  - dependency-name: "github.com/Azure/azure-sdk-for-go"
   target-branch: "main"
 # Go modules in release-v2.8 branch
 - package-ecosystem: "gomod"
@@ -30,6 +31,7 @@ updates:
   # together with controller-runtime.
   - dependency-name: "k8s.io/*"
   - dependency-name: "go.etcd.io/*"
+  - dependency-name: "github.com/Azure/azure-sdk-for-go"
   target-branch: "release-v2.8"
 # Go modules in release-v2.7 branch
 - package-ecosystem: "gomod"
@@ -42,4 +44,5 @@ updates:
   # together with controller-runtime.
   - dependency-name: "k8s.io/*"
   - dependency-name: "go.etcd.io/*"
+  - dependency-name: "github.com/Azure/azure-sdk-for-go"
   target-branch: "release-v2.7"
