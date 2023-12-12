@@ -38,16 +38,15 @@ var _ = Describe("updateCluster", func() {
 					},
 				},
 			},
-			AuthorizedIPRanges:      to.StringSlicePtr([]string{"test-ip-range"}),
-			LinuxAdminUsername:      to.StringPtr("test-admin-username"),
-			LinuxSSHPublicKey:       to.StringPtr("test-ssh-public-key"),
-			NetworkPlugin:           to.StringPtr("azure"),
-			NetworkPolicy:           to.StringPtr("azure"),
-			NetworkDNSServiceIP:     to.StringPtr("test-dns-service-ip"),
-			NetworkDockerBridgeCIDR: to.StringPtr("test-docker-bridge-cidr"),
-			NetworkPodCIDR:          to.StringPtr("test-pod-cidr"),
-			NetworkServiceCIDR:      to.StringPtr("test-service-cidr"),
-			LoadBalancerSKU:         to.StringPtr("standard"),
+			AuthorizedIPRanges:  to.StringSlicePtr([]string{"test-ip-range"}),
+			LinuxAdminUsername:  to.StringPtr("test-admin-username"),
+			LinuxSSHPublicKey:   to.StringPtr("test-ssh-public-key"),
+			NetworkPlugin:       to.StringPtr("azure"),
+			NetworkPolicy:       to.StringPtr("azure"),
+			NetworkDNSServiceIP: to.StringPtr("test-dns-service-ip"),
+			NetworkPodCIDR:      to.StringPtr("test-pod-cidr"),
+			NetworkServiceCIDR:  to.StringPtr("test-service-cidr"),
+			LoadBalancerSKU:     to.StringPtr("standard"),
 			Tags: map[string]string{
 				"test-tag": "test-value",
 			},
@@ -100,7 +99,6 @@ var _ = Describe("updateCluster", func() {
 		Expect(updatedCluster.NetworkProfile.NetworkPlugin).To(Equal(containerservice.Azure))
 		Expect(updatedCluster.NetworkProfile.NetworkPolicy).To(Equal(containerservice.NetworkPolicyAzure))
 		Expect(updatedCluster.NetworkProfile.DNSServiceIP).To(Equal(clusterSpec.NetworkDNSServiceIP))
-		Expect(updatedCluster.NetworkProfile.DockerBridgeCidr).To(Equal(clusterSpec.NetworkDockerBridgeCIDR))
 		Expect(updatedCluster.NetworkProfile.PodCidr).To(Equal(clusterSpec.NetworkPodCIDR))
 		Expect(updatedCluster.NetworkProfile.ServiceCidr).To(Equal(clusterSpec.NetworkServiceCIDR))
 		Expect(updatedCluster.NetworkProfile.LoadBalancerSku).To(Equal(containerservice.Standard))

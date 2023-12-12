@@ -77,8 +77,6 @@ type AKSClusterConfigSpec struct {
 	NetworkDNSServiceIP *string `json:"dnsServiceIp" norman:"pointer"`
 	// NetworkService CIDR is the network service cidr.
 	NetworkServiceCIDR *string `json:"serviceCidr" norman:"pointer"`
-	// NetworkDockerBridgeCIDR is the network docker bridge cidr.
-	NetworkDockerBridgeCIDR *string `json:"dockerBridgeCidr" norman:"pointer"`
 	// NetworkPodCIDR is the network pod cidr.
 	NetworkPodCIDR *string `json:"podCidr" norman:"pointer"`
 	// NodeResourceGroupName is the name of the resource group

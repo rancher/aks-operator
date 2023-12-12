@@ -129,11 +129,6 @@ func (in *AKSClusterConfigSpec) DeepCopyInto(out *AKSClusterConfigSpec) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.NetworkDockerBridgeCIDR != nil {
-		in, out := &in.NetworkDockerBridgeCIDR, &out.NetworkDockerBridgeCIDR
-		*out = new(string)
-		**out = **in
-	}
 	if in.NetworkPodCIDR != nil {
 		in, out := &in.NetworkPodCIDR, &out.NetworkPodCIDR
 		*out = new(string)

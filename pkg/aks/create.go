@@ -134,7 +134,6 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		}
 
 		networkProfile.DNSServiceIP = spec.NetworkDNSServiceIP
-		networkProfile.DockerBridgeCidr = spec.NetworkDockerBridgeCIDR
 		networkProfile.ServiceCidr = spec.NetworkServiceCIDR
 		networkProfile.PodCidr = spec.NetworkPodCIDR
 	}

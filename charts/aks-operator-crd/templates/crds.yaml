@@ -45,9 +45,6 @@ spec:
               dnsServiceIp:
                 nullable: true
                 type: string
-              dockerBridgeCidr:
-                nullable: true
-                type: string
               httpApplicationRouting:
                 nullable: true
                 type: boolean

@@ -122,9 +122,6 @@ func updateCluster(desiredCluster containerservice.ManagedCluster, actualCluster
 		if desiredCluster.NetworkProfile.DNSServiceIP != nil {
 			actualCluster.NetworkProfile.DNSServiceIP = desiredCluster.NetworkProfile.DNSServiceIP
 		}
-		if desiredCluster.NetworkProfile.DockerBridgeCidr != nil {
-			actualCluster.NetworkProfile.DockerBridgeCidr = desiredCluster.NetworkProfile.DockerBridgeCidr
-		}
 		if desiredCluster.NetworkProfile.PodCidr != nil {
 			actualCluster.NetworkProfile.PodCidr = desiredCluster.NetworkProfile.PodCidr
 		}

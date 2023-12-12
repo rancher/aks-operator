@@ -460,9 +460,6 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 		if config.Spec.NetworkDNSServiceIP == nil {
 			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "dnsServiceIp", config.Spec.ClusterName)
 		}
-		if config.Spec.NetworkDockerBridgeCIDR == nil {
-			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "dockerBridgeCidr", config.Spec.ClusterName)
-		}
 		if config.Spec.NetworkServiceCIDR == nil {
 			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "serviceCidr", config.Spec.ClusterName)
 		}
@@ -644,7 +641,6 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 	if networkProfile != nil {
 		upstreamSpec.NetworkPlugin = to.StringPtr(string(networkProfile.NetworkPlugin))
 		upstreamSpec.NetworkDNSServiceIP = networkProfile.DNSServiceIP
-		upstreamSpec.NetworkDockerBridgeCIDR = networkProfile.DockerBridgeCidr
 		upstreamSpec.NetworkServiceCIDR = networkProfile.ServiceCidr
 		upstreamSpec.NetworkPolicy = to.StringPtr(string(networkProfile.NetworkPolicy))
 		upstreamSpec.NetworkPodCIDR = networkProfile.PodCidr

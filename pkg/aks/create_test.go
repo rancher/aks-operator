@@ -98,7 +98,6 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(managedCluster.NetworkProfile.LoadBalancerSku).To(Equal(containerservice.LoadBalancerSku(to.String(clusterSpec.LoadBalancerSKU))))
 		Expect(managedCluster.NetworkProfile.NetworkPlugin).To(Equal(containerservice.NetworkPlugin(to.String(clusterSpec.NetworkPlugin))))
 		Expect(managedCluster.NetworkProfile.DNSServiceIP).To(Equal(clusterSpec.NetworkDNSServiceIP))
-		Expect(managedCluster.NetworkProfile.DockerBridgeCidr).To(Equal(clusterSpec.NetworkDockerBridgeCIDR))
 		Expect(managedCluster.NetworkProfile.ServiceCidr).To(Equal(clusterSpec.NetworkServiceCIDR))
 		Expect(managedCluster.NetworkProfile.PodCidr).To(Equal(clusterSpec.NetworkPodCIDR))
 		Expect(managedCluster.NetworkProfile.OutboundType).To(Equal(containerservice.LoadBalancer))
@@ -184,7 +183,6 @@ var _ = Describe("newManagedCluster", func() {
 		clusterSpec.NetworkPlugin = to.StringPtr("kubenet")
 		clusterSpec.NetworkPolicy = to.StringPtr("calico")
 		clusterSpec.NetworkDNSServiceIP = to.StringPtr("")
-		clusterSpec.NetworkDockerBridgeCIDR = to.StringPtr("")
 		clusterSpec.NetworkServiceCIDR = to.StringPtr("")
 		clusterSpec.NetworkPodCIDR = to.StringPtr("")
 
@@ -192,7 +190,6 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(managedCluster.NetworkProfile.NetworkPlugin).To(Equal(containerservice.Kubenet))
 		Expect(managedCluster.NetworkProfile.DNSServiceIP).To(Equal(clusterSpec.NetworkDNSServiceIP))
-		Expect(managedCluster.NetworkProfile.DockerBridgeCidr).To(Equal(clusterSpec.NetworkDockerBridgeCIDR))
 		Expect(managedCluster.NetworkProfile.ServiceCidr).To(Equal(clusterSpec.NetworkServiceCIDR))
 		Expect(managedCluster.NetworkProfile.PodCidr).To(Equal(clusterSpec.NetworkPodCIDR))
 	})
@@ -208,7 +205,6 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(managedCluster.NetworkProfile.NetworkPlugin).To(Equal(containerservice.Kubenet))
 		Expect(managedCluster.NetworkProfile.DNSServiceIP).To(Equal(clusterSpec.NetworkDNSServiceIP))
-		Expect(managedCluster.NetworkProfile.DockerBridgeCidr).To(Equal(clusterSpec.NetworkDockerBridgeCIDR))
 		Expect(managedCluster.NetworkProfile.ServiceCidr).To(Equal(clusterSpec.NetworkServiceCIDR))
 		Expect(managedCluster.NetworkProfile.PodCidr).To(Equal(clusterSpec.NetworkPodCIDR))
 	})
@@ -498,15 +494,14 @@ func newTestClusterSpec() *aksv1.AKSClusterConfigSpec {
 		Tags: map[string]string{
 			"test-tag": "test-value",
 		},
-		NetworkPolicy:           to.StringPtr("azure"),
-		NetworkPlugin:           to.StringPtr("azure"),
-		NetworkDNSServiceIP:     to.StringPtr("test-dns-service-ip"),
-		NetworkDockerBridgeCIDR: to.StringPtr("test-docker-bridge-cidr"),
-		NetworkServiceCIDR:      to.StringPtr("test-service-cidr"),
-		NetworkPodCIDR:          to.StringPtr("test-pod-cidr"),
-		ResourceGroup:           "test-rg",
-		VirtualNetwork:          to.StringPtr("test-virtual-network"),
-		Subnet:                  to.StringPtr("test-subnet"),
+		NetworkPolicy:       to.StringPtr("azure"),
+		NetworkPlugin:       to.StringPtr("azure"),
+		NetworkDNSServiceIP: to.StringPtr("test-dns-service-ip"),
+		NetworkServiceCIDR:  to.StringPtr("test-service-cidr"),
+		NetworkPodCIDR:      to.StringPtr("test-pod-cidr"),
+		ResourceGroup:       "test-rg",
+		VirtualNetwork:      to.StringPtr("test-virtual-network"),
+		Subnet:              to.StringPtr("test-subnet"),
 		NodePools: []aksv1.AKSNodePool{
 			{
 				Name:                to.StringPtr("test-node-pool"),

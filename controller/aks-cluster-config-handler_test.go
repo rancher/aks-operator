@@ -253,13 +253,12 @@ var _ = Describe("validateConfig", func() {
 						OsType:       "test",
 					},
 				},
-				NetworkPlugin:           to.StringPtr(string(containerservice.Azure)),
-				NetworkPolicy:           to.StringPtr(string(containerservice.NetworkPolicyAzure)),
-				VirtualNetwork:          to.StringPtr("test"),
-				Subnet:                  to.StringPtr("test"),
-				NetworkDNSServiceIP:     to.StringPtr("test"),
-				NetworkDockerBridgeCIDR: to.StringPtr("test"),
-				NetworkServiceCIDR:      to.StringPtr("test"),
+				NetworkPlugin:       to.StringPtr(string(containerservice.Azure)),
+				NetworkPolicy:       to.StringPtr(string(containerservice.NetworkPolicyAzure)),
+				VirtualNetwork:      to.StringPtr("test"),
+				Subnet:              to.StringPtr("test"),
+				NetworkDNSServiceIP: to.StringPtr("test"),
+				NetworkServiceCIDR:  to.StringPtr("test"),
 			},
 		}
 
@@ -443,11 +442,6 @@ var _ = Describe("validateConfig", func() {
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 	})
 
-	It("should fail if network docker bridge cidr is empty", func() {
-		aksConfig.Spec.NetworkDockerBridgeCIDR = nil
-		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
-	})
-
 	It("should fail if network pod cidr is empty", func() {
 		aksConfig.Spec.NetworkServiceCIDR = nil
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
@@ -512,13 +506,12 @@ var _ = Describe("createCluster", func() {
 						OsType:       "test",
 					},
 				},
-				NetworkPlugin:           to.StringPtr(string(containerservice.Azure)),
-				NetworkPolicy:           to.StringPtr(string(containerservice.NetworkPolicyAzure)),
-				VirtualNetwork:          to.StringPtr("test"),
-				Subnet:                  to.StringPtr("test"),
-				NetworkDNSServiceIP:     to.StringPtr("test"),
-				NetworkDockerBridgeCIDR: to.StringPtr("test"),
-				NetworkServiceCIDR:      to.StringPtr("test"),
+				NetworkPlugin:       to.StringPtr(string(containerservice.Azure)),
+				NetworkPolicy:       to.StringPtr(string(containerservice.NetworkPolicyAzure)),
+				VirtualNetwork:      to.StringPtr("test"),
+				Subnet:              to.StringPtr("test"),
+				NetworkDNSServiceIP: to.StringPtr("test"),
+				NetworkServiceCIDR:  to.StringPtr("test"),
 			},
 		}
 
@@ -815,13 +808,12 @@ var _ = Describe("buildUpstreamClusterState", func() {
 					},
 				},
 				NetworkProfile: &containerservice.NetworkProfile{
-					NetworkPlugin:    containerservice.Azure,
-					DNSServiceIP:     to.StringPtr("test"),
-					DockerBridgeCidr: to.StringPtr("test"),
-					ServiceCidr:      to.StringPtr("test"),
-					NetworkPolicy:    containerservice.NetworkPolicyAzure,
-					PodCidr:          to.StringPtr("test"),
-					LoadBalancerSku:  containerservice.Standard,
+					NetworkPlugin:   containerservice.Azure,
+					DNSServiceIP:    to.StringPtr("test"),
+					ServiceCidr:     to.StringPtr("test"),
+					NetworkPolicy:   containerservice.NetworkPolicyAzure,
+					PodCidr:         to.StringPtr("test"),
+					LoadBalancerSku: containerservice.Standard,
 				},
 				LinuxProfile: &containerservice.LinuxProfile{
 					AdminUsername: to.StringPtr("test"),
@@ -890,7 +882,6 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		Expect(upstreamSpec.NodePools[0].MaxSurge).To(Equal(nodePools[0].UpgradeSettings.MaxSurge))
 		Expect(upstreamSpec.NetworkPlugin).To(Equal(to.StringPtr(string(clusterState.NetworkProfile.NetworkPlugin))))
 		Expect(upstreamSpec.NetworkDNSServiceIP).To(Equal(clusterState.NetworkProfile.DNSServiceIP))
-		Expect(upstreamSpec.NetworkDockerBridgeCIDR).To(Equal(clusterState.NetworkProfile.DockerBridgeCidr))
 		Expect(upstreamSpec.NetworkServiceCIDR).To(Equal(clusterState.NetworkProfile.ServiceCidr))
 		Expect(upstreamSpec.NetworkPolicy).To(Equal(to.StringPtr(string(clusterState.NetworkProfile.NetworkPolicy))))
 		Expect(upstreamSpec.NetworkPodCIDR).To(Equal(clusterState.NetworkProfile.PodCidr))
