@@ -43,6 +43,12 @@ For running e2e set the following variables and run:
 
 A Kind cluster will be created, and the e2e tests will be run against it.
 
+To delete the local Kind cluster once e2e tests are completed, run:
+
+```bash
+    make delete-local-kind-cluster
+```
+
 ## Release
 
 #### When should I release?

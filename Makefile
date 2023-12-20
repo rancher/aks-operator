@@ -143,3 +143,7 @@ docker-build-e2e:
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${COMMITDATE}" \
 		-t ${REPO}:${TAG} .
+
+.PHOHY: delete-local-kind-cluster
+delete-local-kind-cluster: ## Delete the local kind cluster
+	kind delete cluster --name=$(CLUSTER_NAME)
