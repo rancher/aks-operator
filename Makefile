@@ -18,7 +18,7 @@ MOCKGEN_VER := v1.6.0
 MOCKGEN_BIN := mockgen
 MOCKGEN := $(BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER)
 
-GINKGO_VER := v2.12.0
+GINKGO_VER := v2.13.2
 GINKGO_BIN := ginkgo
 GINKGO := $(BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
 
@@ -143,3 +143,7 @@ docker-build-e2e:
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${COMMITDATE}" \
 		-t ${REPO}:${TAG} .
+
+.PHOHY: delete-local-kind-cluster
+delete-local-kind-cluster: ## Delete the local kind cluster
+	kind delete cluster --name=$(CLUSTER_NAME)
