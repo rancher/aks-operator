@@ -1,3 +1,6 @@
+[![Nightly e2e tests](https://github.com/rancher/aks-operator/actions/workflows/e2e-latest-rancher.yaml/badge.svg?branch=main)](https://github.com/rancher/aks-operator/actions/workflows/e2e-latest-rancher.yaml)
+
+
 # rancher/aks-operator
 
 AKS operator is a Kubernetes CRD controller that controls cluster provisioning in Azure Kubernetes Service using an AKSClusterConfig defined by a Custom Resource Definition.
