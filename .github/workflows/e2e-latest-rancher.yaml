@@ -1,5 +1,6 @@
 name: e2e-latest-rancher
 on:
+  pull_request:
   workflow_dispatch:
   push:
     branches:
