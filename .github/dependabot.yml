@@ -22,6 +22,7 @@ updates:
     - dependency-name: "k8s.io/*"
     # Ignore wrangler
     - dependency-name: "github.com/rancher/wrangler"
+    - dependency-name: "github.com/rancher/wrangler/v2"
     - dependency-name: "go.etcd.io/*"
     - dependency-name: "github.com/Azure/azure-sdk-for-go"
   commit-message:
@@ -40,6 +41,7 @@ updates:
     - dependency-name: "k8s.io/*"
     # Ignore wrangler
     - dependency-name: "github.com/rancher/wrangler"
+    - dependency-name: "github.com/rancher/wrangler/v2"
     - dependency-name: "go.etcd.io/*"
     - dependency-name: "github.com/Azure/azure-sdk-for-go"
   commit-message:
@@ -58,6 +60,7 @@ updates:
     - dependency-name: "k8s.io/*"
     # Ignore wrangler
     - dependency-name: "github.com/rancher/wrangler"
+    - dependency-name: "github.com/rancher/wrangler/v2"
     - dependency-name: "go.etcd.io/*"
     - dependency-name: "github.com/Azure/azure-sdk-for-go"
   target-branch: "release-v2.7"
