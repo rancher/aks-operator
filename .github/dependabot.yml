@@ -42,6 +42,7 @@ updates:
     # Ignore wrangler
     - dependency-name: "github.com/rancher/wrangler"
     - dependency-name: "github.com/rancher/wrangler/v2"
+    - dependency-name: "github.com/rancher/rancher/pkg/apis"
     - dependency-name: "go.etcd.io/*"
     - dependency-name: "github.com/Azure/azure-sdk-for-go"
   commit-message:
@@ -61,6 +62,7 @@ updates:
     # Ignore wrangler
     - dependency-name: "github.com/rancher/wrangler"
     - dependency-name: "github.com/rancher/wrangler/v2"
+    - dependency-name: "github.com/rancher/rancher/pkg/apis"
     - dependency-name: "go.etcd.io/*"
     - dependency-name: "github.com/Azure/azure-sdk-for-go"
   commit-message:
@@ -80,6 +82,7 @@ updates:
     # Ignore wrangler
     - dependency-name: "github.com/rancher/wrangler"
     - dependency-name: "github.com/rancher/wrangler/v2"
+    - dependency-name: "github.com/rancher/rancher/pkg/apis"
     - dependency-name: "go.etcd.io/*"
     - dependency-name: "github.com/Azure/azure-sdk-for-go"
   target-branch: "release-v2.7"
