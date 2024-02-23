@@ -1,12 +1,16 @@
 TARGETS := $(shell ls scripts)
+GIT_BRANCH?=$(shell git branch --show-current)
 GIT_COMMIT?=$(shell git rev-parse HEAD)
 GIT_COMMIT_SHORT?=$(shell git rev-parse --short HEAD)
+GIT_TAG?=v9.0.0
+ifneq ($(GIT_BRANCH), main)
 GIT_TAG?=$(shell git describe --abbrev=0 --tags 2>/dev/null || echo "v0.0.0" )
+endif
 TAG?=${GIT_TAG}-${GIT_COMMIT_SHORT}
 OPERATOR_CHART?=$(shell find $(ROOT_DIR) -type f -name "rancher-aks-operator-[0-9]*.tgz" -print)
 CRD_CHART?=$(shell find $(ROOT_DIR) -type f -name "rancher-aks-operator-crd*.tgz" -print)
 CHART_VERSION?=900 # Only used in e2e to avoid downgrades from rancher
-REPO?=ghcr.io/rancher/aks-operator
+REPO?=docker.io/rancher/aks-operator
 CLUSTER_NAME?="aks-operator-e2e"
 E2E_CONF_FILE ?= $(ROOT_DIR)/test/e2e/config/config.yaml
 
@@ -18,7 +22,7 @@ MOCKGEN_VER := v1.6.0
 MOCKGEN_BIN := mockgen
 MOCKGEN := $(BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER)
 
-GINKGO_VER := v2.13.2
+GINKGO_VER := v2.15.0
 GINKGO_BIN := ginkgo
 GINKGO := $(BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
 
