@@ -68,23 +68,3 @@ updates:
   commit-message:
     prefix: ":seedling:"
   target-branch: "release-v2.8"
-# Go modules in release-v2.7 branch
-- package-ecosystem: "gomod"
-  directory: "/"
-  schedule:
-    interval: "weekly"
-  ignore:
-    # Ignore controller-runtime as it's upgraded manually.
-    - dependency-name: "sigs.k8s.io/controller-runtime"
-    # Ignore k8s and its transitives modules as they are upgraded manually
-    # together with controller-runtime.
-    - dependency-name: "k8s.io/*"
-    # Ignore wrangler
-    - dependency-name: "github.com/rancher/wrangler"
-    - dependency-name: "github.com/rancher/wrangler/v2"
-    - dependency-name: "github.com/rancher/rancher/pkg/apis"
-    - dependency-name: "go.etcd.io/*"
-    - dependency-name: "github.com/Azure/azure-sdk-for-go"
-  target-branch: "release-v2.7"
-  commit-message:
-    prefix: ":seedling:"
