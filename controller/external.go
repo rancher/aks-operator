@@ -18,12 +18,12 @@ func GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCac
 		return nil, fmt.Errorf("error getting credentials secret: %w", err)
 	}
 
-	authorizer, err := aks.NewClientAuthorizer(credentials)
+	clientSecretCredential, err := aks.NewClientSecretCredential(credentials)
 	if err != nil {
-		return nil, fmt.Errorf("error creating authorizer: %w", err)
+		return nil, fmt.Errorf("error creating client secret credential: %w", err)
 	}
 
-	clustersClient, err := services.NewManagedClustersClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	clustersClient, err := services.NewManagedClustersClient(credentials.SubscriptionID, clientSecretCredential, credentials.Cloud)
 	if err != nil {
 		return nil, fmt.Errorf("error creating managed cluster client: %w", err)
 	}
@@ -44,12 +44,12 @@ func BuildUpstreamClusterState(ctx context.Context, secretsCache wranglerv1.Secr
 		return nil, fmt.Errorf("error getting credentials secret: %w", err)
 	}
 
-	authorizer, err := aks.NewClientAuthorizer(credentials)
+	clientSecretCredential, err := aks.NewClientSecretCredential(credentials)
 	if err != nil {
-		return nil, fmt.Errorf("error creating authorizer: %w", err)
+		return nil, fmt.Errorf("error creating client secret credential: %w", err)
 	}
 
-	clustersClient, err := services.NewManagedClustersClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	clustersClient, err := services.NewManagedClustersClient(credentials.SubscriptionID, clientSecretCredential, credentials.Cloud)
 	if err != nil {
 		return nil, fmt.Errorf("error creating managed cluster client: %w", err)
 	}
