@@ -7,12 +7,11 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-11-01/subscriptions"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/adal"
 	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/Azure/go-autorest/autorest/to"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	"github.com/rancher/aks-operator/pkg/utils"
 	wranglerv1 "github.com/rancher/wrangler/v2/pkg/generated/controllers/core/v1"
@@ -40,28 +39,15 @@ type Credentials struct {
 	TenantID       string
 	ClientID       string
 	ClientSecret   string
+	Cloud          cloud.Configuration
 }
 
-func NewClientAuthorizer(cred *Credentials) (autorest.Authorizer, error) {
-	if cred.AuthBaseURL == nil {
-		cred.AuthBaseURL = to.StringPtr(azure.PublicCloud.ActiveDirectoryEndpoint)
-	}
-
-	if cred.BaseURL == nil {
-		cred.BaseURL = to.StringPtr(azure.PublicCloud.ResourceManagerEndpoint)
-	}
-
-	oauthConfig, err := adal.NewOAuthConfig(to.String(cred.AuthBaseURL), cred.TenantID)
-	if err != nil {
-		return nil, err
-	}
-
-	spToken, err := adal.NewServicePrincipalToken(*oauthConfig, cred.ClientID, cred.ClientSecret, to.String(cred.BaseURL))
-	if err != nil {
-		return nil, fmt.Errorf("couldn't authenticate to Azure cloud with error: %v", err)
-	}
-
-	return autorest.NewBearerAuthorizer(spToken), nil
+func NewClientSecretCredential(cred *Credentials) (*azidentity.ClientSecretCredential, error) {
+	return azidentity.NewClientSecretCredential(cred.TenantID, cred.ClientID, cred.ClientSecret, &azidentity.ClientSecretCredentialOptions{
+		ClientOptions: azcore.ClientOptions{
+			Cloud: cred.Cloud,
+		},
+	})
 }
 
 func GetSecrets(_ wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, spec *aksv1.AKSClusterConfigSpec) (*Credentials, error) {
@@ -85,7 +71,7 @@ func GetSecrets(_ wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, 
 	if secret.Data["azurecredentialConfig-environment"] != nil {
 		clientEnvironment = string(secret.Data["azurecredentialConfig-environment"])
 	}
-	azureEnvironment := GetEnvironment(clientEnvironment)
+	cloud, env := GetEnvironment(clientEnvironment)
 
 	cannotBeNilError := "field [azurecredentialConfig-%s] must be provided in cloud credential"
 	if subscriptionIDBytes == nil {
@@ -102,8 +88,9 @@ func GetSecrets(_ wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, 
 	cred.SubscriptionID = string(subscriptionIDBytes)
 	cred.ClientID = string(clientIDBytes)
 	cred.ClientSecret = string(clientSecretBytes)
-	cred.AuthBaseURL = &azureEnvironment.ActiveDirectoryEndpoint
-	cred.BaseURL = &azureEnvironment.ResourceManagerEndpoint
+	cred.Cloud = cloud
+	cred.AuthBaseURL = &env.ActiveDirectoryEndpoint
+	cred.BaseURL = &env.ResourceManagerEndpoint
 
 	if cred.TenantID == "" {
 		cred.TenantID, err = GetCachedTenantID(secretClient, cred.SubscriptionID, secret)
@@ -142,9 +129,9 @@ func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret 
 	if secret.Data["azurecredentialConfig-environment"] != nil {
 		clientEnvironment = string(secret.Data["azurecredentialConfig-environment"])
 	}
-	azureEnvironment := GetEnvironment(clientEnvironment)
+	_, env := GetEnvironment(clientEnvironment)
 
-	tenantID, err := FindTenantID(ctx, azureEnvironment, subscriptionID)
+	tenantID, err := FindTenantID(ctx, env, subscriptionID)
 	if err != nil {
 		return "", err
 	}
@@ -161,28 +148,14 @@ func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret 
 	return tenantID, err
 }
 
-func NewClusterClient(cred *Credentials) (*containerservice.ManagedClustersClient, error) {
-	authorizer, err := NewClientAuthorizer(cred)
-	if err != nil {
-		return nil, err
-	}
-
-	client := containerservice.NewManagedClustersClientWithBaseURI(to.String(cred.BaseURL), cred.SubscriptionID)
-	client.Authorizer = authorizer
-
-	return &client, nil
-}
-
-func GetEnvironment(env string) azure.Environment {
+func GetEnvironment(env string) (cloud.Configuration, azure.Environment) {
 	switch env {
-	case "AzureGermanCloud":
-		return azure.GermanCloud
 	case "AzureChinaCloud":
-		return azure.ChinaCloud
+		return cloud.AzureChina, azure.ChinaCloud
 	case "AzureUSGovernmentCloud":
-		return azure.USGovernmentCloud
+		return cloud.AzureGovernment, azure.USGovernmentCloud
 	default:
-		return azure.PublicCloud
+		return cloud.AzurePublic, azure.PublicCloud
 	}
 }
 

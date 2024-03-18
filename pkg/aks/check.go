@@ -4,13 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"time"
 
-	"github.com/Azure/azure-sdk-for-go/services/operationalinsights/mgmt/2020-08-01/operationalinsights"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/operationalinsights/armoperationalinsights"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	"github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -140,36 +138,29 @@ func CheckLogAnalyticsWorkspaceForMonitoring(ctx context.Context, client service
 		workspaceName = generateUniqueLogWorkspace(workspaceName)
 	}
 
-	if gotRet, gotErr := client.Get(ctx, workspaceResourceGroup, workspaceName); gotErr == nil {
+	if gotRet, gotErr := client.Get(ctx, workspaceResourceGroup, workspaceName, nil); gotErr == nil {
 		return *gotRet.ID, nil
 	}
 
 	logrus.Infof("Create Azure Log Analytics Workspace %q on Resource Group %q", workspaceName, workspaceResourceGroup)
 
-	asyncRet, asyncErr := client.CreateOrUpdate(ctx, workspaceResourceGroup, workspaceName, operationalinsights.Workspace{
-		Location: to.StringPtr(workspaceRegion),
-		WorkspaceProperties: &operationalinsights.WorkspaceProperties{
-			Sku: &operationalinsights.WorkspaceSku{
-				Name: operationalinsights.WorkspaceSkuNameEnumStandalone,
+	poller, err := client.BeginCreateOrUpdate(ctx, workspaceResourceGroup, workspaceName, armoperationalinsights.Workspace{
+		Location: to.Ptr(workspaceRegion),
+		Properties: &armoperationalinsights.WorkspaceProperties{
+			SKU: &armoperationalinsights.WorkspaceSKU{
+				Name: to.Ptr(armoperationalinsights.WorkspaceSKUNameEnumStandalone),
 			},
 		},
-	})
-	if asyncErr != nil {
-		return "", asyncErr
-	}
-	workspaceID = ""
-	err = wait.Poll(5*time.Second, 30*time.Second, func() (bool, error) {
-		ret, err := client.AsyncCreateUpdateResult(asyncRet)
-		if err != nil {
-			return false, err
-		}
-
-		workspaceID = *ret.ID
-		return true, nil
-	})
+	}, nil)
 	if err != nil {
 		return "", err
 	}
+
+	resp, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	workspaceID = *resp.ID
 	return workspaceID, nil
 }
 
