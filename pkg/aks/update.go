@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	"github.com/sirupsen/logrus"
@@ -86,7 +85,7 @@ func updateCluster(desiredCluster armcontainerservice.ManagedCluster, actualClus
 	}
 
 	for _, ap := range desiredCluster.Properties.AgentPoolProfiles {
-		if !hasAgentPoolProfile(to.String(ap.Name), actualCluster.Properties.AgentPoolProfiles) {
+		if !hasAgentPoolProfile(String(ap.Name), actualCluster.Properties.AgentPoolProfiles) {
 			actualCluster.Properties.AgentPoolProfiles = append(actualCluster.Properties.AgentPoolProfiles, ap)
 		}
 	}
@@ -113,7 +112,7 @@ func updateCluster(desiredCluster armcontainerservice.ManagedCluster, actualClus
 		for i := range desiredCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges {
 			ipRange := (desiredCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges)[i]
 
-			if !hasAuthorizedIPRange(to.String(ipRange), actualCluster.Properties.APIServerAccessProfile) {
+			if !hasAuthorizedIPRange(String(ipRange), actualCluster.Properties.APIServerAccessProfile) {
 				actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges = append(actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges, ipRange)
 			}
 		}
@@ -182,26 +181,26 @@ func validateUpdate(desiredCluster armcontainerservice.ManagedCluster, actualClu
 		- LoadBalancerProfile
 	*/
 
-	if desiredCluster.Name != nil && actualCluster.Name != nil && to.String(desiredCluster.Name) != to.String(actualCluster.Name) {
+	if desiredCluster.Name != nil && actualCluster.Name != nil && String(desiredCluster.Name) != String(actualCluster.Name) {
 		logrus.Warnf("Cluster name update from [%s] to [%s] is not supported", *actualCluster.Name, *desiredCluster.Name)
 		return false
 	}
 
-	if desiredCluster.Location != nil && actualCluster.Location != nil && to.String(desiredCluster.Location) != to.String(actualCluster.Location) {
+	if desiredCluster.Location != nil && actualCluster.Location != nil && String(desiredCluster.Location) != String(actualCluster.Location) {
 		logrus.Warnf("Cluster location update from [%s] to [%s] is not supported", *actualCluster.Location, *desiredCluster.Location)
 		return false
 	}
 
 	if desiredCluster.Properties != nil && actualCluster.Properties != nil &&
 		desiredCluster.Properties.DNSPrefix != nil && actualCluster.Properties.DNSPrefix != nil &&
-		to.String(desiredCluster.Properties.DNSPrefix) != to.String(actualCluster.Properties.DNSPrefix) {
+		String(desiredCluster.Properties.DNSPrefix) != String(actualCluster.Properties.DNSPrefix) {
 		logrus.Warnf("Cluster DNS prefix update from [%s] to [%s] is not supported", *actualCluster.Properties.DNSPrefix, *desiredCluster.Properties.DNSPrefix)
 		return false
 	}
 
 	if desiredCluster.Properties != nil && actualCluster.Properties != nil &&
 		desiredCluster.Properties.APIServerAccessProfile != nil && actualCluster.Properties.APIServerAccessProfile != nil &&
-		to.Bool(desiredCluster.Properties.APIServerAccessProfile.EnablePrivateCluster) != to.Bool(actualCluster.Properties.APIServerAccessProfile.EnablePrivateCluster) {
+		Bool(desiredCluster.Properties.APIServerAccessProfile.EnablePrivateCluster) != Bool(actualCluster.Properties.APIServerAccessProfile.EnablePrivateCluster) {
 		logrus.Warn("Cluster can't be updated from private")
 		return false
 	}
@@ -215,7 +214,7 @@ func hasAgentPoolProfile(name string, agentPoolProfiles []*armcontainerservice.M
 	}
 
 	for _, ap := range agentPoolProfiles {
-		if to.String(ap.Name) == name {
+		if String(ap.Name) == name {
 			return true
 		}
 	}
@@ -228,7 +227,7 @@ func hasAuthorizedIPRange(name string, apiServerAccessProfile *armcontainerservi
 	}
 
 	for _, ipRange := range apiServerAccessProfile.AuthorizedIPRanges {
-		if to.String(ipRange) == name {
+		if String(ipRange) == name {
 			return true
 		}
 	}

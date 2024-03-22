@@ -17,7 +17,7 @@ func RemoveCluster(ctx context.Context, clusterClient services.ManagedClustersCl
 
 	resp, err := poller.PollUntilDone(ctx, nil)
 	if err != nil {
-		logrus.Errorf("can't get the AKS cluster create or update future response: %v", err)
+		logrus.Errorf("can't get the AKS cluster deletion response: %v", err)
 		return err
 	}
 

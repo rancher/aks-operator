@@ -3,7 +3,7 @@ package utils
 import "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 
 func ConvertToSliceOfPointers[T any](ptrToSlice *[]T) []*T {
-	var ret []*T
+	ret := make([]*T, 0)
 	if ptrToSlice == nil {
 		return ret
 	}
@@ -16,7 +16,7 @@ func ConvertToSliceOfPointers[T any](ptrToSlice *[]T) []*T {
 }
 
 func ConvertToPointerOfSlice[T any](sliceToPtr []*T) *[]T {
-	var ret []T
+	ret := make([]T, 0)
 	if sliceToPtr == nil {
 		return nil
 	}

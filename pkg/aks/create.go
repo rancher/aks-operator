@@ -9,7 +9,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
-	autorestto "github.com/Azure/go-autorest/autorest/to"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	"github.com/rancher/aks-operator/pkg/utils"
@@ -71,8 +70,8 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	}
 
 	nodeResourceGroupName := ""
-	if autorestto.String(spec.NodeResourceGroup) != "" {
-		nodeResourceGroupName = autorestto.String(spec.NodeResourceGroup)
+	if String(spec.NodeResourceGroup) != "" {
+		nodeResourceGroupName = String(spec.NodeResourceGroup)
 	} else {
 		nodeResourceGroupName = fmt.Sprintf("MC_%s_%s_%s", spec.ResourceGroup, spec.ClusterName, spec.ResourceLocation)
 		if len(nodeResourceGroupName) > maxNodeResourceGroupNameLength {
@@ -84,7 +83,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 
 	networkProfile := &armcontainerservice.NetworkProfile{}
 
-	switch autorestto.String(spec.OutboundType) {
+	switch String(spec.OutboundType) {
 	case string(containerservice.LoadBalancer):
 		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeLoadBalancer)
 	case string(containerservice.UserDefinedRouting):
@@ -93,7 +92,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeLoadBalancer)
 	}
 
-	switch autorestto.String(spec.NetworkPolicy) {
+	switch String(spec.NetworkPolicy) {
 	case string(containerservice.NetworkPolicyAzure):
 		networkProfile.NetworkPolicy = to.Ptr(armcontainerservice.NetworkPolicyAzure)
 	case string(containerservice.NetworkPolicyCalico):
@@ -101,10 +100,10 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	case "":
 		networkProfile.NetworkPolicy = nil
 	default:
-		return nil, fmt.Errorf("networkPolicy '%s' is not supported", autorestto.String(spec.NetworkPolicy))
+		return nil, fmt.Errorf("networkPolicy '%s' is not supported", String(spec.NetworkPolicy))
 	}
 
-	switch autorestto.String(spec.NetworkPlugin) {
+	switch String(spec.NetworkPlugin) {
 	case string(containerservice.Azure):
 		networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginAzure)
 	case string(containerservice.Kubenet):
@@ -112,30 +111,30 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	case "":
 		networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginKubenet)
 	default:
-		return nil, fmt.Errorf("networkPlugin '%s' is not supported", autorestto.String(spec.NetworkPlugin))
+		return nil, fmt.Errorf("networkPlugin '%s' is not supported", String(spec.NetworkPlugin))
 	}
 
-	if *networkProfile.NetworkPlugin == armcontainerservice.NetworkPluginKubenet && autorestto.String(spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) {
+	if *networkProfile.NetworkPlugin == armcontainerservice.NetworkPluginKubenet && String(spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) {
 		return nil, fmt.Errorf("network plugin Kubenet is not compatible with network policy Azure")
 	}
 
 	networkProfile.LoadBalancerSKU = to.Ptr(armcontainerservice.LoadBalancerSKUStandard)
 
-	if autorestto.String(spec.LoadBalancerSKU) == string(containerservice.Basic) {
+	if String(spec.LoadBalancerSKU) == string(containerservice.Basic) {
 		logrus.Warnf("loadBalancerSKU 'basic' is not supported")
 		networkProfile.LoadBalancerSKU = to.Ptr(armcontainerservice.LoadBalancerSKUBasic)
 	}
 
 	// Disable standard loadbalancer for UserDefinedRouting and use routing created by user pre-defined table for egress
-	if autorestto.String(spec.OutboundType) == string(containerservice.UserDefinedRouting) {
+	if String(spec.OutboundType) == string(containerservice.UserDefinedRouting) {
 		networkProfile.LoadBalancerSKU = nil
 	}
 
 	virtualNetworkResourceGroup := spec.ResourceGroup
-	if containerservice.NetworkPlugin(autorestto.String(spec.NetworkPlugin)) == containerservice.Azure || containerservice.NetworkPlugin(autorestto.String(spec.NetworkPlugin)) == containerservice.Kubenet {
+	if containerservice.NetworkPlugin(String(spec.NetworkPlugin)) == containerservice.Azure || containerservice.NetworkPlugin(String(spec.NetworkPlugin)) == containerservice.Kubenet {
 		// If a virtual network resource group is set, use it, otherwise assume it is the same as the cluster
-		if autorestto.String(spec.VirtualNetworkResourceGroup) != "" {
-			virtualNetworkResourceGroup = autorestto.String(spec.VirtualNetworkResourceGroup)
+		if String(spec.VirtualNetworkResourceGroup) != "" {
+			virtualNetworkResourceGroup = String(spec.VirtualNetworkResourceGroup)
 		}
 
 		// Setting the DockerBridgeCidr field is no longer supported, see https://github.com/Azure/AKS/issues/3534
@@ -171,18 +170,18 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		}
 
 		agentProfile.OrchestratorVersion = spec.KubernetesVersion
-		if autorestto.String(np.OrchestratorVersion) != "" {
+		if String(np.OrchestratorVersion) != "" {
 			agentProfile.OrchestratorVersion = np.OrchestratorVersion
 		}
 		if np.AvailabilityZones != nil && len(*np.AvailabilityZones) > 0 {
 			agentProfile.AvailabilityZones = utils.ConvertToSliceOfPointers(np.AvailabilityZones)
 		}
 
-		if autorestto.StringSlice(np.AvailabilityZones) != nil {
+		if StringSlice(np.AvailabilityZones) != nil {
 			agentProfile.AvailabilityZones = utils.ConvertToSliceOfPointers(np.AvailabilityZones)
 		}
 
-		if autorestto.Bool(np.EnableAutoScaling) {
+		if Bool(np.EnableAutoScaling) {
 			agentProfile.EnableAutoScaling = np.EnableAutoScaling
 			agentProfile.MaxCount = np.MaxCount
 			agentProfile.MinCount = np.MinCount
@@ -193,8 +192,8 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 				"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/virtualNetworks/%s/subnets/%s",
 				cred.SubscriptionID,
 				virtualNetworkResourceGroup,
-				autorestto.String(spec.VirtualNetwork),
-				autorestto.String(spec.Subnet),
+				String(spec.VirtualNetwork),
+				String(spec.Subnet),
 			))
 		}
 
@@ -225,13 +224,13 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	}
 
 	// Get monitoring from config spec
-	if autorestto.Bool(spec.Monitoring) {
+	if Bool(spec.Monitoring) {
 		managedCluster.Properties.AddonProfiles["omsAgent"] = &armcontainerservice.ManagedClusterAddonProfile{
 			Enabled: spec.Monitoring,
 		}
 
 		logAnalyticsWorkspaceResourceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx, workplacesClient,
-			spec.ResourceLocation, spec.ResourceGroup, autorestto.String(spec.LogAnalyticsWorkspaceGroup), autorestto.String(spec.LogAnalyticsWorkspaceName))
+			spec.ResourceLocation, spec.ResourceGroup, String(spec.LogAnalyticsWorkspaceGroup), String(spec.LogAnalyticsWorkspaceName))
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +252,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		}
 	}
 
-	if autorestto.String(spec.DNSPrefix) != "" {
+	if String(spec.DNSPrefix) != "" {
 		managedCluster.Properties.DNSPrefix = spec.DNSPrefix
 	}
 
@@ -264,7 +263,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		managedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges = utils.ConvertToSliceOfPointers(spec.AuthorizedIPRanges)
 	}
 
-	if autorestto.Bool(spec.PrivateCluster) {
+	if Bool(spec.PrivateCluster) {
 		if managedCluster.Properties.APIServerAccessProfile == nil {
 			managedCluster.Properties.APIServerAccessProfile = &armcontainerservice.ManagedClusterAPIServerAccessProfile{}
 		}
@@ -281,7 +280,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		}
 	}
 
-	if autorestto.Bool(spec.ManagedIdentity) {
+	if Bool(spec.ManagedIdentity) {
 		managedCluster.Identity = &armcontainerservice.ManagedClusterIdentity{
 			Type: to.Ptr(armcontainerservice.ResourceIdentityTypeSystemAssigned),
 		}
@@ -289,7 +288,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			managedCluster.Identity = &armcontainerservice.ManagedClusterIdentity{
 				Type: to.Ptr(armcontainerservice.ResourceIdentityTypeUserAssigned),
 				UserAssignedIdentities: map[string]*armcontainerservice.ManagedServiceIdentityUserAssignedIdentitiesValue{
-					autorestto.String(spec.UserAssignedIdentity): {},
+					String(spec.UserAssignedIdentity): {},
 				},
 			}
 		}
@@ -326,7 +325,7 @@ func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient services.Agent
 		}
 	}
 
-	_, err := agentPoolClient.BeginCreateOrUpdate(ctx, spec.ResourceGroup, spec.ClusterName, autorestto.String(np.Name), armcontainerservice.AgentPool{
+	_, err := agentPoolClient.BeginCreateOrUpdate(ctx, spec.ResourceGroup, spec.ClusterName, String(np.Name), armcontainerservice.AgentPool{
 		Properties: agentProfile,
 	})
 

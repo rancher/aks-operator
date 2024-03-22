@@ -6,7 +6,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	autorestto "github.com/Azure/go-autorest/autorest/to"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher/aks-operator/pkg/aks"
@@ -247,20 +246,20 @@ var _ = Describe("validateConfig", func() {
 				NodePools: []aksv1.AKSNodePool{
 					{
 						Name:         to.Ptr("test1"),
-						Count:        autorestto.Int32Ptr(1),
-						MaxPods:      autorestto.Int32Ptr(1),
+						Count:        to.Ptr(int32(1)),
+						MaxPods:      to.Ptr(int32(1)),
 						VMSize:       "test",
-						OsDiskSizeGB: autorestto.Int32Ptr(1),
+						OsDiskSizeGB: to.Ptr(int32(1)),
 						OsDiskType:   "test",
 						Mode:         "System",
 						OsType:       "test",
 					},
 					{
 						Name:         to.Ptr("test2"),
-						Count:        autorestto.Int32Ptr(1),
-						MaxPods:      autorestto.Int32Ptr(1),
+						Count:        to.Ptr(int32(1)),
+						MaxPods:      to.Ptr(int32(1)),
 						VMSize:       "test",
-						OsDiskSizeGB: autorestto.Int32Ptr(1),
+						OsDiskSizeGB: to.Ptr(int32(1)),
 						OsDiskType:   "test",
 						Mode:         "User",
 						OsType:       "test",
@@ -518,10 +517,10 @@ var _ = Describe("createCluster", func() {
 				NodePools: []aksv1.AKSNodePool{
 					{
 						Name:         to.Ptr("test"),
-						Count:        autorestto.Int32Ptr(1),
-						MaxPods:      autorestto.Int32Ptr(1),
+						Count:        to.Ptr(int32(1)),
+						MaxPods:      to.Ptr(int32(1)),
 						VMSize:       "test",
-						OsDiskSizeGB: autorestto.Int32Ptr(1),
+						OsDiskSizeGB: to.Ptr(int32(1)),
 						OsDiskType:   "test",
 						Mode:         "System",
 						OsType:       "test",
@@ -795,19 +794,19 @@ var _ = Describe("buildUpstreamClusterState", func() {
 				AgentPoolProfiles: []*armcontainerservice.ManagedClusterAgentPoolProfile{
 					{
 						Name:                to.Ptr("test"),
-						Count:               autorestto.Int32Ptr(1),
-						MaxPods:             autorestto.Int32Ptr(1),
+						Count:               to.Ptr(int32(1)),
+						MaxPods:             to.Ptr(int32(1)),
 						VMSize:              to.Ptr("Standard_DS2_v2"),
-						OSDiskSizeGB:        autorestto.Int32Ptr(1),
+						OSDiskSizeGB:        to.Ptr(int32(1)),
 						OSType:              to.Ptr(armcontainerservice.OSTypeLinux),
 						Mode:                to.Ptr(armcontainerservice.AgentPoolModeUser),
 						OrchestratorVersion: to.Ptr("test"),
 						AvailabilityZones:   utils.ConvertToSliceOfPointers(to.Ptr([]string{"test"})),
-						EnableAutoScaling:   autorestto.BoolPtr(true),
-						MaxCount:            autorestto.Int32Ptr(1),
-						MinCount:            autorestto.Int32Ptr(1),
+						EnableAutoScaling:   to.Ptr(true),
+						MaxCount:            to.Ptr(int32(1)),
+						MinCount:            to.Ptr(int32(1)),
 						VnetSubnetID:        to.Ptr("test"),
-						NodeLabels:          *autorestto.StringMapPtr(map[string]string{"test": "test"}),
+						NodeLabels:          *aks.StringMapPtr(map[string]string{"test": "test"}),
 						NodeTaints:          utils.ConvertToSliceOfPointers(to.Ptr([]string{"test"})),
 						UpgradeSettings: &armcontainerservice.AgentPoolUpgradeSettings{
 							MaxSurge: to.Ptr("test"),
@@ -834,22 +833,22 @@ var _ = Describe("buildUpstreamClusterState", func() {
 				},
 				AddonProfiles: map[string]*armcontainerservice.ManagedClusterAddonProfile{
 					"httpApplicationRouting": {
-						Enabled: autorestto.BoolPtr(true),
+						Enabled: to.Ptr(true),
 					},
 					"omsAgent": {
-						Enabled: autorestto.BoolPtr(true),
+						Enabled: to.Ptr(true),
 						Config: map[string]*string{
 							"logAnalyticsWorkspaceResourceID": to.Ptr("/workspaces/test/resourcegroups/test/"),
 						},
 					},
 				},
 				APIServerAccessProfile: &armcontainerservice.ManagedClusterAPIServerAccessProfile{
-					EnablePrivateCluster: autorestto.BoolPtr(true),
+					EnablePrivateCluster: to.Ptr(true),
 					AuthorizedIPRanges:   utils.ConvertToSliceOfPointers(to.Ptr([]string{"test"})),
 					PrivateDNSZone:       to.Ptr("test-private-dns-zone-id"),
 				},
 			},
-			Tags: *autorestto.StringMapPtr(map[string]string{"test": "test"}),
+			Tags: *aks.StringMapPtr(map[string]string{"test": "test"}),
 		}
 
 		handler = &Handler{
@@ -871,7 +870,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 
 		Expect(upstreamSpec.KubernetesVersion).To(Equal(clusterState.Properties.KubernetesVersion))
 		Expect(upstreamSpec.DNSPrefix).To(Equal(clusterState.Properties.DNSPrefix))
-		Expect(upstreamSpec.Tags).To(Equal(autorestto.StringMap(clusterState.Tags)))
+		Expect(upstreamSpec.Tags).To(Equal(aks.StringMap(clusterState.Tags)))
 		Expect(upstreamSpec.NodePools).To(HaveLen(1))
 		nodePools := clusterState.Properties.AgentPoolProfiles
 		Expect(upstreamSpec.NodePools[0].Name).To(Equal(nodePools[0].Name))
@@ -898,11 +897,11 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		Expect(upstreamSpec.LoadBalancerSKU).To(Equal(to.Ptr(string(*clusterState.Properties.NetworkProfile.LoadBalancerSKU))))
 		Expect(upstreamSpec.LinuxAdminUsername).To(Equal(clusterState.Properties.LinuxProfile.AdminUsername))
 		Expect(upstreamSpec.LinuxSSHPublicKey).To(Equal((clusterState.Properties.LinuxProfile.SSH.PublicKeys)[0].KeyData))
-		Expect(upstreamSpec.HTTPApplicationRouting).To(Equal(autorestto.BoolPtr(*clusterState.Properties.AddonProfiles["httpApplicationRouting"].Enabled)))
-		Expect(upstreamSpec.Monitoring).To(Equal(autorestto.BoolPtr(*clusterState.Properties.AddonProfiles["omsAgent"].Enabled)))
+		Expect(upstreamSpec.HTTPApplicationRouting).To(Equal(to.Ptr(*clusterState.Properties.AddonProfiles["httpApplicationRouting"].Enabled)))
+		Expect(upstreamSpec.Monitoring).To(Equal(to.Ptr(*clusterState.Properties.AddonProfiles["omsAgent"].Enabled)))
 		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(Equal(to.Ptr("test")))
 		Expect(upstreamSpec.LogAnalyticsWorkspaceName).To(Equal(to.Ptr("test/resourcegroups/test/")))
-		Expect(upstreamSpec.PrivateCluster).To(Equal(autorestto.BoolPtr(*clusterState.Properties.APIServerAccessProfile.EnablePrivateCluster)))
+		Expect(upstreamSpec.PrivateCluster).To(Equal(to.Ptr(*clusterState.Properties.APIServerAccessProfile.EnablePrivateCluster)))
 		Expect(upstreamSpec.PrivateDNSZone).To(Equal(to.Ptr(*clusterState.Properties.APIServerAccessProfile.PrivateDNSZone)))
 		Expect(upstreamSpec.AuthorizedIPRanges).To(Equal(utils.ConvertToPointerOfSlice(clusterState.Properties.APIServerAccessProfile.AuthorizedIPRanges)))
 	})

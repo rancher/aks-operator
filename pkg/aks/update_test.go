@@ -3,9 +3,8 @@ package aks
 import (
 	"errors"
 
-	azcoreto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
-	"github.com/Azure/go-autorest/autorest/to"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher/aks-operator/pkg/aks/services/mock_services"
@@ -28,27 +27,27 @@ var _ = Describe("updateCluster", func() {
 		clusterSpec = &aksv1.AKSClusterConfigSpec{
 			ResourceGroup:     "test-rg",
 			ClusterName:       "test-cluster",
-			KubernetesVersion: to.StringPtr("test-version"),
+			KubernetesVersion: to.Ptr("test-version"),
 			NodePools: []aksv1.AKSNodePool{
 				{
-					Name:       to.StringPtr("test-nodepool"),
-					MaxSurge:   to.StringPtr("13%"),
-					NodeTaints: to.StringSlicePtr([]string{"node=taint:NoSchedule"}),
+					Name:       to.Ptr("test-nodepool"),
+					MaxSurge:   to.Ptr("13%"),
+					NodeTaints: to.Ptr([]string{"node=taint:NoSchedule"}),
 					NodeLabels: map[string]*string{
-						"node-label": to.StringPtr("test-value"),
+						"node-label": to.Ptr("test-value"),
 					},
 				},
 			},
-			AuthorizedIPRanges:      to.StringSlicePtr([]string{"test-ip-range"}),
-			LinuxAdminUsername:      to.StringPtr("test-admin-username"),
-			LinuxSSHPublicKey:       to.StringPtr("test-ssh-public-key"),
-			NetworkPlugin:           to.StringPtr("azure"),
-			NetworkPolicy:           to.StringPtr("azure"),
-			NetworkDNSServiceIP:     to.StringPtr("test-dns-service-ip"),
-			NetworkDockerBridgeCIDR: to.StringPtr("test-docker-bridge-cidr"),
-			NetworkPodCIDR:          to.StringPtr("test-pod-cidr"),
-			NetworkServiceCIDR:      to.StringPtr("test-service-cidr"),
-			LoadBalancerSKU:         to.StringPtr("standard"),
+			AuthorizedIPRanges:      to.Ptr([]string{"test-ip-range"}),
+			LinuxAdminUsername:      to.Ptr("test-admin-username"),
+			LinuxSSHPublicKey:       to.Ptr("test-ssh-public-key"),
+			NetworkPlugin:           to.Ptr("azure"),
+			NetworkPolicy:           to.Ptr("azure"),
+			NetworkDNSServiceIP:     to.Ptr("test-dns-service-ip"),
+			NetworkDockerBridgeCIDR: to.Ptr("test-docker-bridge-cidr"),
+			NetworkPodCIDR:          to.Ptr("test-pod-cidr"),
+			NetworkServiceCIDR:      to.Ptr("test-service-cidr"),
+			LoadBalancerSKU:         to.Ptr("standard"),
 			Tags: map[string]string{
 				"test-tag": "test-value",
 			},
@@ -87,7 +86,7 @@ var _ = Describe("updateCluster", func() {
 		clusterSpecNodeTaints := *clusterSpec.NodePools[0].NodeTaints
 		Expect(expectedNodeTaints).To(HaveLen(1))
 		Expect(*expectedNodeTaints[0]).To(Equal(clusterSpecNodeTaints[0]))
-		Expect(agentPoolProfiles[0].NodeLabels).To(HaveKeyWithValue("node-label", to.StringPtr("test-value")))
+		Expect(agentPoolProfiles[0].NodeLabels).To(HaveKeyWithValue("node-label", to.Ptr("test-value")))
 		Expect(updatedCluster.Properties.APIServerAccessProfile).ToNot(BeNil())
 		authorizedIPranges := updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges
 		Expect(authorizedIPranges).To(HaveLen(1))
@@ -105,9 +104,9 @@ var _ = Describe("updateCluster", func() {
 		Expect(updatedCluster.Properties.NetworkProfile.ServiceCidr).To(Equal(clusterSpec.NetworkServiceCIDR))
 		Expect(*updatedCluster.Properties.NetworkProfile.LoadBalancerSKU).To(Equal(armcontainerservice.LoadBalancerSKUStandard))
 		Expect(updatedCluster.Properties.ServicePrincipalProfile).ToNot(BeNil())
-		Expect(updatedCluster.Properties.ServicePrincipalProfile.ClientID).To(Equal(to.StringPtr(cred.ClientID)))
-		Expect(updatedCluster.Properties.ServicePrincipalProfile.Secret).To(Equal(to.StringPtr(cred.ClientSecret)))
-		Expect(updatedCluster.Tags).To(HaveKeyWithValue("test-tag", to.StringPtr("test-value")))
+		Expect(updatedCluster.Properties.ServicePrincipalProfile.ClientID).To(Equal(to.Ptr(cred.ClientID)))
+		Expect(updatedCluster.Properties.ServicePrincipalProfile.Secret).To(Equal(to.Ptr(cred.ClientSecret)))
+		Expect(updatedCluster.Tags).To(HaveKeyWithValue("test-tag", to.Ptr("test-value")))
 	})
 
 	It("shouldn't update kubernetes version if it's not specified", func() {
@@ -122,7 +121,7 @@ var _ = Describe("updateCluster", func() {
 	It("shouldn't add new agent pool profile if it already exists", func() {
 		actualCluster.Properties.AgentPoolProfiles = []*armcontainerservice.ManagedClusterAgentPoolProfile{
 			{
-				Name: to.StringPtr("test-nodepool"),
+				Name: to.Ptr("test-nodepool"),
 			},
 		}
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
@@ -147,7 +146,7 @@ var _ = Describe("updateCluster", func() {
 
 	It("shoudn't add new authorized IP range if it already exists ", func() {
 		actualCluster.Properties.APIServerAccessProfile = &armcontainerservice.ManagedClusterAPIServerAccessProfile{
-			AuthorizedIPRanges: []*string{azcoreto.Ptr("test-ip-range")},
+			AuthorizedIPRanges: []*string{to.Ptr("test-ip-range")},
 		}
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
 		Expect(err).ToNot(HaveOccurred())
@@ -220,7 +219,7 @@ var _ = Describe("UpdateCluster", func() {
 	})
 
 	It("should fail when createManagedCluster returns error", func() {
-		clusterSpec.Monitoring = to.BoolPtr(true)
+		clusterSpec.Monitoring = to.Ptr(true)
 		Expect(UpdateCluster(ctx, &Credentials{}, clusterClientMock, workplacesClientMock, clusterSpec, "active")).ToNot(Succeed())
 	})
 
@@ -244,22 +243,22 @@ var _ = Describe("validateUpdate", func() {
 
 	BeforeEach(func() {
 		desiredCluster = &armcontainerservice.ManagedCluster{
-			Name:     to.StringPtr("test-cluster"),
-			Location: to.StringPtr("test-location"),
+			Name:     to.Ptr("test-cluster"),
+			Location: to.Ptr("test-location"),
 			Properties: &armcontainerservice.ManagedClusterProperties{
-				DNSPrefix: to.StringPtr("test-dns-prefix"),
+				DNSPrefix: to.Ptr("test-dns-prefix"),
 				APIServerAccessProfile: &armcontainerservice.ManagedClusterAPIServerAccessProfile{
-					EnablePrivateCluster: to.BoolPtr(true),
+					EnablePrivateCluster: to.Ptr(true),
 				},
 			},
 		}
 		actualCluster = &armcontainerservice.ManagedCluster{
-			Name:     to.StringPtr("test-cluster"),
-			Location: to.StringPtr("test-location"),
+			Name:     to.Ptr("test-cluster"),
+			Location: to.Ptr("test-location"),
 			Properties: &armcontainerservice.ManagedClusterProperties{
-				DNSPrefix: to.StringPtr("test-dns-prefix"),
+				DNSPrefix: to.Ptr("test-dns-prefix"),
 				APIServerAccessProfile: &armcontainerservice.ManagedClusterAPIServerAccessProfile{
-					EnablePrivateCluster: to.BoolPtr(true),
+					EnablePrivateCluster: to.Ptr(true),
 				},
 			},
 		}
@@ -270,22 +269,22 @@ var _ = Describe("validateUpdate", func() {
 	})
 
 	It("should be false if cluster name is different", func() {
-		desiredCluster.Name = to.StringPtr("test-cluster-2")
+		desiredCluster.Name = to.Ptr("test-cluster-2")
 		Expect(validateUpdate(*desiredCluster, *actualCluster)).To(BeFalse())
 	})
 
 	It("should be false if cluster location is different", func() {
-		desiredCluster.Location = to.StringPtr("test-location-2")
+		desiredCluster.Location = to.Ptr("test-location-2")
 		Expect(validateUpdate(*desiredCluster, *actualCluster)).To(BeFalse())
 	})
 
 	It("should be false if cluster dns prefix is different", func() {
-		desiredCluster.Properties.DNSPrefix = to.StringPtr("test-dns-prefix-2")
+		desiredCluster.Properties.DNSPrefix = to.Ptr("test-dns-prefix-2")
 		Expect(validateUpdate(*desiredCluster, *actualCluster)).To(BeFalse())
 	})
 
 	It("should be false if cluster private cluster is different", func() {
-		desiredCluster.Properties.APIServerAccessProfile.EnablePrivateCluster = to.BoolPtr(false)
+		desiredCluster.Properties.APIServerAccessProfile.EnablePrivateCluster = to.Ptr(false)
 		Expect(validateUpdate(*desiredCluster, *actualCluster)).To(BeFalse())
 	})
 })

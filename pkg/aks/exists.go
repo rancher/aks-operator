@@ -3,7 +3,6 @@ package aks
 import (
 	"context"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 )
@@ -23,5 +22,5 @@ func ExistsCluster(ctx context.Context, clusterClient services.ManagedClustersCl
 		return false, err
 	}
 
-	return to.String(resp.Name) == spec.ClusterName, err
+	return String(resp.Name) == spec.ClusterName, err
 }
