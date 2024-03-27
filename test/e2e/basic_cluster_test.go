@@ -3,7 +3,7 @@ package e2e
 import (
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
@@ -64,13 +64,13 @@ var _ = Describe("BasicCluster", func() {
 		patch := runtimeclient.MergeFrom(cluster.DeepCopy())
 
 		nodePool := aksv1.AKSNodePool{
-			Name:                to.StringPtr("pool1"),
-			AvailabilityZones:   to.StringSlicePtr([]string{"1", "2", "3"}),
-			MaxPods:             to.Int32Ptr(110),
-			Count:               to.Int32Ptr(1),
+			Name:                to.Ptr("pool1"),
+			AvailabilityZones:   to.Ptr([]string{"1", "2", "3"}),
+			MaxPods:             to.Ptr(int32(110)),
+			Count:               to.Ptr(int32(1)),
 			Mode:                "User",
 			OrchestratorVersion: cluster.Spec.AKSConfig.KubernetesVersion,
-			OsDiskSizeGB:        to.Int32Ptr(128),
+			OsDiskSizeGB:        to.Ptr(int32(128)),
 			OsDiskType:          "Linux",
 			VMSize:              "Standard_D2_v2",
 		}

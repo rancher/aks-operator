@@ -2,13 +2,10 @@ package controller
 
 import (
 	"errors"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-10-01/resources"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/golang/mock/gomock"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher/aks-operator/pkg/aks"
@@ -16,7 +13,9 @@ import (
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	aksv1controllers "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io"
 	"github.com/rancher/aks-operator/pkg/test"
+	"github.com/rancher/aks-operator/pkg/utils"
 	"github.com/rancher/wrangler/v2/pkg/generated/controllers/core"
+	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -93,10 +92,12 @@ var _ = Describe("importCluster", func() {
 	})
 
 	It("should create CA secret and update status", func() {
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin").
-			Return(containerservice.ManagedClusterAccessProfile{
-				AccessProfile: &containerservice.AccessProfile{
-					KubeConfig: to.ByteSlicePtr([]byte(kubeconfigYAML)),
+		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
+			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
+				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
+					Properties: &armcontainerservice.AccessProfile{
+						KubeConfig: []byte(kubeconfigYAML),
+					},
 				},
 			}, nil)
 
@@ -114,12 +115,15 @@ var _ = Describe("importCluster", func() {
 	})
 
 	It("don't return error if secret already exists", func() {
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin").
-			Return(containerservice.ManagedClusterAccessProfile{
-				AccessProfile: &containerservice.AccessProfile{
-					KubeConfig: to.ByteSlicePtr([]byte(kubeconfigYAML)),
-				},
-			}, nil).AnyTimes()
+		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
+			Return(
+				armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
+					ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
+						Properties: &armcontainerservice.AccessProfile{
+							KubeConfig: []byte(kubeconfigYAML),
+						},
+					},
+				}, nil).AnyTimes()
 
 		gotAKSConfig, err := handler.importCluster(aksConfig)
 		Expect(err).ToNot(HaveOccurred())
@@ -132,8 +136,10 @@ var _ = Describe("importCluster", func() {
 	})
 
 	It("should return error if something fails", func() {
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin").
-			Return(containerservice.ManagedClusterAccessProfile{}, errors.New("error"))
+		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
+			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
+				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{},
+			}, errors.New("error"))
 
 		gotAKSConfig, err := handler.importCluster(aksConfig)
 		Expect(err).To(HaveOccurred())
@@ -165,10 +171,12 @@ var _ = Describe("getClusterKubeConfig", func() {
 	})
 
 	It("should successfully return kubeconfig", func() {
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, "clusterAdmin").
-			Return(containerservice.ManagedClusterAccessProfile{
-				AccessProfile: &containerservice.AccessProfile{
-					KubeConfig: to.ByteSlicePtr([]byte(kubeconfigYAML)),
+		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, "clusterAdmin", nil).
+			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
+				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
+					Properties: &armcontainerservice.AccessProfile{
+						KubeConfig: []byte(kubeconfigYAML),
+					},
 				},
 			}, nil)
 
@@ -178,18 +186,22 @@ var _ = Describe("getClusterKubeConfig", func() {
 	})
 
 	It("should return error if azure request fails", func() {
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, "clusterAdmin").
-			Return(containerservice.ManagedClusterAccessProfile{}, errors.New("error"))
+		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, "clusterAdmin", nil).
+			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
+				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{},
+			}, errors.New("error"))
 
 		_, err := handler.getClusterKubeConfig(ctx, aksConfigSpec)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should return error if config is failed to be created", func() {
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, "clusterAdmin").
-			Return(containerservice.ManagedClusterAccessProfile{
-				AccessProfile: &containerservice.AccessProfile{
-					KubeConfig: to.ByteSlicePtr([]byte("invalid")),
+		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, "clusterAdmin", nil).
+			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
+				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
+					Properties: &armcontainerservice.AccessProfile{
+						KubeConfig: []byte("invalid"),
+					},
 				},
 			}, nil)
 
@@ -224,42 +236,42 @@ var _ = Describe("validateConfig", func() {
 		aksConfig = &aksv1.AKSClusterConfig{
 			Spec: aksv1.AKSClusterConfigSpec{
 				AzureCredentialSecret: credentialsSecret.Namespace + ":" + credentialsSecret.Name,
-				AuthBaseURL:           to.StringPtr("test"),
-				BaseURL:               to.StringPtr("test"),
+				AuthBaseURL:           to.Ptr("test"),
+				BaseURL:               to.Ptr("test"),
 				ResourceLocation:      "test",
 				ResourceGroup:         "test",
 				ClusterName:           "test",
-				KubernetesVersion:     to.StringPtr("test"),
-				DNSPrefix:             to.StringPtr("test"),
+				KubernetesVersion:     to.Ptr("test"),
+				DNSPrefix:             to.Ptr("test"),
 				NodePools: []aksv1.AKSNodePool{
 					{
-						Name:         to.StringPtr("test1"),
-						Count:        to.Int32Ptr(1),
-						MaxPods:      to.Int32Ptr(1),
+						Name:         to.Ptr("test1"),
+						Count:        to.Ptr(int32(1)),
+						MaxPods:      to.Ptr(int32(1)),
 						VMSize:       "test",
-						OsDiskSizeGB: to.Int32Ptr(1),
+						OsDiskSizeGB: to.Ptr(int32(1)),
 						OsDiskType:   "test",
 						Mode:         "System",
 						OsType:       "test",
 					},
 					{
-						Name:         to.StringPtr("test2"),
-						Count:        to.Int32Ptr(1),
-						MaxPods:      to.Int32Ptr(1),
+						Name:         to.Ptr("test2"),
+						Count:        to.Ptr(int32(1)),
+						MaxPods:      to.Ptr(int32(1)),
 						VMSize:       "test",
-						OsDiskSizeGB: to.Int32Ptr(1),
+						OsDiskSizeGB: to.Ptr(int32(1)),
 						OsDiskType:   "test",
 						Mode:         "User",
 						OsType:       "test",
 					},
 				},
-				NetworkPlugin:           to.StringPtr(string(containerservice.Azure)),
-				NetworkPolicy:           to.StringPtr(string(containerservice.NetworkPolicyAzure)),
-				VirtualNetwork:          to.StringPtr("test"),
-				Subnet:                  to.StringPtr("test"),
-				NetworkDNSServiceIP:     to.StringPtr("test"),
-				NetworkDockerBridgeCIDR: to.StringPtr("test"),
-				NetworkServiceCIDR:      to.StringPtr("test"),
+				NetworkPlugin:           to.Ptr(string(armcontainerservice.NetworkPluginAzure)),
+				NetworkPolicy:           to.Ptr(string(armcontainerservice.NetworkPolicyAzure)),
+				VirtualNetwork:          to.Ptr("test"),
+				Subnet:                  to.Ptr("test"),
+				NetworkDNSServiceIP:     to.Ptr("test"),
+				NetworkDockerBridgeCIDR: to.Ptr("test"),
+				NetworkServiceCIDR:      to.Ptr("test"),
 			},
 		}
 
@@ -363,8 +375,8 @@ var _ = Describe("validateConfig", func() {
 	})
 
 	It("should fail to validate aks config if node pool name is duplicated", func() {
-		aksConfig.Spec.NodePools[0].Name = to.StringPtr("test")
-		aksConfig.Spec.NodePools[1].Name = to.StringPtr("test")
+		aksConfig.Spec.NodePools[0].Name = to.Ptr("test")
+		aksConfig.Spec.NodePools[1].Name = to.Ptr("test")
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 	})
 
@@ -414,17 +426,17 @@ var _ = Describe("validateConfig", func() {
 	})
 
 	It("should fail if network plugin is not azure or kubenet", func() {
-		aksConfig.Spec.NetworkPlugin = to.StringPtr("invalid")
+		aksConfig.Spec.NetworkPlugin = to.Ptr("invalid")
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 	})
 
 	It("should fail if network policy is not azure or calico", func() {
-		aksConfig.Spec.NetworkPolicy = to.StringPtr("invalid")
+		aksConfig.Spec.NetworkPolicy = to.Ptr("invalid")
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 	})
 
 	It("should fail if network policy is azure and network plugin is kubenet", func() {
-		aksConfig.Spec.NetworkPlugin = to.StringPtr(string(containerservice.Kubenet))
+		aksConfig.Spec.NetworkPlugin = to.Ptr(string(armcontainerservice.NetworkPluginKubenet))
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 	})
 
@@ -463,6 +475,7 @@ var _ = Describe("createCluster", func() {
 		workplacesClientMock    *mock_services.MockWorkplacesClientInterface
 		aksConfig               *aksv1.AKSClusterConfig
 		credentialsSecret       *corev1.Secret
+		pollerMock              *mock_services.MockPoller[armcontainerservice.ManagedClustersClientCreateOrUpdateResponse]
 	)
 
 	BeforeEach(func() {
@@ -470,6 +483,7 @@ var _ = Describe("createCluster", func() {
 		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
 		resourceGroupClientMock = mock_services.NewMockResourceGroupsClientInterface(mockController)
 		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
+		pollerMock = mock_services.NewMockPoller[armcontainerservice.ManagedClustersClientCreateOrUpdateResponse](mockController)
 
 		credentialsSecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -493,32 +507,32 @@ var _ = Describe("createCluster", func() {
 			},
 			Spec: aksv1.AKSClusterConfigSpec{
 				AzureCredentialSecret: credentialsSecret.Namespace + ":" + credentialsSecret.Name,
-				AuthBaseURL:           to.StringPtr("test"),
-				BaseURL:               to.StringPtr("test"),
+				AuthBaseURL:           to.Ptr("test"),
+				BaseURL:               to.Ptr("test"),
 				ResourceLocation:      "test",
 				ResourceGroup:         "test",
 				ClusterName:           "test",
-				KubernetesVersion:     to.StringPtr("test"),
-				DNSPrefix:             to.StringPtr("test"),
+				KubernetesVersion:     to.Ptr("test"),
+				DNSPrefix:             to.Ptr("test"),
 				NodePools: []aksv1.AKSNodePool{
 					{
-						Name:         to.StringPtr("test"),
-						Count:        to.Int32Ptr(1),
-						MaxPods:      to.Int32Ptr(1),
+						Name:         to.Ptr("test"),
+						Count:        to.Ptr(int32(1)),
+						MaxPods:      to.Ptr(int32(1)),
 						VMSize:       "test",
-						OsDiskSizeGB: to.Int32Ptr(1),
+						OsDiskSizeGB: to.Ptr(int32(1)),
 						OsDiskType:   "test",
 						Mode:         "System",
 						OsType:       "test",
 					},
 				},
-				NetworkPlugin:           to.StringPtr(string(containerservice.Azure)),
-				NetworkPolicy:           to.StringPtr(string(containerservice.NetworkPolicyAzure)),
-				VirtualNetwork:          to.StringPtr("test"),
-				Subnet:                  to.StringPtr("test"),
-				NetworkDNSServiceIP:     to.StringPtr("test"),
-				NetworkDockerBridgeCIDR: to.StringPtr("test"),
-				NetworkServiceCIDR:      to.StringPtr("test"),
+				NetworkPlugin:           to.Ptr(string(armcontainerservice.NetworkPluginAzure)),
+				NetworkPolicy:           to.Ptr(string(armcontainerservice.NetworkPolicyAzure)),
+				VirtualNetwork:          to.Ptr("test"),
+				Subnet:                  to.Ptr("test"),
+				NetworkDNSServiceIP:     to.Ptr("test"),
+				NetworkDockerBridgeCIDR: to.Ptr("test"),
+				NetworkServiceCIDR:      to.Ptr("test"),
 			},
 		}
 
@@ -541,24 +555,13 @@ var _ = Describe("createCluster", func() {
 	})
 
 	It("should successfully create aks cluster", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(containerservice.ManagedCluster{
-			Response: autorest.Response{
-				Response: &http.Response{
-					StatusCode: 404,
-				},
-			},
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(armcontainerservice.ManagedClustersClientGetResponse{}, errors.New("cluster does not exist"))
+		clusterClientMock.EXPECT().BeginCreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(pollerMock, nil)
+
+		resourceGroupClientMock.EXPECT().CheckExistence(gomock.Any(), gomock.Any(), nil).Return(armresources.ResourceGroupsClientCheckExistenceResponse{
+			Success: false,
 		}, nil)
-
-		clusterClientMock.EXPECT().CreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(containerservice.ManagedClustersCreateOrUpdateFuture{},
-			nil)
-
-		resourceGroupClientMock.EXPECT().CheckExistence(gomock.Any(), gomock.Any()).Return(autorest.Response{
-			Response: &http.Response{
-				StatusCode: 404,
-			},
-		}, nil)
-
-		resourceGroupClientMock.EXPECT().CreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any()).Return(resources.Group{}, nil)
+		resourceGroupClientMock.EXPECT().CreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(armresources.ResourceGroupsClientCreateOrUpdateResponse{}, nil)
 
 		gotAKSConfig, err := handler.createCluster(aksConfig)
 		Expect(err).NotTo(HaveOccurred())
@@ -579,11 +582,9 @@ var _ = Describe("createCluster", func() {
 	})
 
 	It("should fail if cluster already exists", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(containerservice.ManagedCluster{
-			Response: autorest.Response{
-				Response: &http.Response{
-					StatusCode: 200,
-				},
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(armcontainerservice.ManagedClustersClientGetResponse{
+			ManagedCluster: armcontainerservice.ManagedCluster{
+				Name: to.Ptr(aksConfig.Name),
 			},
 		}, nil)
 
@@ -592,45 +593,28 @@ var _ = Describe("createCluster", func() {
 	})
 
 	It("should fail if resource group failed to be created", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(containerservice.ManagedCluster{
-			Response: autorest.Response{
-				Response: &http.Response{
-					StatusCode: 404,
-				},
-			},
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(armcontainerservice.ManagedClustersClientGetResponse{}, errors.New("cluster does not exist"))
+
+		resourceGroupClientMock.EXPECT().CheckExistence(gomock.Any(), gomock.Any(), nil).Return(armresources.ResourceGroupsClientCheckExistenceResponse{
+			Success: false,
 		}, nil)
 
-		resourceGroupClientMock.EXPECT().CheckExistence(gomock.Any(), gomock.Any()).Return(autorest.Response{
-			Response: &http.Response{
-				StatusCode: 404,
-			},
-		}, nil)
-
-		resourceGroupClientMock.EXPECT().CreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any()).Return(resources.Group{}, errors.New("error"))
+		resourceGroupClientMock.EXPECT().CreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(armresources.ResourceGroupsClientCreateOrUpdateResponse{}, errors.New("error"))
 
 		_, err := handler.createCluster(aksConfig)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should fail if cluster failed to be created", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(containerservice.ManagedCluster{
-			Response: autorest.Response{
-				Response: &http.Response{
-					StatusCode: 404,
-				},
-			},
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(armcontainerservice.ManagedClustersClientGetResponse{}, errors.New("cluster does not exist"))
+
+		clusterClientMock.EXPECT().BeginCreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(pollerMock, errors.New("error"))
+
+		resourceGroupClientMock.EXPECT().CheckExistence(gomock.Any(), gomock.Any(), nil).Return(armresources.ResourceGroupsClientCheckExistenceResponse{
+			Success: false,
 		}, nil)
 
-		clusterClientMock.EXPECT().CreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(containerservice.ManagedClustersCreateOrUpdateFuture{},
-			errors.New("error"))
-
-		resourceGroupClientMock.EXPECT().CheckExistence(gomock.Any(), gomock.Any()).Return(autorest.Response{
-			Response: &http.Response{
-				StatusCode: 404,
-			},
-		}, nil)
-
-		resourceGroupClientMock.EXPECT().CreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any()).Return(resources.Group{}, nil)
+		resourceGroupClientMock.EXPECT().CreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(armresources.ResourceGroupsClientCreateOrUpdateResponse{}, nil)
 
 		_, err := handler.createCluster(aksConfig)
 		Expect(err).To(HaveOccurred())
@@ -678,21 +662,24 @@ var _ = Describe("waitForCluster", func() {
 	})
 
 	It("should successfully wait for cluster", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-			containerservice.ManagedCluster{
-				ManagedClusterProperties: &containerservice.ManagedClusterProperties{
-					ProvisioningState: to.StringPtr(ClusterStatusSucceeded),
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						ProvisioningState: to.Ptr(ClusterStatusSucceeded),
+					},
 				},
 			},
 			nil)
 
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin").
-			Return(containerservice.ManagedClusterAccessProfile{
-				AccessProfile: &containerservice.AccessProfile{
-					KubeConfig: to.ByteSlicePtr([]byte(kubeconfigYAML)),
+		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
+			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
+				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
+					Properties: &armcontainerservice.AccessProfile{
+						KubeConfig: []byte(kubeconfigYAML),
+					},
 				},
-			},
-				nil)
+			}, nil)
 
 		gotAKSConfig, err := handler.waitForCluster(aksConfig)
 		Expect(err).NotTo(HaveOccurred())
@@ -700,10 +687,12 @@ var _ = Describe("waitForCluster", func() {
 	})
 
 	It("should continue waiting for cluster if it's still creating", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-			containerservice.ManagedCluster{
-				ManagedClusterProperties: &containerservice.ManagedClusterProperties{
-					ProvisioningState: to.StringPtr("Creating"),
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						ProvisioningState: to.Ptr("Creating"),
+					},
 				},
 			},
 			nil)
@@ -713,17 +702,22 @@ var _ = Describe("waitForCluster", func() {
 	})
 
 	It("should fail if azure client failed to get cluster", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(containerservice.ManagedCluster{}, errors.New("error"))
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{},
+			}, errors.New("error"))
 
 		_, err := handler.waitForCluster(aksConfig)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should fail if cluster creation failed", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-			containerservice.ManagedCluster{
-				ManagedClusterProperties: &containerservice.ManagedClusterProperties{
-					ProvisioningState: to.StringPtr(ClusterStatusFailed),
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						ProvisioningState: to.Ptr(ClusterStatusFailed),
+					},
 				},
 			},
 			nil)
@@ -740,20 +734,25 @@ var _ = Describe("waitForCluster", func() {
 		handler.secrets = brokenSecretFactory.Core().V1().Secret()
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-			containerservice.ManagedCluster{
-				ManagedClusterProperties: &containerservice.ManagedClusterProperties{
-					ProvisioningState: to.StringPtr(ClusterStatusSucceeded),
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						ProvisioningState: to.Ptr(ClusterStatusSucceeded),
+					},
 				},
 			},
 			nil)
 
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin").
-			Return(containerservice.ManagedClusterAccessProfile{
-				AccessProfile: &containerservice.AccessProfile{
-					KubeConfig: to.ByteSlicePtr([]byte(kubeconfigYAML)),
+		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
+			Return(
+				armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
+					ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
+						Properties: &armcontainerservice.AccessProfile{
+							KubeConfig: []byte(kubeconfigYAML),
+						},
+					},
 				},
-			},
 				nil)
 
 		_, err = handler.waitForCluster(aksConfig)
@@ -768,7 +767,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		clusterClientMock *mock_services.MockManagedClustersClientInterface
 		credentials       *aks.Credentials
 		aksConfig         *aksv1.AKSClusterConfig
-		clusterState      *containerservice.ManagedCluster
+		clusterState      *armcontainerservice.ManagedCluster
 	)
 
 	BeforeEach(func() {
@@ -776,8 +775,8 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
 
 		credentials = &aks.Credentials{
-			AuthBaseURL: to.StringPtr("test"),
-			BaseURL:     to.StringPtr("test"),
+			AuthBaseURL: to.Ptr("test"),
+			BaseURL:     to.Ptr("test"),
 		}
 
 		aksConfig = &aksv1.AKSClusterConfig{
@@ -788,69 +787,68 @@ var _ = Describe("buildUpstreamClusterState", func() {
 			Spec: aksv1.AKSClusterConfigSpec{},
 		}
 
-		clusterState = &containerservice.ManagedCluster{
-			ManagedClusterProperties: &containerservice.ManagedClusterProperties{
-				KubernetesVersion: to.StringPtr("test"),
-				DNSPrefix:         to.StringPtr("test"),
-				AgentPoolProfiles: &[]containerservice.ManagedClusterAgentPoolProfile{
+		clusterState = &armcontainerservice.ManagedCluster{
+			Properties: &armcontainerservice.ManagedClusterProperties{
+				KubernetesVersion: to.Ptr("test"),
+				DNSPrefix:         to.Ptr("test"),
+				AgentPoolProfiles: []*armcontainerservice.ManagedClusterAgentPoolProfile{
 					{
-						Name:                to.StringPtr("test"),
-						Count:               to.Int32Ptr(1),
-						MaxPods:             to.Int32Ptr(1),
-						VMSize:              containerservice.StandardA1,
-						OsDiskSizeGB:        to.Int32Ptr(1),
-						OsType:              containerservice.Linux,
-						Mode:                containerservice.User,
-						OrchestratorVersion: to.StringPtr("test"),
-						AvailabilityZones:   to.StringSlicePtr([]string{"test"}),
-						EnableAutoScaling:   to.BoolPtr(true),
-						MaxCount:            to.Int32Ptr(1),
-						MinCount:            to.Int32Ptr(1),
-						VnetSubnetID:        to.StringPtr("test"),
-						NodeLabels:          *to.StringMapPtr(map[string]string{"test": "test"}),
-						NodeTaints:          to.StringSlicePtr([]string{"test"}),
-						UpgradeSettings: &containerservice.AgentPoolUpgradeSettings{
-							MaxSurge: to.StringPtr("test"),
+						Name:                to.Ptr("test"),
+						Count:               to.Ptr(int32(1)),
+						MaxPods:             to.Ptr(int32(1)),
+						VMSize:              to.Ptr("Standard_DS2_v2"),
+						OSDiskSizeGB:        to.Ptr(int32(1)),
+						OSType:              to.Ptr(armcontainerservice.OSTypeLinux),
+						Mode:                to.Ptr(armcontainerservice.AgentPoolModeUser),
+						OrchestratorVersion: to.Ptr("test"),
+						AvailabilityZones:   utils.ConvertToSliceOfPointers(to.Ptr([]string{"test"})),
+						EnableAutoScaling:   to.Ptr(true),
+						MaxCount:            to.Ptr(int32(1)),
+						MinCount:            to.Ptr(int32(1)),
+						VnetSubnetID:        to.Ptr("test"),
+						NodeLabels:          *aks.StringMapPtr(map[string]string{"test": "test"}),
+						NodeTaints:          utils.ConvertToSliceOfPointers(to.Ptr([]string{"test"})),
+						UpgradeSettings: &armcontainerservice.AgentPoolUpgradeSettings{
+							MaxSurge: to.Ptr("test"),
 						},
 					},
 				},
-				NetworkProfile: &containerservice.NetworkProfile{
-					NetworkPlugin:    containerservice.Azure,
-					DNSServiceIP:     to.StringPtr("test"),
-					DockerBridgeCidr: to.StringPtr("test"),
-					ServiceCidr:      to.StringPtr("test"),
-					NetworkPolicy:    containerservice.NetworkPolicyAzure,
-					PodCidr:          to.StringPtr("test"),
-					LoadBalancerSku:  containerservice.Standard,
+				NetworkProfile: &armcontainerservice.NetworkProfile{
+					NetworkPlugin:   to.Ptr(armcontainerservice.NetworkPluginAzure),
+					DNSServiceIP:    to.Ptr("test"),
+					ServiceCidr:     to.Ptr("test"),
+					NetworkPolicy:   to.Ptr(armcontainerservice.NetworkPolicyAzure),
+					PodCidr:         to.Ptr("test"),
+					LoadBalancerSKU: to.Ptr(armcontainerservice.LoadBalancerSKUStandard),
 				},
-				LinuxProfile: &containerservice.LinuxProfile{
-					AdminUsername: to.StringPtr("test"),
-					SSH: &containerservice.SSHConfiguration{
-						PublicKeys: &[]containerservice.SSHPublicKey{
+				LinuxProfile: &armcontainerservice.LinuxProfile{
+					AdminUsername: to.Ptr("test"),
+					SSH: &armcontainerservice.SSHConfiguration{
+						PublicKeys: []*armcontainerservice.SSHPublicKey{
 							{
-								KeyData: to.StringPtr("test"),
+								KeyData: to.Ptr("test"),
 							},
 						},
 					},
 				},
-				AddonProfiles: map[string]*containerservice.ManagedClusterAddonProfile{
+				AddonProfiles: map[string]*armcontainerservice.ManagedClusterAddonProfile{
 					"httpApplicationRouting": {
-						Enabled: to.BoolPtr(true),
+						Enabled: to.Ptr(true),
 					},
 					"omsAgent": {
-						Enabled: to.BoolPtr(true),
+						Enabled: to.Ptr(true),
 						Config: map[string]*string{
-							"logAnalyticsWorkspaceResourceID": to.StringPtr("/workspaces/test/resourcegroups/test/"),
+							"logAnalyticsWorkspaceResourceID": to.Ptr("/workspaces/test/resourcegroups/test/"),
 						},
 					},
 				},
-				APIServerAccessProfile: &containerservice.ManagedClusterAPIServerAccessProfile{
-					EnablePrivateCluster: to.BoolPtr(true),
-					AuthorizedIPRanges:   to.StringSlicePtr([]string{"test"}),
-					PrivateDNSZone:       to.StringPtr("test-private-dns-zone-id"),
+				APIServerAccessProfile: &armcontainerservice.ManagedClusterAPIServerAccessProfile{
+					EnablePrivateCluster: to.Ptr(true),
+					AuthorizedIPRanges:   utils.ConvertToSliceOfPointers(to.Ptr([]string{"test"})),
+					PrivateDNSZone:       to.Ptr("test-private-dns-zone-id"),
 				},
 			},
-			Tags: *to.StringMapPtr(map[string]string{"test": "test"}),
+			Tags: *aks.StringMapPtr(map[string]string{"test": "test"}),
 		}
 
 		handler = &Handler{
@@ -861,69 +859,80 @@ var _ = Describe("buildUpstreamClusterState", func() {
 	})
 
 	It("should build upstream cluster state", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(*clusterState, nil)
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: *clusterState,
+			}, nil)
 
 		upstreamSpec, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(upstreamSpec).NotTo(BeNil())
 
-		Expect(upstreamSpec.KubernetesVersion).To(Equal(clusterState.KubernetesVersion))
-		Expect(upstreamSpec.DNSPrefix).To(Equal(clusterState.DNSPrefix))
-		Expect(upstreamSpec.Tags).To(Equal(to.StringMap(clusterState.Tags)))
+		Expect(upstreamSpec.KubernetesVersion).To(Equal(clusterState.Properties.KubernetesVersion))
+		Expect(upstreamSpec.DNSPrefix).To(Equal(clusterState.Properties.DNSPrefix))
+		Expect(upstreamSpec.Tags).To(Equal(aks.StringMap(clusterState.Tags)))
 		Expect(upstreamSpec.NodePools).To(HaveLen(1))
-		nodePools := *clusterState.AgentPoolProfiles
+		nodePools := clusterState.Properties.AgentPoolProfiles
 		Expect(upstreamSpec.NodePools[0].Name).To(Equal(nodePools[0].Name))
 		Expect(upstreamSpec.NodePools[0].Count).To(Equal(nodePools[0].Count))
 		Expect(upstreamSpec.NodePools[0].MaxPods).To(Equal(nodePools[0].MaxPods))
-		Expect(upstreamSpec.NodePools[0].VMSize).To(Equal(string(nodePools[0].VMSize)))
-		Expect(upstreamSpec.NodePools[0].OsDiskSizeGB).To(Equal(nodePools[0].OsDiskSizeGB))
-		Expect(upstreamSpec.NodePools[0].OsType).To(Equal(string(nodePools[0].OsType)))
-		Expect(upstreamSpec.NodePools[0].Mode).To(Equal(string(nodePools[0].Mode)))
+		Expect(upstreamSpec.NodePools[0].VMSize).To(Equal(*nodePools[0].VMSize))
+		Expect(upstreamSpec.NodePools[0].OsDiskSizeGB).To(Equal(nodePools[0].OSDiskSizeGB))
+		Expect(upstreamSpec.NodePools[0].OsType).To(Equal(string(*nodePools[0].OSType)))
+		Expect(upstreamSpec.NodePools[0].Mode).To(Equal(string(*nodePools[0].Mode)))
 		Expect(upstreamSpec.NodePools[0].OrchestratorVersion).To(Equal(nodePools[0].OrchestratorVersion))
-		Expect(upstreamSpec.NodePools[0].AvailabilityZones).To(Equal(nodePools[0].AvailabilityZones))
+		Expect(upstreamSpec.NodePools[0].AvailabilityZones).To(Equal(utils.ConvertToPointerOfSlice(nodePools[0].AvailabilityZones)))
 		Expect(upstreamSpec.NodePools[0].EnableAutoScaling).To(Equal(nodePools[0].EnableAutoScaling))
 		Expect(upstreamSpec.NodePools[0].MaxCount).To(Equal(nodePools[0].MaxCount))
 		Expect(upstreamSpec.NodePools[0].MinCount).To(Equal(nodePools[0].MinCount))
 		Expect(upstreamSpec.NodePools[0].VnetSubnetID).To(Equal(nodePools[0].VnetSubnetID))
 		Expect(upstreamSpec.NodePools[0].NodeLabels).To(Equal(nodePools[0].NodeLabels))
-		Expect(upstreamSpec.NodePools[0].NodeTaints).To(Equal(nodePools[0].NodeTaints))
+		Expect(upstreamSpec.NodePools[0].NodeTaints).To(Equal(utils.ConvertToPointerOfSlice(nodePools[0].NodeTaints)))
 		Expect(upstreamSpec.NodePools[0].MaxSurge).To(Equal(nodePools[0].UpgradeSettings.MaxSurge))
-		Expect(upstreamSpec.NetworkPlugin).To(Equal(to.StringPtr(string(clusterState.NetworkProfile.NetworkPlugin))))
-		Expect(upstreamSpec.NetworkDNSServiceIP).To(Equal(clusterState.NetworkProfile.DNSServiceIP))
-		Expect(upstreamSpec.NetworkDockerBridgeCIDR).To(Equal(clusterState.NetworkProfile.DockerBridgeCidr))
-		Expect(upstreamSpec.NetworkServiceCIDR).To(Equal(clusterState.NetworkProfile.ServiceCidr))
-		Expect(upstreamSpec.NetworkPolicy).To(Equal(to.StringPtr(string(clusterState.NetworkProfile.NetworkPolicy))))
-		Expect(upstreamSpec.NetworkPodCIDR).To(Equal(clusterState.NetworkProfile.PodCidr))
-		Expect(upstreamSpec.LoadBalancerSKU).To(Equal(to.StringPtr(string(clusterState.NetworkProfile.LoadBalancerSku))))
-		Expect(upstreamSpec.LinuxAdminUsername).To(Equal(clusterState.LinuxProfile.AdminUsername))
-		Expect(upstreamSpec.LinuxSSHPublicKey).To(Equal(to.StringPtr(*(*clusterState.LinuxProfile.SSH.PublicKeys)[0].KeyData)))
-		Expect(upstreamSpec.HTTPApplicationRouting).To(Equal(to.BoolPtr(*clusterState.AddonProfiles["httpApplicationRouting"].Enabled)))
-		Expect(upstreamSpec.Monitoring).To(Equal(to.BoolPtr(*clusterState.AddonProfiles["omsAgent"].Enabled)))
-		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(Equal(to.StringPtr("test")))
-		Expect(upstreamSpec.LogAnalyticsWorkspaceName).To(Equal(to.StringPtr("test/resourcegroups/test/")))
-		Expect(upstreamSpec.PrivateCluster).To(Equal(to.BoolPtr(*clusterState.APIServerAccessProfile.EnablePrivateCluster)))
-		Expect(upstreamSpec.PrivateDNSZone).To(Equal(to.StringPtr(*clusterState.APIServerAccessProfile.PrivateDNSZone)))
-		Expect(upstreamSpec.AuthorizedIPRanges).To(Equal(clusterState.APIServerAccessProfile.AuthorizedIPRanges))
+		Expect(upstreamSpec.NetworkPlugin).To(Equal(to.Ptr(string(*clusterState.Properties.NetworkProfile.NetworkPlugin))))
+		Expect(upstreamSpec.NetworkDNSServiceIP).To(Equal(clusterState.Properties.NetworkProfile.DNSServiceIP))
+		Expect(upstreamSpec.NetworkServiceCIDR).To(Equal(clusterState.Properties.NetworkProfile.ServiceCidr))
+		Expect(upstreamSpec.NetworkPolicy).To(Equal(to.Ptr(string(*clusterState.Properties.NetworkProfile.NetworkPolicy))))
+		Expect(upstreamSpec.NetworkPodCIDR).To(Equal(clusterState.Properties.NetworkProfile.PodCidr))
+		Expect(upstreamSpec.LoadBalancerSKU).To(Equal(to.Ptr(string(*clusterState.Properties.NetworkProfile.LoadBalancerSKU))))
+		Expect(upstreamSpec.LinuxAdminUsername).To(Equal(clusterState.Properties.LinuxProfile.AdminUsername))
+		Expect(upstreamSpec.LinuxSSHPublicKey).To(Equal((clusterState.Properties.LinuxProfile.SSH.PublicKeys)[0].KeyData))
+		Expect(upstreamSpec.HTTPApplicationRouting).To(Equal(to.Ptr(*clusterState.Properties.AddonProfiles["httpApplicationRouting"].Enabled)))
+		Expect(upstreamSpec.Monitoring).To(Equal(to.Ptr(*clusterState.Properties.AddonProfiles["omsAgent"].Enabled)))
+		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(Equal(to.Ptr("test")))
+		Expect(upstreamSpec.LogAnalyticsWorkspaceName).To(Equal(to.Ptr("test/resourcegroups/test/")))
+		Expect(upstreamSpec.PrivateCluster).To(Equal(to.Ptr(*clusterState.Properties.APIServerAccessProfile.EnablePrivateCluster)))
+		Expect(upstreamSpec.PrivateDNSZone).To(Equal(to.Ptr(*clusterState.Properties.APIServerAccessProfile.PrivateDNSZone)))
+		Expect(upstreamSpec.AuthorizedIPRanges).To(Equal(utils.ConvertToPointerOfSlice(clusterState.Properties.APIServerAccessProfile.AuthorizedIPRanges)))
 	})
 
 	It("should fail if azure client fails to get cluster", func() {
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(*clusterState, errors.New("error"))
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: *clusterState,
+			}, errors.New("error"))
 
 		_, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should fail if kubernetes version is nil", func() {
-		clusterState.KubernetesVersion = nil
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(*clusterState, nil)
+		clusterState.Properties.KubernetesVersion = nil
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: *clusterState,
+			}, nil)
 
 		_, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should fail if dns prefix is nil", func() {
-		clusterState.DNSPrefix = nil
-		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(*clusterState, nil)
+	It("should succeed if dns prefix is nil", func() {
+		clusterState.Properties.DNSPrefix = nil
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: *clusterState,
+			}, nil)
 
 		_, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
 		Expect(err).ToNot(HaveOccurred())

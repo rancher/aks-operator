@@ -4,13 +4,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/services/operationalinsights/mgmt/2020-08-01/operationalinsights"
-	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/golang/mock/gomock"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/operationalinsights/armoperationalinsights"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher/aks-operator/pkg/aks/services/mock_services"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_generateUniqueLogWorkspace(t *testing.T) {
@@ -35,12 +35,14 @@ func Test_generateUniqueLogWorkspace(t *testing.T) {
 var _ = Describe("CheckLogAnalyticsWorkspaceForMonitoring", func() {
 	var (
 		workplacesClientMock *mock_services.MockWorkplacesClientInterface
+		pollerMock           *mock_services.MockPoller[armoperationalinsights.WorkspacesClientCreateOrUpdateResponse]
 		mockController       *gomock.Controller
 	)
 
 	BeforeEach(func() {
 		mockController = gomock.NewController(GinkgoT())
 		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
+		pollerMock = mock_services.NewMockPoller[armoperationalinsights.WorkspacesClientCreateOrUpdateResponse](mockController)
 	})
 
 	AfterEach(func() {
@@ -51,9 +53,12 @@ var _ = Describe("CheckLogAnalyticsWorkspaceForMonitoring", func() {
 		workspaceName := "workspaceName"
 		workspaceResourceGroup := "resourcegroup"
 		id := "workspaceID"
-		workplacesClientMock.EXPECT().Get(ctx, workspaceResourceGroup, workspaceName).Return(operationalinsights.Workspace{
-			ID: &id,
-		}, nil)
+		workplacesClientMock.EXPECT().Get(ctx, workspaceResourceGroup, workspaceName, nil).Return(
+			armoperationalinsights.WorkspacesClientGetResponse{
+				Workspace: armoperationalinsights.Workspace{
+					ID: &id,
+				},
+			}, nil)
 		workspaceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx,
 			workplacesClientMock,
 			"eastus", workspaceResourceGroup, "", workspaceName)
@@ -65,19 +70,23 @@ var _ = Describe("CheckLogAnalyticsWorkspaceForMonitoring", func() {
 		workspaceName := "workspaceName"
 		workspaceResourceGroup := "resourcegroup"
 		id := "workspaceID"
-		workplacesClientMock.EXPECT().Get(ctx, workspaceResourceGroup, workspaceName).Return(operationalinsights.Workspace{}, errors.New("not found"))
-		workplacesClientMock.EXPECT().CreateOrUpdate(ctx, workspaceResourceGroup, workspaceName,
-			operationalinsights.Workspace{
-				Location: to.StringPtr("eastus"),
-				WorkspaceProperties: &operationalinsights.WorkspaceProperties{
-					Sku: &operationalinsights.WorkspaceSku{
-						Name: operationalinsights.WorkspaceSkuNameEnumStandalone,
+		skuName := armoperationalinsights.WorkspaceSKUNameEnumStandalone
+		workplacesClientMock.EXPECT().Get(ctx, workspaceResourceGroup, workspaceName, nil).Return(armoperationalinsights.WorkspacesClientGetResponse{}, errors.New("not found"))
+		workplacesClientMock.EXPECT().BeginCreateOrUpdate(ctx, workspaceResourceGroup, workspaceName,
+			armoperationalinsights.Workspace{
+				Location: to.Ptr("eastus"),
+				Properties: &armoperationalinsights.WorkspaceProperties{
+					SKU: &armoperationalinsights.WorkspaceSKU{
+						Name: &skuName,
 					},
 				},
 			},
-		).Return(operationalinsights.WorkspacesCreateOrUpdateFuture{}, nil)
-		workplacesClientMock.EXPECT().AsyncCreateUpdateResult(gomock.Any()).Return(operationalinsights.Workspace{
-			ID: &id,
+			nil,
+		).Return(pollerMock, nil)
+		pollerMock.EXPECT().PollUntilDone(ctx, nil).Return(armoperationalinsights.WorkspacesClientCreateOrUpdateResponse{
+			Workspace: armoperationalinsights.Workspace{
+				ID: to.Ptr(id),
+			},
 		}, nil)
 
 		workspaceID, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx,
@@ -89,8 +98,8 @@ var _ = Describe("CheckLogAnalyticsWorkspaceForMonitoring", func() {
 	})
 
 	It("should fail if CreateOrUpdate returns error", func() {
-		workplacesClientMock.EXPECT().Get(ctx, gomock.Any(), gomock.Any()).Return(operationalinsights.Workspace{}, errors.New("not found"))
-		workplacesClientMock.EXPECT().CreateOrUpdate(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(operationalinsights.WorkspacesCreateOrUpdateFuture{}, errors.New("error"))
+		workplacesClientMock.EXPECT().Get(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(armoperationalinsights.WorkspacesClientGetResponse{}, errors.New("not found"))
+		workplacesClientMock.EXPECT().BeginCreateOrUpdate(ctx, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(pollerMock, errors.New("error"))
 
 		_, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx,
 			workplacesClientMock,
@@ -99,10 +108,10 @@ var _ = Describe("CheckLogAnalyticsWorkspaceForMonitoring", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should fail if AsyncCreateUpdateResult returns error", func() {
-		workplacesClientMock.EXPECT().Get(ctx, gomock.Any(), gomock.Any()).Return(operationalinsights.Workspace{}, errors.New("not found"))
-		workplacesClientMock.EXPECT().CreateOrUpdate(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(operationalinsights.WorkspacesCreateOrUpdateFuture{}, nil)
-		workplacesClientMock.EXPECT().AsyncCreateUpdateResult(gomock.Any()).Return(operationalinsights.Workspace{}, errors.New("error"))
+	It("should fail if PollUntilDone returns error", func() {
+		workplacesClientMock.EXPECT().Get(ctx, gomock.Any(), gomock.Any(), gomock.Any()).Return(armoperationalinsights.WorkspacesClientGetResponse{}, errors.New("not found"))
+		workplacesClientMock.EXPECT().BeginCreateOrUpdate(ctx, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(pollerMock, nil)
+		pollerMock.EXPECT().PollUntilDone(ctx, nil).Return(armoperationalinsights.WorkspacesClientCreateOrUpdateResponse{}, errors.New("error"))
 
 		_, err := CheckLogAnalyticsWorkspaceForMonitoring(ctx,
 			workplacesClientMock,

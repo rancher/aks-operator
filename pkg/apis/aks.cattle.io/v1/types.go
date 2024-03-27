@@ -165,7 +165,7 @@ type AKSNodePool struct {
 	// +kubebuilder:validation:Minimum=0
 	OsDiskSizeGB *int32 `json:"osDiskSizeGB,omitempty"`
 	// OSDiskType is the type of the OS disk.
-	// +kubebuilder:validation:Enum=Standard_LRS;Premium_LRS;StandardSSD_LRS;UltraSSD_LRS
+	// +kubebuilder:validation:Enum=Standard_LRS;Premium_LRS;StandardSSD_LRS;UltraSSD_LRS;Ephemeral;Managed
 	OsDiskType string `json:"osDiskType,omitempty"`
 	// Mode is the mode of the node pool.
 	// +kubebuilder:validation:Enum=System;User

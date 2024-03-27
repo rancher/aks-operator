@@ -10,8 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/rancher/aks-operator/pkg/aks"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
@@ -289,18 +291,18 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	result, err := h.azureClients.clustersClient.Get(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName)
+	result, err := h.azureClients.clustersClient.Get(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName, nil)
 	if err != nil {
 		return config, err
 	}
 
-	if config.Status.RBACEnabled == nil && result.EnableRBAC != nil {
+	if config.Status.RBACEnabled == nil && result.Properties.EnableRBAC != nil {
 		config = config.DeepCopy()
-		config.Status.RBACEnabled = result.EnableRBAC
+		config.Status.RBACEnabled = result.Properties.EnableRBAC
 		return h.aksCC.UpdateStatus(config)
 	}
 
-	clusterState := *result.ManagedClusterProperties.ProvisioningState
+	clusterState := *result.Properties.ProvisioningState
 	if clusterState == ClusterStatusFailed {
 		return config, fmt.Errorf("update failed for cluster [%s], status: %s", config.Spec.ClusterName, clusterState)
 	}
@@ -322,8 +324,8 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 		return config, nil
 	}
 
-	for _, np := range *result.AgentPoolProfiles {
-		if status := to.String(np.ProvisioningState); status == NodePoolCreating ||
+	for _, np := range result.Properties.AgentPoolProfiles {
+		if status := aks.String(np.ProvisioningState); status == NodePoolCreating ||
 			status == NodePoolScaling || status == NodePoolDeleting || status == NodePoolUpgrading {
 			// If the node pool is in an active state in Rancher but is updating in AKS, then an update was initiated outside of Rancher,
 			// such as in AKS console. In this case, this is a no-op and the reconciliation will happen after syncing.
@@ -333,9 +335,9 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 			}
 			switch status {
 			case NodePoolDeleting:
-				logrus.Infof("Waiting for cluster [%s] to delete node pool [%s]", config.Name, to.String(np.Name))
+				logrus.Infof("Waiting for cluster [%s] to delete node pool [%s]", config.Name, aks.String(np.Name))
 			default:
-				logrus.Infof("Waiting for cluster [%s] to update node pool [%s]", config.Name, to.String(np.Name))
+				logrus.Infof("Waiting for cluster [%s] to update node pool [%s]", config.Name, aks.String(np.Name))
 			}
 			h.aksEnqueueAfter(config.Namespace, config.Name, 30*time.Second)
 			return config, nil
@@ -437,20 +439,20 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	}
 
 	if config.Spec.NetworkPlugin != nil &&
-		to.String(config.Spec.NetworkPlugin) != string(containerservice.Kubenet) &&
-		to.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
-		return fmt.Errorf("invalid network plugin value [%s] for [%s] cluster config", to.String(config.Spec.NetworkPlugin), config.Spec.ClusterName)
+		aks.String(config.Spec.NetworkPlugin) != string(containerservice.Kubenet) &&
+		aks.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
+		return fmt.Errorf("invalid network plugin value [%s] for [%s] cluster config", aks.String(config.Spec.NetworkPlugin), config.Spec.ClusterName)
 	}
 	if config.Spec.NetworkPolicy != nil &&
-		to.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyAzure) &&
-		to.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyCalico) {
-		return fmt.Errorf("invalid network policy value [%s] for [%s] cluster config", to.String(config.Spec.NetworkPolicy), config.Spec.ClusterName)
+		aks.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyAzure) &&
+		aks.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyCalico) {
+		return fmt.Errorf("invalid network policy value [%s] for [%s] cluster config", aks.String(config.Spec.NetworkPolicy), config.Spec.ClusterName)
 	}
-	if to.String(config.Spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) && to.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
+	if aks.String(config.Spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) && aks.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
 		return fmt.Errorf("azure network policy can be used only with Azure CNI network plugin for [%s] cluster", config.Spec.ClusterName)
 	}
 	cannotBeNilErrorAzurePlugin := "field [%s] must be provided for cluster [%s] config when Azure CNI network plugin is used"
-	if to.String(config.Spec.NetworkPlugin) == string(containerservice.Azure) {
+	if aks.String(config.Spec.NetworkPlugin) == string(containerservice.Azure) {
 		if config.Spec.VirtualNetwork == nil {
 			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "virtualNetwork", config.Spec.ClusterName)
 		}
@@ -474,12 +476,12 @@ func (h *Handler) waitForCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	result, err := h.azureClients.clustersClient.Get(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName)
+	result, err := h.azureClients.clustersClient.Get(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName, nil)
 	if err != nil {
 		return config, err
 	}
 
-	clusterState := *result.ManagedClusterProperties.ProvisioningState
+	clusterState := *result.Properties.ProvisioningState
 	if clusterState == ClusterStatusFailed {
 		return config, fmt.Errorf("creation for cluster [%s] status: %s", config.Spec.ClusterName, clusterState)
 	}
@@ -547,12 +549,12 @@ func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterCo
 }
 
 func (h *Handler) getClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
-	accessProfile, err := h.azureClients.clustersClient.GetAccessProfile(ctx, spec.ResourceGroup, spec.ClusterName, "clusterAdmin")
+	accessProfile, err := h.azureClients.clustersClient.GetAccessProfile(ctx, spec.ResourceGroup, spec.ClusterName, "clusterAdmin", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	config, err := clientcmd.RESTConfigFromKubeConfig(*accessProfile.KubeConfig)
+	config, err := clientcmd.RESTConfigFromKubeConfig(accessProfile.Properties.KubeConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -562,26 +564,26 @@ func (h *Handler) getClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClust
 func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *aks.Credentials, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
 	upstreamSpec := &aksv1.AKSClusterConfigSpec{}
 
-	clusterState, err := h.azureClients.clustersClient.Get(ctx, spec.ResourceGroup, spec.ClusterName)
+	clusterState, err := h.azureClients.clustersClient.Get(ctx, spec.ResourceGroup, spec.ClusterName, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// set Kubernetes version
-	if clusterState.KubernetesVersion == nil {
+	if clusterState.Properties.KubernetesVersion == nil {
 		return nil, fmt.Errorf("cannot detect cluster [%s] upstream kubernetes version", spec.ClusterName)
 	}
-	upstreamSpec.KubernetesVersion = clusterState.KubernetesVersion
+	upstreamSpec.KubernetesVersion = clusterState.Properties.KubernetesVersion
 
 	// set DNS prefix
-	if clusterState.DNSPrefix != nil {
-		upstreamSpec.DNSPrefix = clusterState.DNSPrefix
+	if clusterState.Properties.DNSPrefix != nil {
+		upstreamSpec.DNSPrefix = clusterState.Properties.DNSPrefix
 	}
 
 	// set tags
 	upstreamSpec.Tags = make(map[string]string)
 	if len(clusterState.Tags) != 0 {
-		upstreamSpec.Tags = to.StringMap(clusterState.Tags)
+		upstreamSpec.Tags = aks.StringMap(clusterState.Tags)
 	}
 
 	// set BaseURL && AuthBaseURL
@@ -589,10 +591,10 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 	upstreamSpec.BaseURL = credentials.BaseURL
 
 	// set AgentPool profile
-	for _, np := range *clusterState.AgentPoolProfiles {
+	for _, np := range clusterState.Properties.AgentPoolProfiles {
 		var upstreamNP aksv1.AKSNodePool
 		upstreamNP.Name = np.Name
-		if to.String(np.ProvisioningState) != NodePoolSucceeded || to.Bool(np.EnableAutoScaling) {
+		if aks.String(np.ProvisioningState) != NodePoolSucceeded || aks.Bool(np.EnableAutoScaling) {
 			// If the node pool is not in a Succeeded state (i.e. it is updating or something of the like)
 			// or if autoscaling is enabled, then we don't want to set the upstream node count.
 			// This is because node count can vary in these two states causing continual updates to the object Spec.
@@ -600,7 +602,7 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 			// the number of nodes, then aks-operator will to try to update the node count resulting in errors that have to be manually reconciled.
 			nodePoolFound := false
 			for _, configNp := range spec.NodePools {
-				if to.String(configNp.Name) == to.String(np.Name) {
+				if aks.String(configNp.Name) == aks.String(np.Name) {
 					upstreamNP.Count = configNp.Count
 					nodePoolFound = true
 					break
@@ -613,13 +615,15 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 			upstreamNP.Count = np.Count
 		}
 		upstreamNP.MaxPods = np.MaxPods
-		upstreamNP.VMSize = string(np.VMSize)
-		upstreamNP.OsDiskSizeGB = np.OsDiskSizeGB
-		upstreamNP.OsDiskType = string(np.OsDiskType)
-		upstreamNP.Mode = string(np.Mode)
-		upstreamNP.OsType = string(np.OsType)
+		upstreamNP.VMSize = *np.VMSize
+		upstreamNP.OsDiskSizeGB = np.OSDiskSizeGB
+		if np.OSDiskType != nil {
+			upstreamNP.OsDiskType = string(*np.OSDiskType)
+		}
+		upstreamNP.Mode = string(*np.Mode)
+		upstreamNP.OsType = string(*np.OSType)
 		upstreamNP.OrchestratorVersion = np.OrchestratorVersion
-		upstreamNP.AvailabilityZones = np.AvailabilityZones
+		upstreamNP.AvailabilityZones = utils.ConvertToPointerOfSlice(np.AvailabilityZones)
 		if np.EnableAutoScaling != nil {
 			upstreamNP.EnableAutoScaling = np.EnableAutoScaling
 			upstreamNP.MaxCount = np.MaxCount
@@ -631,7 +635,7 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 			upstreamNP.NodeLabels = np.NodeLabels
 		}
 		if np.NodeTaints != nil {
-			upstreamNP.NodeTaints = np.NodeTaints
+			upstreamNP.NodeTaints = utils.ConvertToPointerOfSlice(np.NodeTaints)
 		}
 		if np.UpgradeSettings != nil && np.UpgradeSettings.MaxSurge != nil {
 			upstreamNP.MaxSurge = np.UpgradeSettings.MaxSurge
@@ -640,28 +644,33 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 	}
 
 	// set network configuration
-	networkProfile := clusterState.NetworkProfile
+	networkProfile := clusterState.Properties.NetworkProfile
 	if networkProfile != nil {
-		upstreamSpec.NetworkPlugin = to.StringPtr(string(networkProfile.NetworkPlugin))
+		upstreamSpec.NetworkPlugin = to.Ptr(string(*networkProfile.NetworkPlugin))
 		upstreamSpec.NetworkDNSServiceIP = networkProfile.DNSServiceIP
-		upstreamSpec.NetworkDockerBridgeCIDR = networkProfile.DockerBridgeCidr
 		upstreamSpec.NetworkServiceCIDR = networkProfile.ServiceCidr
-		upstreamSpec.NetworkPolicy = to.StringPtr(string(networkProfile.NetworkPolicy))
 		upstreamSpec.NetworkPodCIDR = networkProfile.PodCidr
-		upstreamSpec.OutboundType = to.StringPtr(string(networkProfile.OutboundType))
-		upstreamSpec.LoadBalancerSKU = to.StringPtr(string(networkProfile.LoadBalancerSku))
+		if networkProfile.NetworkPolicy != nil {
+			upstreamSpec.NetworkPolicy = to.Ptr(string(*networkProfile.NetworkPolicy))
+		}
+		if networkProfile.OutboundType != nil {
+			upstreamSpec.OutboundType = to.Ptr(string(*networkProfile.OutboundType))
+		}
+		if networkProfile.LoadBalancerSKU != nil {
+			upstreamSpec.LoadBalancerSKU = to.Ptr(string(*networkProfile.LoadBalancerSKU))
+		}
 	}
 
 	// set linux account profile
-	linuxProfile := clusterState.LinuxProfile
+	linuxProfile := clusterState.Properties.LinuxProfile
 	if linuxProfile != nil {
 		upstreamSpec.LinuxAdminUsername = linuxProfile.AdminUsername
-		sshKeys := *linuxProfile.SSH.PublicKeys
+		sshKeys := linuxProfile.SSH.PublicKeys
 		upstreamSpec.LinuxSSHPublicKey = sshKeys[0].KeyData
 	}
 
 	// set addons profile
-	addonProfile := clusterState.AddonProfiles
+	addonProfile := clusterState.Properties.AddonProfiles
 	if addonProfile != nil && addonProfile["httpApplicationRouting"] != nil {
 		upstreamSpec.HTTPApplicationRouting = addonProfile["httpApplicationRouting"].Enabled
 	}
@@ -675,40 +684,40 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 		}
 		logAnalyticsWorkspaceResourceID := addonProfile["omsAgent"].Config["logAnalyticsWorkspaceResourceID"]
 
-		group := matchWorkspaceGroup.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))
+		group := matchWorkspaceGroup.FindStringSubmatch(aks.String(logAnalyticsWorkspaceResourceID))
 		if group == nil {
 			return nil, fmt.Errorf("OMS Agent configuration workspace group was not found")
 		}
 		logAnalyticsWorkspaceGroup := group[1]
-		upstreamSpec.LogAnalyticsWorkspaceGroup = to.StringPtr(logAnalyticsWorkspaceGroup)
+		upstreamSpec.LogAnalyticsWorkspaceGroup = to.Ptr(logAnalyticsWorkspaceGroup)
 
-		name := matchWorkspaceName.FindStringSubmatch(to.String(logAnalyticsWorkspaceResourceID))
+		name := matchWorkspaceName.FindStringSubmatch(aks.String(logAnalyticsWorkspaceResourceID))
 		if name == nil {
 			return nil, fmt.Errorf("OMS Agent configuration workspace name was not found")
 		}
 		logAnalyticsWorkspaceName := name[1]
-		upstreamSpec.LogAnalyticsWorkspaceName = to.StringPtr(logAnalyticsWorkspaceName)
+		upstreamSpec.LogAnalyticsWorkspaceName = to.Ptr(logAnalyticsWorkspaceName)
 	}
 
 	// set API server access profile
-	upstreamSpec.PrivateCluster = to.BoolPtr(false)
-	if clusterState.APIServerAccessProfile != nil {
-		if clusterState.APIServerAccessProfile.EnablePrivateCluster != nil {
-			upstreamSpec.PrivateCluster = clusterState.APIServerAccessProfile.EnablePrivateCluster
+	upstreamSpec.PrivateCluster = to.Ptr(false)
+	if clusterState.Properties.APIServerAccessProfile != nil {
+		if clusterState.Properties.APIServerAccessProfile.EnablePrivateCluster != nil {
+			upstreamSpec.PrivateCluster = clusterState.Properties.APIServerAccessProfile.EnablePrivateCluster
 		}
-		if clusterState.APIServerAccessProfile.AuthorizedIPRanges != nil && *clusterState.APIServerAccessProfile.AuthorizedIPRanges != nil {
-			upstreamSpec.AuthorizedIPRanges = clusterState.APIServerAccessProfile.AuthorizedIPRanges
+		if clusterState.Properties.APIServerAccessProfile.AuthorizedIPRanges != nil {
+			upstreamSpec.AuthorizedIPRanges = utils.ConvertToPointerOfSlice(clusterState.Properties.APIServerAccessProfile.AuthorizedIPRanges)
 		}
-		if clusterState.APIServerAccessProfile.PrivateDNSZone != nil {
-			upstreamSpec.PrivateDNSZone = clusterState.APIServerAccessProfile.PrivateDNSZone
+		if clusterState.Properties.APIServerAccessProfile.PrivateDNSZone != nil {
+			upstreamSpec.PrivateDNSZone = clusterState.Properties.APIServerAccessProfile.PrivateDNSZone
 		}
 	}
-	upstreamSpec.ManagedIdentity = to.BoolPtr(false)
+	upstreamSpec.ManagedIdentity = to.Ptr(false)
 	if clusterState.Identity != nil {
-		upstreamSpec.ManagedIdentity = to.BoolPtr(true)
+		upstreamSpec.ManagedIdentity = to.Ptr(true)
 		if clusterState.Identity.UserAssignedIdentities != nil {
 			for userAssignedID := range clusterState.Identity.UserAssignedIdentities {
-				upstreamSpec.UserAssignedIdentity = to.StringPtr(userAssignedID)
+				upstreamSpec.UserAssignedIdentity = to.Ptr(userAssignedID)
 			}
 		}
 	}
@@ -723,10 +732,11 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	if config.Spec.Tags != nil {
 		if !reflect.DeepEqual(config.Spec.Tags, upstreamSpec.Tags) {
 			logrus.Infof("Updating tags for cluster [%s]", config.Spec.ClusterName)
-			tags := containerservice.TagsObject{
-				Tags: *to.StringMapPtr(config.Spec.Tags),
+			tags := armcontainerservice.TagsObject{
+				Tags: *aks.StringMapPtr(config.Spec.Tags),
 			}
-			response, err := h.azureClients.clustersClient.UpdateTags(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName, tags)
+
+			poller, err := h.azureClients.clustersClient.BeginUpdateTags(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName, tags, nil)
 			if err != nil {
 				return config, err
 			}
@@ -735,19 +745,22 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 			// have a good way to detect that policy. We handle this case by checking if Azure returns an unexpected
 			// state for the tags and if so, log the response and move on. Any upstream tags regenerated on the cluster
 			// by Azure will be synced back to rancher.
-			upstreamTags := containerservice.TagsObject{}
-			if err := retry.OnError(retry.DefaultBackoff, func(err error) bool {
-				return strings.HasSuffix(err.Error(), "asynchronous operation has not completed")
-			}, func() error {
-				managedCluster, err := h.azureClients.clustersClient.AsyncUpdateTagsResult(response)
-				upstreamTags.Tags = managedCluster.Tags
-				return err
-			}); err != nil {
+			var response *http.Response
+			upstreamTags := armcontainerservice.TagsObject{}
+			if err := retry.OnError(retry.DefaultBackoff,
+				func(err error) bool {
+					return strings.HasSuffix(err.Error(), "asynchronous operation has not completed")
+				},
+				func() error {
+					resp, err := poller.PollUntilDone(runtime.WithCaptureResponse(ctx, &response), nil)
+					upstreamTags.Tags = resp.Tags
+					return err
+				}); err != nil {
 				return config, fmt.Errorf("failed to update tags for cluster [%s]: %w", config.Spec.ClusterName, err)
 			}
 
-			if !reflect.DeepEqual(tags, upstreamTags) && response.Response().StatusCode == http.StatusOK {
-				logrus.Infof("Tags were not updated as expected for cluster [%s], expected %s, actual %s, moving on", config.Spec.ClusterName, to.StringMap(tags.Tags), to.StringMap(upstreamTags.Tags))
+			if !reflect.DeepEqual(tags, upstreamTags) && response.StatusCode == http.StatusOK {
+				logrus.Infof("Tags were not updated as expected for cluster [%s], expected %s, actual %s, moving on", config.Spec.ClusterName, aks.StringMap(tags.Tags), aks.StringMap(upstreamTags.Tags))
 			} else {
 				return h.enqueueUpdate(config)
 			}
@@ -760,7 +773,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	updateAksCluster := false
 	// check Kubernetes version for update
 	if config.Spec.KubernetesVersion != nil {
-		if to.String(config.Spec.KubernetesVersion) != to.String(upstreamSpec.KubernetesVersion) {
+		if aks.String(config.Spec.KubernetesVersion) != aks.String(upstreamSpec.KubernetesVersion) {
 			logrus.Infof("Updating kubernetes version for cluster [%s]", config.Spec.ClusterName)
 			updateAksCluster = true
 			importedClusterSpec.KubernetesVersion = config.Spec.KubernetesVersion
@@ -778,7 +791,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 
 	// check addon HTTP Application Routing
 	if config.Spec.HTTPApplicationRouting != nil {
-		if to.Bool(config.Spec.HTTPApplicationRouting) != to.Bool(upstreamSpec.HTTPApplicationRouting) {
+		if aks.Bool(config.Spec.HTTPApplicationRouting) != aks.Bool(upstreamSpec.HTTPApplicationRouting) {
 			logrus.Infof("Updating HTTP application routing for cluster [%s]", config.Spec.ClusterName)
 			updateAksCluster = true
 			importedClusterSpec.HTTPApplicationRouting = config.Spec.HTTPApplicationRouting
@@ -787,7 +800,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 
 	// check addon monitoring
 	if config.Spec.Monitoring != nil {
-		if to.Bool(config.Spec.Monitoring) != to.Bool(upstreamSpec.Monitoring) {
+		if aks.Bool(config.Spec.Monitoring) != aks.Bool(upstreamSpec.Monitoring) {
 			logrus.Infof("Updating monitoring addon for cluster [%s]", config.Spec.ClusterName)
 			updateAksCluster = true
 			importedClusterSpec.Monitoring = config.Spec.Monitoring
@@ -847,61 +860,61 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					np.VnetSubnetID = upstreamNodePool.VnetSubnetID
 				}
 
-				if to.Bool(np.EnableAutoScaling) {
+				if aks.Bool(np.EnableAutoScaling) {
 					// Count can't be updated when EnableAutoScaling is true, so don't send anything.
 					np.Count = nil
-					if !to.Bool(upstreamNodePool.EnableAutoScaling) {
-						logrus.Infof("Enable autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					if !aks.Bool(upstreamNodePool.EnableAutoScaling) {
+						logrus.Infof("Enable autoscaling in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 						updateNodePool = true
 					}
-					if to.Int32(np.MinCount) != to.Int32(upstreamNodePool.MinCount) {
-						logrus.Infof("Updating minimum count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					if aks.Int32(np.MinCount) != aks.Int32(upstreamNodePool.MinCount) {
+						logrus.Infof("Updating minimum count in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 						updateNodePool = true
 					}
-					if to.Int32(np.MaxCount) != to.Int32(upstreamNodePool.MaxCount) {
-						logrus.Infof("Updating maximum count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					if aks.Int32(np.MaxCount) != aks.Int32(upstreamNodePool.MaxCount) {
+						logrus.Infof("Updating maximum count in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 						updateNodePool = true
 					}
 				} else {
 					if np.MinCount != nil && np.MaxCount != nil {
-						return config, fmt.Errorf("min and max node count must be nil for node pool [%s] for cluster [%s], because autoscaling is disabled", to.String(np.Name), config.Spec.ClusterName)
+						return config, fmt.Errorf("min and max node count must be nil for node pool [%s] for cluster [%s], because autoscaling is disabled", aks.String(np.Name), config.Spec.ClusterName)
 					}
-					if to.Bool(upstreamNodePool.EnableAutoScaling) {
-						logrus.Infof("Disable autoscaling in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					if aks.Bool(upstreamNodePool.EnableAutoScaling) {
+						logrus.Infof("Disable autoscaling in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 						updateNodePool = true
-					} else if to.Int32(np.Count) != to.Int32(upstreamNodePool.Count) {
-						logrus.Infof("Updating node count in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					} else if aks.Int32(np.Count) != aks.Int32(upstreamNodePool.Count) {
+						logrus.Infof("Updating node count in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 						updateNodePool = true
 					}
 				}
-				if np.OrchestratorVersion != nil && to.String(np.OrchestratorVersion) != to.String(upstreamNodePool.OrchestratorVersion) {
-					logrus.Infof("Updating orchestrator version in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+				if np.OrchestratorVersion != nil && aks.String(np.OrchestratorVersion) != aks.String(upstreamNodePool.OrchestratorVersion) {
+					logrus.Infof("Updating orchestrator version in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 					updateNodePool = true
 				}
 				if np.NodeLabels != nil {
 					if !reflect.DeepEqual(np.NodeLabels, upstreamNodePool.NodeLabels) {
-						logrus.Infof("Updating labels in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+						logrus.Infof("Updating labels in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 						updateNodePool = true
 					}
 				}
 				if np.NodeTaints != nil {
 					if !(len(*np.NodeTaints) == 0 && upstreamNodePool.NodeTaints == nil) {
 						if !reflect.DeepEqual(np.NodeTaints, upstreamNodePool.NodeTaints) {
-							logrus.Infof("Updating node taints in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+							logrus.Infof("Updating node taints in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 							updateNodePool = true
 						}
 					}
 				}
-				if np.MaxSurge != nil && to.String(np.MaxSurge) != to.String(upstreamNodePool.MaxSurge) {
-					logrus.Infof("Updating max surge in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+				if np.MaxSurge != nil && aks.String(np.MaxSurge) != aks.String(upstreamNodePool.MaxSurge) {
+					logrus.Infof("Updating max surge in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 					updateNodePool = true
 				}
 				if np.Mode != "" && np.Mode != upstreamNodePool.Mode {
-					logrus.Infof("Updating mode in node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+					logrus.Infof("Updating mode in node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 					updateNodePool = true
 				}
 			} else {
-				logrus.Infof("Adding node pool [%s] for cluster [%s]", to.String(np.Name), config.Spec.ClusterName)
+				logrus.Infof("Adding node pool [%s] for cluster [%s]", aks.String(np.Name), config.Spec.ClusterName)
 				updateNodePool = true
 			}
 
@@ -945,24 +958,24 @@ func (h *Handler) getAzureClients(config *aksv1.AKSClusterConfig) error {
 		return fmt.Errorf("error getting credentials: %w", err)
 	}
 
-	authorizer, err := aks.NewClientAuthorizer(credentials)
+	clientSecretCredential, err := aks.NewClientSecretCredential(credentials)
 	if err != nil {
-		return fmt.Errorf("error creating authorizer: %w", err)
+		return fmt.Errorf("error creating client secret credential: %w", err)
 	}
 
-	clustersClient, err := services.NewManagedClustersClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	clustersClient, err := services.NewManagedClustersClient(credentials.SubscriptionID, clientSecretCredential, credentials.Cloud)
 	if err != nil {
 		return fmt.Errorf("error creating managed cluster client: %w", err)
 	}
-	rgClient, err := services.NewResourceGroupsClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	rgClient, err := services.NewResourceGroupsClient(credentials.SubscriptionID, clientSecretCredential, credentials.Cloud)
 	if err != nil {
 		return fmt.Errorf("error creating resource group client: %w", err)
 	}
-	agentPoolsClient, err := services.NewAgentPoolClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	agentPoolsClient, err := services.NewAgentPoolClient(credentials.SubscriptionID, clientSecretCredential, credentials.Cloud)
 	if err != nil {
 		return fmt.Errorf("error creating agent pool client: %w", err)
 	}
-	workplacesClient, err := services.NewWorkplacesClient(authorizer, *credentials.BaseURL, credentials.SubscriptionID)
+	workplacesClient, err := services.NewWorkplacesClient(credentials.SubscriptionID, clientSecretCredential, credentials.Cloud)
 	if err != nil {
 		return fmt.Errorf("error creating workplace client: %w", err)
 	}
