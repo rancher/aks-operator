@@ -3,56 +3,62 @@ package services
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
-	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
 )
 
+type Poller[T any] interface {
+	PollUntilDone(ctx context.Context, options *runtime.PollUntilDoneOptions) (T, error)
+}
+
 type ManagedClustersClientInterface interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName string, clusterName string, parameters containerservice.ManagedCluster) (containerservice.ManagedClustersCreateOrUpdateFuture, error)
-	Get(ctx context.Context, resourceGroupName string, clusterName string) (containerservice.ManagedCluster, error)
-	Delete(ctx context.Context, resourceGroupName string, clusterName string) (containerservice.ManagedClustersDeleteFuture, error)
-	WaitForTaskCompletion(context.Context, containerservice.ManagedClustersDeleteFuture) error
-	GetAccessProfile(ctx context.Context, resourceGroupName string, resourceName string, roleName string) (containerservice.ManagedClusterAccessProfile, error)
-	UpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters containerservice.TagsObject) (containerservice.ManagedClustersUpdateTagsFuture, error)
-	AsyncUpdateTagsResult(asyncRet containerservice.ManagedClustersUpdateTagsFuture) (containerservice.ManagedCluster, error)
+	BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.ManagedCluster, options *armcontainerservice.ManagedClustersClientBeginCreateOrUpdateOptions) (Poller[armcontainerservice.ManagedClustersClientCreateOrUpdateResponse], error)
+	Get(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientGetOptions) (armcontainerservice.ManagedClustersClientGetResponse, error)
+	BeginDelete(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientBeginDeleteOptions) (Poller[armcontainerservice.ManagedClustersClientDeleteResponse], error)
+	GetAccessProfile(ctx context.Context, resourceGroupName string, resourceName string, roleName string, options *armcontainerservice.ManagedClustersClientGetAccessProfileOptions) (armcontainerservice.ManagedClustersClientGetAccessProfileResponse, error)
+	BeginUpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (*runtime.Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error)
 }
 
 type managedClustersClient struct {
-	managedClustersClient containerservice.ManagedClustersClient
+	armManagedClustersClient *armcontainerservice.ManagedClustersClient
 }
 
-func NewManagedClustersClient(authorizer autorest.Authorizer, baseURL, subscriptionID string) (*managedClustersClient, error) {
-	client := containerservice.NewManagedClustersClientWithBaseURI(baseURL, subscriptionID)
-	client.Authorizer = authorizer
+func NewManagedClustersClient(subscriptionID string, credential *azidentity.ClientSecretCredential, cloud cloud.Configuration) (*managedClustersClient, error) {
+	options := arm.ClientOptions{
+		ClientOptions: azcore.ClientOptions{
+			Cloud: cloud,
+		},
+	}
+	clientFactory, err := armcontainerservice.NewClientFactory(subscriptionID, credential, &options)
+	if err != nil {
+		return nil, err
+	}
+
 	return &managedClustersClient{
-		managedClustersClient: client,
+		armManagedClustersClient: clientFactory.NewManagedClustersClient(),
 	}, nil
 }
 
-func (cl *managedClustersClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, clusterName string, parameters containerservice.ManagedCluster) (containerservice.ManagedClustersCreateOrUpdateFuture, error) {
-	return cl.managedClustersClient.CreateOrUpdate(ctx, resourceGroupName, clusterName, parameters)
+func (cl *managedClustersClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.ManagedCluster, options *armcontainerservice.ManagedClustersClientBeginCreateOrUpdateOptions) (Poller[armcontainerservice.ManagedClustersClientCreateOrUpdateResponse], error) {
+	return cl.armManagedClustersClient.BeginCreateOrUpdate(ctx, resourceGroupName, resourceName, parameters, options)
 }
 
-func (cl *managedClustersClient) Get(ctx context.Context, resourceGroupName string, clusterName string) (containerservice.ManagedCluster, error) {
-	return cl.managedClustersClient.Get(ctx, resourceGroupName, clusterName)
+func (cl *managedClustersClient) Get(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientGetOptions) (armcontainerservice.ManagedClustersClientGetResponse, error) {
+	return cl.armManagedClustersClient.Get(ctx, resourceGroupName, resourceName, options)
 }
 
-func (cl *managedClustersClient) Delete(ctx context.Context, resourceGroupName string, clusterName string) (containerservice.ManagedClustersDeleteFuture, error) {
-	return cl.managedClustersClient.Delete(ctx, resourceGroupName, clusterName)
+func (cl *managedClustersClient) BeginDelete(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientBeginDeleteOptions) (Poller[armcontainerservice.ManagedClustersClientDeleteResponse], error) {
+	return cl.armManagedClustersClient.BeginDelete(ctx, resourceGroupName, resourceName, options)
 }
 
-func (cl *managedClustersClient) WaitForTaskCompletion(ctx context.Context, future containerservice.ManagedClustersDeleteFuture) error {
-	return future.WaitForCompletionRef(ctx, cl.managedClustersClient.Client)
+func (cl *managedClustersClient) GetAccessProfile(ctx context.Context, resourceGroupName string, resourceName string, roleName string, options *armcontainerservice.ManagedClustersClientGetAccessProfileOptions) (armcontainerservice.ManagedClustersClientGetAccessProfileResponse, error) {
+	return cl.armManagedClustersClient.GetAccessProfile(ctx, resourceGroupName, resourceName, roleName, options)
 }
 
-func (cl *managedClustersClient) GetAccessProfile(ctx context.Context, resourceGroupName string, resourceName string, roleName string) (containerservice.ManagedClusterAccessProfile, error) {
-	return cl.managedClustersClient.GetAccessProfile(ctx, resourceGroupName, resourceName, roleName)
-}
-
-func (cl *managedClustersClient) UpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters containerservice.TagsObject) (containerservice.ManagedClustersUpdateTagsFuture, error) {
-	return cl.managedClustersClient.UpdateTags(ctx, resourceGroupName, resourceName, parameters)
-}
-
-func (cl *managedClustersClient) AsyncUpdateTagsResult(asyncRet containerservice.ManagedClustersUpdateTagsFuture) (containerservice.ManagedCluster, error) {
-	return asyncRet.Result(cl.managedClustersClient)
+func (cl *managedClustersClient) BeginUpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (*runtime.Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error) {
+	return cl.armManagedClustersClient.BeginUpdateTags(ctx, resourceGroupName, resourceName, parameters, options)
 }
