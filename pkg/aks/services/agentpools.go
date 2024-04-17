@@ -3,31 +3,43 @@ package services
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
-	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
 )
 
 type AgentPoolsClientInterface interface {
-	CreateOrUpdate(ctx context.Context, resourceGroupName string, clusterName string, agentPoolName string, parameters containerservice.AgentPool) (containerservice.AgentPoolsCreateOrUpdateFuture, error)
-	Delete(ctx context.Context, resourceGroupName string, clusterName string, agentPoolName string) (containerservice.AgentPoolsDeleteFuture, error)
+	BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, clusterName string, agentPoolName string, parameters armcontainerservice.AgentPool) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error)
+	BeginDelete(ctx context.Context, resourceGroupName string, clusterName string, agentPoolName string) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error)
 }
 
 type agentPoolClient struct {
-	agentPoolClient containerservice.AgentPoolsClient
+	agentPoolClient *armcontainerservice.AgentPoolsClient
 }
 
-func NewAgentPoolClient(authorizer autorest.Authorizer, baseURL, subscriptionID string) (*agentPoolClient, error) {
-	client := containerservice.NewAgentPoolsClientWithBaseURI(baseURL, subscriptionID)
-	client.Authorizer = authorizer
+func NewAgentPoolClient(subscriptionID string, credential *azidentity.ClientSecretCredential, cloud cloud.Configuration) (*agentPoolClient, error) {
+	options := arm.ClientOptions{
+		ClientOptions: azcore.ClientOptions{
+			Cloud: cloud,
+		},
+	}
+	clientFactory, err := armcontainerservice.NewClientFactory(subscriptionID, credential, &options)
+	if err != nil {
+		return nil, err
+	}
+
 	return &agentPoolClient{
-		agentPoolClient: client,
+		agentPoolClient: clientFactory.NewAgentPoolsClient(),
 	}, nil
 }
 
-func (cl *agentPoolClient) CreateOrUpdate(ctx context.Context, resourceGroupName string, clusterName string, agentPoolName string, parameters containerservice.AgentPool) (containerservice.AgentPoolsCreateOrUpdateFuture, error) {
-	return cl.agentPoolClient.CreateOrUpdate(ctx, resourceGroupName, clusterName, agentPoolName, parameters)
+func (cl *agentPoolClient) BeginCreateOrUpdate(ctx context.Context, resourceGroupName string, clusterName string, agentPoolName string, parameters armcontainerservice.AgentPool) (*runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse], error) {
+	return cl.agentPoolClient.BeginCreateOrUpdate(ctx, resourceGroupName, clusterName, agentPoolName, parameters, nil)
 }
 
-func (cl *agentPoolClient) Delete(ctx context.Context, resourceGroupName string, clusterName string, agentPoolName string) (containerservice.AgentPoolsDeleteFuture, error) {
-	return cl.agentPoolClient.Delete(ctx, resourceGroupName, clusterName, agentPoolName)
+func (cl *agentPoolClient) BeginDelete(ctx context.Context, resourceGroupName string, clusterName string, agentPoolName string) (*runtime.Poller[armcontainerservice.AgentPoolsClientDeleteResponse], error) {
+	return cl.agentPoolClient.BeginDelete(ctx, resourceGroupName, clusterName, agentPoolName, nil)
 }
