@@ -4,15 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
 	"github.com/rancher/aks-operator/pkg/aks"
 	"github.com/rancher/aks-operator/pkg/aks/services"
@@ -26,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -733,7 +730,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 		if !reflect.DeepEqual(config.Spec.Tags, upstreamSpec.Tags) {
 			logrus.Infof("Updating tags for cluster [%s]", config.Spec.ClusterName)
 			tags := armcontainerservice.TagsObject{
-				Tags: *aks.StringMapPtr(config.Spec.Tags),
+				Tags: aks.StringMapPtr(config.Spec.Tags),
 			}
 
 			poller, err := h.azureClients.clustersClient.BeginUpdateTags(ctx, config.Spec.ResourceGroup, config.Spec.ClusterName, tags, nil)
@@ -745,22 +742,13 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 			// have a good way to detect that policy. We handle this case by checking if Azure returns an unexpected
 			// state for the tags and if so, log the response and move on. Any upstream tags regenerated on the cluster
 			// by Azure will be synced back to rancher.
-			var response *http.Response
-			upstreamTags := armcontainerservice.TagsObject{}
-			if err := retry.OnError(retry.DefaultBackoff,
-				func(err error) bool {
-					return strings.HasSuffix(err.Error(), "asynchronous operation has not completed")
-				},
-				func() error {
-					resp, err := poller.PollUntilDone(runtime.WithCaptureResponse(ctx, &response), nil)
-					upstreamTags.Tags = resp.Tags
-					return err
-				}); err != nil {
+			res, err := poller.PollUntilDone(ctx, nil)
+			if err != nil {
 				return config, fmt.Errorf("failed to update tags for cluster [%s]: %w", config.Spec.ClusterName, err)
 			}
 
-			if !reflect.DeepEqual(tags, upstreamTags) && response.StatusCode == http.StatusOK {
-				logrus.Infof("Tags were not updated as expected for cluster [%s], expected %s, actual %s, moving on", config.Spec.ClusterName, aks.StringMap(tags.Tags), aks.StringMap(upstreamTags.Tags))
+			if !reflect.DeepEqual(tags, res.Tags) {
+				logrus.Infof("Tags were not updated as expected for cluster [%s], expected %s, actual %s, moving on", config.Spec.ClusterName, aks.StringMap(tags.Tags), aks.StringMap(res.Tags))
 			} else {
 				return h.enqueueUpdate(config)
 			}

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -806,7 +806,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 						MaxCount:            to.Ptr(int32(1)),
 						MinCount:            to.Ptr(int32(1)),
 						VnetSubnetID:        to.Ptr("test"),
-						NodeLabels:          *aks.StringMapPtr(map[string]string{"test": "test"}),
+						NodeLabels:          aks.StringMapPtr(map[string]string{"test": "test"}),
 						NodeTaints:          utils.ConvertToSliceOfPointers(to.Ptr([]string{"test"})),
 						UpgradeSettings: &armcontainerservice.AgentPoolUpgradeSettings{
 							MaxSurge: to.Ptr("test"),
@@ -848,7 +848,7 @@ var _ = Describe("buildUpstreamClusterState", func() {
 					PrivateDNSZone:       to.Ptr("test-private-dns-zone-id"),
 				},
 			},
-			Tags: *aks.StringMapPtr(map[string]string{"test": "test"}),
+			Tags: aks.StringMapPtr(map[string]string{"test": "test"}),
 		}
 
 		handler = &Handler{
