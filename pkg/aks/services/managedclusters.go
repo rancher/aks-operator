@@ -8,7 +8,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
 )
 
 type Poller[T any] interface {
@@ -20,7 +20,7 @@ type ManagedClustersClientInterface interface {
 	Get(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientGetOptions) (armcontainerservice.ManagedClustersClientGetResponse, error)
 	BeginDelete(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientBeginDeleteOptions) (Poller[armcontainerservice.ManagedClustersClientDeleteResponse], error)
 	GetAccessProfile(ctx context.Context, resourceGroupName string, resourceName string, roleName string, options *armcontainerservice.ManagedClustersClientGetAccessProfileOptions) (armcontainerservice.ManagedClustersClientGetAccessProfileResponse, error)
-	BeginUpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (*runtime.Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error)
+	BeginUpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error)
 }
 
 type managedClustersClient struct {
@@ -59,6 +59,6 @@ func (cl *managedClustersClient) GetAccessProfile(ctx context.Context, resourceG
 	return cl.armManagedClustersClient.GetAccessProfile(ctx, resourceGroupName, resourceName, roleName, options)
 }
 
-func (cl *managedClustersClient) BeginUpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (*runtime.Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error) {
+func (cl *managedClustersClient) BeginUpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error) {
 	return cl.armManagedClustersClient.BeginUpdateTags(ctx, resourceGroupName, resourceName, parameters, options)
 }

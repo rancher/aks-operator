@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	runtime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	armcontainerservice "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v4"
+	armcontainerservice "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
 	services "github.com/rancher/aks-operator/pkg/aks/services"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -111,10 +111,10 @@ func (mr *MockManagedClustersClientInterfaceMockRecorder) BeginDelete(ctx, resou
 }
 
 // BeginUpdateTags mocks base method.
-func (m *MockManagedClustersClientInterface) BeginUpdateTags(ctx context.Context, resourceGroupName, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (*runtime.Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error) {
+func (m *MockManagedClustersClientInterface) BeginUpdateTags(ctx context.Context, resourceGroupName, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (services.Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BeginUpdateTags", ctx, resourceGroupName, resourceName, parameters, options)
-	ret0, _ := ret[0].(*runtime.Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse])
+	ret0, _ := ret[0].(services.Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

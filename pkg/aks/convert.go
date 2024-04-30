@@ -30,13 +30,13 @@ func StringSlice(s *[]string) []string {
 	return nil
 }
 
-// StringMapPtr returns a pointer to a map of string pointers built from the passed map of strings.
-func StringMapPtr(ms map[string]string) *map[string]*string {
+// StringMapPtr returns a map of string pointers built from the passed map of strings.
+func StringMapPtr(ms map[string]string) map[string]*string {
 	msp := make(map[string]*string, len(ms))
 	for k, s := range ms {
 		msp[k] = to.Ptr(s)
 	}
-	return &msp
+	return msp
 }
 
 // StringMap returns a map of strings built from the map of string pointers. The empty string is
