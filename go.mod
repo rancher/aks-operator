@@ -5,7 +5,7 @@ go 1.20
 replace k8s.io/client-go => k8s.io/client-go v0.28.6
 
 require (
-	github.com/Azure/azure-sdk-for-go v55.7.0+incompatible
+	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/go-autorest/autorest/adal v0.9.23
 	github.com/Azure/go-autorest/autorest/to v0.4.1-0.20210111195520-9fc88b15294e
@@ -101,7 +101,7 @@ require (
 	k8s.io/gengo v0.0.0-20230306165830-ab3349d207d4 // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
-	k8s.io/kubernetes v1.27.13 // indirect
+	k8s.io/kubernetes v1.28.6 // indirect
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106 // indirect
 	sigs.k8s.io/cli-utils v0.28.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
