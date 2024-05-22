@@ -78,6 +78,8 @@ type AKSClusterConfigSpec struct {
 	// NetworkService CIDR is the network service cidr.
 	NetworkServiceCIDR *string `json:"serviceCidr" norman:"pointer"`
 	// NetworkDockerBridgeCIDR is the network docker bridge cidr.
+	// Setting the dockerBridgeCidr field is no longer supported,
+	// see https://github.com/Azure/AKS/issues/3534
 	NetworkDockerBridgeCIDR *string `json:"dockerBridgeCidr" norman:"pointer"`
 	// NetworkPodCIDR is the network pod cidr.
 	NetworkPodCIDR *string `json:"podCidr" norman:"pointer"`
