@@ -191,7 +191,6 @@ var _ = Describe("newManagedCluster", func() {
 		clusterSpec.NetworkPlugin = to.Ptr("kubenet")
 		clusterSpec.NetworkPolicy = to.Ptr("calico")
 		clusterSpec.NetworkDNSServiceIP = to.Ptr("")
-		clusterSpec.NetworkDockerBridgeCIDR = to.Ptr("")
 		clusterSpec.NetworkServiceCIDR = to.Ptr("")
 		clusterSpec.NetworkPodCIDR = to.Ptr("")
 
@@ -529,15 +528,14 @@ func newTestClusterSpec() *aksv1.AKSClusterConfigSpec {
 		Tags: map[string]string{
 			"test-tag": "test-value",
 		},
-		NetworkPolicy:           to.Ptr("azure"),
-		NetworkPlugin:           to.Ptr("azure"),
-		NetworkDNSServiceIP:     to.Ptr("test-dns-service-ip"),
-		NetworkDockerBridgeCIDR: to.Ptr("test-docker-bridge-cidr"),
-		NetworkServiceCIDR:      to.Ptr("test-service-cidr"),
-		NetworkPodCIDR:          to.Ptr("test-pod-cidr"),
-		ResourceGroup:           "test-rg",
-		VirtualNetwork:          to.Ptr("test-virtual-network"),
-		Subnet:                  to.Ptr("test-subnet"),
+		NetworkPolicy:       to.Ptr("azure"),
+		NetworkPlugin:       to.Ptr("azure"),
+		NetworkDNSServiceIP: to.Ptr("test-dns-service-ip"),
+		NetworkServiceCIDR:  to.Ptr("test-service-cidr"),
+		NetworkPodCIDR:      to.Ptr("test-pod-cidr"),
+		ResourceGroup:       "test-rg",
+		VirtualNetwork:      to.Ptr("test-virtual-network"),
+		Subnet:              to.Ptr("test-subnet"),
 		NodePools: []aksv1.AKSNodePool{
 			{
 				Name:                to.Ptr("test-node-pool"),
