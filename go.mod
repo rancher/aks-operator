@@ -6,7 +6,7 @@ toolchain go1.22.3
 
 replace k8s.io/client-go => k8s.io/client-go v0.30.1
 
-// to be removed when rancher/pkg/apis is updaated after k8s-1.30 PR is merged in rancher
+// TODO: to be removed when rancher/pkg/apis is updated after k8s-1.30 PR is merged in rancher
 replace k8s.io/apiserver => k8s.io/apiserver v0.29.4
 
 require (
@@ -25,7 +25,6 @@ require (
 	github.com/rancher/lasso v0.0.0-20240430201833-6f3def65ffc5
 	github.com/rancher/rancher/pkg/apis v0.0.0-20240126142034-676c3eb3dfa5
 	github.com/rancher/wrangler-api v0.6.1-0.20200427172631-a7c2f09b783e
-	github.com/rancher/wrangler/v2 v2.2.0-rc6
 	github.com/rancher/wrangler/v3 v3.0.0-rc2
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
@@ -94,6 +93,7 @@ require (
 	github.com/rancher/norman v0.0.0-20240207153100-3bb70b772b52 // indirect
 	github.com/rancher/rke v1.5.0 // indirect
 	github.com/rancher/wrangler v1.1.1 // indirect
+	github.com/rancher/wrangler/v2 v2.2.0-rc6 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
