@@ -748,7 +748,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 			}
 
 			if !reflect.DeepEqual(tags, res.Tags) {
-				logrus.Infof("Tags were not updated as expected for cluster [%s], expected %s, actual %s, moving on", config.Spec.ClusterName, aks.StringMap(tags.Tags), aks.StringMap(res.Tags))
+				logrus.Infof("Tags were not updated for cluster [%s], config %s, upstream %s, moving on", config.Spec.ClusterName, aks.StringMap(tags.Tags), aks.StringMap(res.Tags))
 			} else {
 				return h.enqueueUpdate(config)
 			}
