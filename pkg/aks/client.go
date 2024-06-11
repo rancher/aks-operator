@@ -123,7 +123,7 @@ func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret 
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	logrus.Debugf("retrieving tenant ID from Azure public cloud")
+	logrus.Debugf("Retrieving tenant ID from Azure public cloud")
 
 	clientEnvironment := ""
 	if secret.Data["azurecredentialConfig-environment"] != nil {
@@ -142,7 +142,7 @@ func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret 
 	if apierrors.IsConflict(err) {
 		// Ignore errors when updating the secret object. If the secret cannot be updated
 		// (perhaps due to a conflict error), the tenant ID will be re-fetched on the next reconcile loop.
-		logrus.Debugf("encountered error while updating secret, ignoring: %v", err)
+		logrus.Debugf("Encountered error while updating secret, ignoring: %v", err)
 		return tenantID, nil
 	}
 	return tenantID, err
@@ -192,11 +192,11 @@ func FindTenantID(ctx context.Context, env azure.Environment, subscriptionID str
 
 	// Expecting 401 StatusUnauthorized here, just read the header
 	if subs.StatusCode != http.StatusUnauthorized {
-		return "", fmt.Errorf("Unexpected response from Get Subscription: %v", err)
+		return "", fmt.Errorf("unexpected response from Get Subscription: %v", err)
 	}
 	hdr := subs.Header.Get(hdrKey)
 	if hdr == "" {
-		return "", fmt.Errorf("Header %v not found in Get Subscription response", hdrKey)
+		return "", fmt.Errorf("header %v not found in Get Subscription response", hdrKey)
 	}
 
 	// Example value for hdr:
@@ -204,7 +204,7 @@ func FindTenantID(ctx context.Context, env azure.Environment, subscriptionID str
 	r := regexp.MustCompile(`authorization_uri=".*/([0-9a-f\-]+)"`)
 	m := r.FindStringSubmatch(hdr)
 	if m == nil {
-		return "", fmt.Errorf("Could not find the tenant ID in header: %s %q", hdrKey, hdr)
+		return "", fmt.Errorf("could not find the tenant ID in header: %s %q", hdrKey, hdr)
 	}
 	return m[1], nil
 }
