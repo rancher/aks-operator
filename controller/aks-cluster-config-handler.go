@@ -729,7 +729,8 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	// check tags for update
 	if config.Spec.Tags != nil {
 		if !reflect.DeepEqual(config.Spec.Tags, upstreamSpec.Tags) {
-			logrus.Infof("Updating tags for cluster [%s (id: %s)]", config.Spec.ClusterName, config.Name)
+			logrus.Infof("Updating tags to %v for cluster [%s (id: %s)]", config.Spec.Tags, config.Spec.ClusterName, config.Name)
+			logrus.Debugf("config: %v; upstream: %v", config.Spec.Tags, upstreamSpec.Tags)
 			tags := armcontainerservice.TagsObject{
 				Tags: aks.StringMapPtr(config.Spec.Tags),
 			}
@@ -763,7 +764,8 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	// check Kubernetes version for update
 	if config.Spec.KubernetesVersion != nil {
 		if aks.String(config.Spec.KubernetesVersion) != aks.String(upstreamSpec.KubernetesVersion) {
-			logrus.Infof("Updating kubernetes version for cluster [%s (id: %s)]", config.Spec.ClusterName, config.Name)
+			logrus.Infof("Updating kubernetes version to %s for cluster [%s (id: %s)]", aks.String(config.Spec.KubernetesVersion), config.Spec.ClusterName, config.Name)
+			logrus.Debugf("config: %s; upstream: %s", aks.String(config.Spec.KubernetesVersion), aks.String(upstreamSpec.KubernetesVersion))
 			updateAksCluster = true
 			importedClusterSpec.KubernetesVersion = config.Spec.KubernetesVersion
 		}
@@ -772,7 +774,8 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	// check authorized IP ranges to access AKS
 	if config.Spec.AuthorizedIPRanges != nil {
 		if !reflect.DeepEqual(config.Spec.AuthorizedIPRanges, upstreamSpec.AuthorizedIPRanges) {
-			logrus.Infof("Updating authorized IP ranges for cluster [%s (id: %s)]", config.Spec.ClusterName, config.Name)
+			logrus.Infof("Updating authorized IP ranges to %v for cluster [%s (id: %s)]", config.Spec.AuthorizedIPRanges, config.Spec.ClusterName, config.Name)
+			logrus.Debugf("config: %v; upstream: %v", *config.Spec.AuthorizedIPRanges, aks.StringSlice(upstreamSpec.AuthorizedIPRanges))
 			updateAksCluster = true
 			importedClusterSpec.AuthorizedIPRanges = config.Spec.AuthorizedIPRanges
 		}
@@ -781,7 +784,8 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	// check addon HTTP Application Routing
 	if config.Spec.HTTPApplicationRouting != nil {
 		if aks.Bool(config.Spec.HTTPApplicationRouting) != aks.Bool(upstreamSpec.HTTPApplicationRouting) {
-			logrus.Infof("Updating HTTP application routing for cluster [%s (id: %s)]", config.Spec.ClusterName, config.Name)
+			logrus.Infof("Updating HTTP application routing to %v for cluster [%s (id: %s)]", aks.Bool(config.Spec.HTTPApplicationRouting), config.Spec.ClusterName, config.Name)
+			logrus.Debugf("config: %v; upstream: %v", aks.Bool(config.Spec.HTTPApplicationRouting), aks.Bool(upstreamSpec.HTTPApplicationRouting))
 			updateAksCluster = true
 			importedClusterSpec.HTTPApplicationRouting = config.Spec.HTTPApplicationRouting
 		}
@@ -790,7 +794,10 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	// check addon monitoring
 	if config.Spec.Monitoring != nil {
 		if aks.Bool(config.Spec.Monitoring) != aks.Bool(upstreamSpec.Monitoring) {
-			logrus.Infof("Updating monitoring addon for cluster [%s (id: %s)]", config.Spec.ClusterName, config.Name)
+			logrus.Infof("Updating monitoring addon to %v for cluster [%s (id: %s)]", aks.Bool(config.Spec.Monitoring), config.Spec.ClusterName, config.Name)
+			logrus.Debugf("[monitoring] config: %v; upstream: %v", aks.Bool(config.Spec.Monitoring), aks.Bool(upstreamSpec.Monitoring))
+			logrus.Debugf("[LogAnalyticsWorkspaceGroup] config: %s; upstream: %s", aks.String(config.Spec.LogAnalyticsWorkspaceGroup), aks.String(upstreamSpec.LogAnalyticsWorkspaceGroup))
+			logrus.Debugf("[LogAnalyticsWorkspaceName] config: %s; upstream: %s", aks.String(config.Spec.LogAnalyticsWorkspaceName), aks.String(upstreamSpec.LogAnalyticsWorkspaceName))
 			updateAksCluster = true
 			importedClusterSpec.Monitoring = config.Spec.Monitoring
 			importedClusterSpec.LogAnalyticsWorkspaceGroup = config.Spec.LogAnalyticsWorkspaceGroup
@@ -857,11 +864,13 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 						updateNodePool = true
 					}
 					if aks.Int32(np.MinCount) != aks.Int32(upstreamNodePool.MinCount) {
-						logrus.Infof("Updating minimum count in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+						logrus.Infof("Updating minimum count to %d in node pool [%s] for cluster [%s (id: %s)]", aks.Int32(np.MinCount), aks.String(np.Name), config.Spec.ClusterName, config.Name)
+						logrus.Debugf("config: %d; upstream: %d", aks.Int32(np.MinCount), aks.Int32(upstreamNodePool.MinCount))
 						updateNodePool = true
 					}
 					if aks.Int32(np.MaxCount) != aks.Int32(upstreamNodePool.MaxCount) {
-						logrus.Infof("Updating maximum count in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+						logrus.Infof("Updating maximum count to %d in node pool [%s] for cluster [%s (id: %s)]", aks.Int32(np.MaxCount), aks.String(np.Name), config.Spec.ClusterName, config.Name)
+						logrus.Debugf("config: %d; upstream: %d", aks.Int32(np.MaxPods), aks.Int32(upstreamNodePool.MaxCount))
 						updateNodePool = true
 					}
 				} else {
@@ -872,34 +881,40 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 						logrus.Infof("Disable autoscaling in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
 						updateNodePool = true
 					} else if aks.Int32(np.Count) != aks.Int32(upstreamNodePool.Count) {
-						logrus.Infof("Updating node count in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+						logrus.Infof("Updating node count to %d in node pool [%s] for cluster [%s (id: %s)]", aks.Int32(np.Count), aks.String(np.Name), config.Spec.ClusterName, config.Name)
+						logrus.Debugf("config: %d; upstream: %d", aks.Int32(np.Count), aks.Int32(upstreamNodePool.Count))
 						updateNodePool = true
 					}
 				}
 				if np.OrchestratorVersion != nil && aks.String(np.OrchestratorVersion) != aks.String(upstreamNodePool.OrchestratorVersion) {
-					logrus.Infof("Updating orchestrator version in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+					logrus.Infof("Updating orchestrator version to %s in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.OrchestratorVersion), aks.String(np.Name), config.Spec.ClusterName, config.Name)
+					logrus.Debugf("config: %s; upstream: %s", aks.String(np.OrchestratorVersion), aks.String(upstreamNodePool.OrchestratorVersion))
 					updateNodePool = true
 				}
 				if np.NodeLabels != nil {
 					if !reflect.DeepEqual(np.NodeLabels, upstreamNodePool.NodeLabels) {
-						logrus.Infof("Updating labels in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+						logrus.Infof("Updating labels to %v in node pool [%s] for cluster [%s (id: %s)]", aks.StringMap(np.NodeLabels), aks.String(np.Name), config.Spec.ClusterName, config.Name)
+						logrus.Debugf("config: %v; upstream: %v", aks.StringMap(np.NodeLabels), aks.StringMap(upstreamNodePool.NodeLabels))
 						updateNodePool = true
 					}
 				}
 				if np.NodeTaints != nil {
 					if !(len(*np.NodeTaints) == 0 && upstreamNodePool.NodeTaints == nil) {
 						if !reflect.DeepEqual(np.NodeTaints, upstreamNodePool.NodeTaints) {
-							logrus.Infof("Updating node taints in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+							logrus.Infof("Updating node taints to %v in node pool [%s] for cluster [%s (id: %s)]", aks.StringSlice(np.NodeTaints), aks.String(np.Name), config.Spec.ClusterName, config.Name)
+							logrus.Debugf("config: %v; upstream: %v", aks.StringSlice(np.NodeTaints), aks.StringSlice(upstreamNodePool.NodeTaints))
 							updateNodePool = true
 						}
 					}
 				}
 				if np.MaxSurge != nil && aks.String(np.MaxSurge) != aks.String(upstreamNodePool.MaxSurge) {
-					logrus.Infof("Updating max surge in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+					logrus.Infof("Updating max surge to %s in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.MaxSurge), aks.String(np.Name), config.Spec.ClusterName, config.Name)
+					logrus.Debugf("config: %s; upstream: %s", aks.String(np.MaxSurge), aks.String(upstreamNodePool.MaxSurge))
 					updateNodePool = true
 				}
 				if np.Mode != "" && np.Mode != upstreamNodePool.Mode {
-					logrus.Infof("Updating mode in node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+					logrus.Infof("Updating mode to %s in node pool [%s] for cluster [%s (id: %s)]", np.Mode, aks.String(np.Name), config.Spec.ClusterName, config.Name)
+					logrus.Debugf("config: %s; upstream: %s", np.Mode, upstreamNodePool.Mode)
 					updateNodePool = true
 				}
 			} else {
@@ -910,7 +925,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 			if updateNodePool {
 				err = aks.CreateOrUpdateAgentPool(ctx, h.azureClients.agentPoolsClient, &config.Spec, np)
 				if err != nil {
-					return config, fmt.Errorf("failed to update cluster: %v", err)
+					return config, fmt.Errorf("failed to update cluster [%s (id: %s)]: %v", config.Spec.ClusterName, config.Name, err)
 				}
 				return h.enqueueUpdate(config)
 			}
