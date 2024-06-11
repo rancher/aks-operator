@@ -121,7 +121,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	networkProfile.LoadBalancerSKU = to.Ptr(armcontainerservice.LoadBalancerSKUStandard)
 
 	if String(spec.LoadBalancerSKU) == string(containerservice.Basic) {
-		logrus.Warnf("loadBalancerSKU 'basic' is not supported")
+		logrus.Warnf("LoadBalancerSKU 'basic' is not supported")
 		networkProfile.LoadBalancerSKU = to.Ptr(armcontainerservice.LoadBalancerSKUBasic)
 	}
 
