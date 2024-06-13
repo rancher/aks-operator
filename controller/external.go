@@ -7,7 +7,7 @@ import (
 	"github.com/rancher/aks-operator/pkg/aks"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
-	wranglerv1 "github.com/rancher/wrangler/v2/pkg/generated/controllers/core/v1"
+	wranglerv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"k8s.io/client-go/rest"
 )
 

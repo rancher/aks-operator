@@ -14,7 +14,7 @@ import (
 	aksv1controllers "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io"
 	"github.com/rancher/aks-operator/pkg/test"
 	"github.com/rancher/aks-operator/pkg/utils"
-	"github.com/rancher/wrangler/v2/pkg/generated/controllers/core"
+	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
