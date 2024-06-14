@@ -66,6 +66,17 @@ func updateCluster(desiredCluster containerservice.ManagedCluster, actualCluster
 	}
 
 	for _, ap := range *desiredCluster.AgentPoolProfiles {
+		// Remove custom kubelet and linux os configs from agent pool profiles.
+		// Updating these is not supported by Azure AKS.
+		for id, cap := range *actualCluster.AgentPoolProfiles {
+			if *ap.Name == *cap.Name {
+				if cap.KubeletConfig != nil || cap.LinuxOSConfig != nil {
+					(*actualCluster.AgentPoolProfiles)[id].KubeletConfig = nil
+					(*actualCluster.AgentPoolProfiles)[id].LinuxOSConfig = nil
+				}
+			}
+		}
+
 		if !hasAgentPoolProfile(ap.Name, actualCluster.AgentPoolProfiles) {
 			*actualCluster.AgentPoolProfiles = append(*actualCluster.AgentPoolProfiles, ap)
 		}
