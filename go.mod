@@ -2,8 +2,6 @@ module github.com/rancher/aks-operator
 
 go 1.22.0
 
-toolchain go1.22.3
-
 replace k8s.io/client-go => k8s.io/client-go v0.30.1
 
 // TODO: to be removed when rancher/pkg/apis is updated after k8s-1.30 PR is merged in rancher
