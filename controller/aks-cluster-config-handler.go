@@ -698,6 +698,7 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 
 	// set API server access profile
 	upstreamSpec.PrivateCluster = to.Ptr(false)
+	upstreamSpec.AuthorizedIPRanges = utils.ConvertToPointerOfSlice([]*string{})
 	if clusterState.Properties.APIServerAccessProfile != nil {
 		if clusterState.Properties.APIServerAccessProfile.EnablePrivateCluster != nil {
 			upstreamSpec.PrivateCluster = clusterState.Properties.APIServerAccessProfile.EnablePrivateCluster
