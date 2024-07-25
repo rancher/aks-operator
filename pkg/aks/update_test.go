@@ -72,7 +72,7 @@ var _ = Describe("updateCluster", func() {
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
 		Expect(err).ToNot(HaveOccurred())
 
-		updatedCluster := updateCluster(*desiredCluster, *actualCluster)
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
 		Expect(updatedCluster.Properties.KubernetesVersion).To(Equal(clusterSpec.KubernetesVersion))
 		Expect(updatedCluster.Properties.AddonProfiles).To(HaveKey("test-addon"))
 		Expect(updatedCluster.Properties.AddonProfiles).To(HaveKey("httpApplicationRouting"))
@@ -113,7 +113,7 @@ var _ = Describe("updateCluster", func() {
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
 		Expect(err).ToNot(HaveOccurred())
 
-		updatedCluster := updateCluster(*desiredCluster, *actualCluster)
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
 		Expect(updatedCluster.Properties.KubernetesVersion).To(BeNil())
 	})
 
@@ -126,36 +126,106 @@ var _ = Describe("updateCluster", func() {
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
 		Expect(err).ToNot(HaveOccurred())
 
-		updatedCluster := updateCluster(*desiredCluster, *actualCluster)
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
 		agentPoolProfiles := updatedCluster.Properties.AgentPoolProfiles
 		Expect(agentPoolProfiles).To(HaveLen(1))
 	})
 
-	It("shouldn't set authorized IP ranges if not specified in cluster spec", func() {
+	It("should clear authorized IP ranges for non imported clusters", func() {
+		actualCluster.Properties.APIServerAccessProfile = &armcontainerservice.ManagedClusterAPIServerAccessProfile{
+			AuthorizedIPRanges: []*string{to.Ptr("test-ip-range"), to.Ptr("test-ip-range-2")},
+		}
+
 		clusterSpec.AuthorizedIPRanges = nil
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
 		Expect(err).ToNot(HaveOccurred())
 
-		updatedCluster := updateCluster(*desiredCluster, *actualCluster)
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
 		Expect(updatedCluster.Properties.APIServerAccessProfile).ToNot(BeNil())
 		Expect(updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges).ToNot(BeNil())
 		authorizedIPranges := updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges
 		Expect(authorizedIPranges).To(HaveLen(0))
+
+		clusterSpec.AuthorizedIPRanges = to.Ptr([]string{})
+		desiredCluster, err = createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		Expect(err).ToNot(HaveOccurred())
+
+		updatedCluster = updateCluster(*desiredCluster, *actualCluster, false)
+		Expect(updatedCluster.Properties.APIServerAccessProfile).ToNot(BeNil())
+		Expect(updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges).ToNot(BeNil())
+		authorizedIPranges = updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges
+		Expect(authorizedIPranges).To(HaveLen(0))
 	})
 
-	It("shoudn't add new authorized IP range if it already exists ", func() {
+	It("should overwrite authorized IP range for non imported clusters", func() {
+		clusterSpec.AuthorizedIPRanges = to.Ptr([]string{"test-ip-range-new1", "test-ip-range-new2"})
+
 		actualCluster.Properties.APIServerAccessProfile = &armcontainerservice.ManagedClusterAPIServerAccessProfile{
-			AuthorizedIPRanges: []*string{to.Ptr("test-ip-range")},
+			AuthorizedIPRanges: []*string{to.Ptr("test-ip-range"), to.Ptr("test-ip-range-2")},
 		}
+
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
 		Expect(err).ToNot(HaveOccurred())
 
-		updatedCluster := updateCluster(*desiredCluster, *actualCluster)
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
 		Expect(updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges).To(Equal(actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges))
 		Expect(updatedCluster.Properties.APIServerAccessProfile).ToNot(BeNil())
 		authorizedIPranges := updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges
-		Expect(authorizedIPranges).To(HaveLen(1))
+		Expect(authorizedIPranges).To(HaveLen(2))
+		Expect(*authorizedIPranges[0]).To(Equal("test-ip-range-new1"))
+		Expect(*authorizedIPranges[1]).To(Equal("test-ip-range-new2"))
+
+		clusterSpec.AuthorizedIPRanges = to.Ptr([]string{"test-ip-range-new1", "test-ip-range-new2"})
+	})
+
+	It("should merge authorized IP range if it already exists for imported cluster", func() {
+		clusterSpec.AuthorizedIPRanges = to.Ptr([]string{"test-ip-range-new1", "test-ip-range-new2", "test-ip-range"})
+
+		actualCluster.Properties.APIServerAccessProfile = &armcontainerservice.ManagedClusterAPIServerAccessProfile{
+			AuthorizedIPRanges: []*string{to.Ptr("test-ip-range"), to.Ptr("test-ip-range-2")},
+		}
+
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		Expect(err).ToNot(HaveOccurred())
+
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, true)
+		Expect(updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges).To(Equal(actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges))
+		Expect(updatedCluster.Properties.APIServerAccessProfile).ToNot(BeNil())
+		authorizedIPranges := updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges
+		Expect(authorizedIPranges).To(HaveLen(4))
 		Expect(*authorizedIPranges[0]).To(Equal("test-ip-range"))
+		Expect(*authorizedIPranges[1]).To(Equal("test-ip-range-2"))
+		Expect(*authorizedIPranges[2]).To(Equal("test-ip-range-new1"))
+		Expect(*authorizedIPranges[3]).To(Equal("test-ip-range-new2"))
+	})
+
+	It("shoudn't change authorized IP range if it is empty or nil to imported cluster ", func() {
+		actualCluster.Properties.APIServerAccessProfile = &armcontainerservice.ManagedClusterAPIServerAccessProfile{
+			AuthorizedIPRanges: []*string{to.Ptr("test-ip-range"), to.Ptr("test-ip-range-2")},
+		}
+		clusterSpec.AuthorizedIPRanges = nil
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		Expect(err).ToNot(HaveOccurred())
+
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, true)
+		Expect(updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges).To(Equal(actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges))
+		Expect(updatedCluster.Properties.APIServerAccessProfile).ToNot(BeNil())
+		authorizedIPranges := updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges
+		Expect(authorizedIPranges).To(HaveLen(2))
+		Expect(*authorizedIPranges[0]).To(Equal("test-ip-range"))
+		Expect(*authorizedIPranges[1]).To(Equal("test-ip-range-2"))
+
+		clusterSpec.AuthorizedIPRanges = to.Ptr([]string{})
+		desiredCluster, err = createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		Expect(err).ToNot(HaveOccurred())
+
+		updatedCluster = updateCluster(*desiredCluster, *actualCluster, true)
+		Expect(updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges).To(Equal(actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges))
+		Expect(updatedCluster.Properties.APIServerAccessProfile).ToNot(BeNil())
+		authorizedIPranges = updatedCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges
+		Expect(authorizedIPranges).To(HaveLen(2))
+		Expect(*authorizedIPranges[0]).To(Equal("test-ip-range"))
+		Expect(*authorizedIPranges[1]).To(Equal("test-ip-range-2"))
 	})
 
 	It("shouldn't update linux profile if it's not specified", func() {
@@ -164,7 +234,7 @@ var _ = Describe("updateCluster", func() {
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
 		Expect(err).ToNot(HaveOccurred())
 
-		updatedCluster := updateCluster(*desiredCluster, *actualCluster)
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
 		Expect(updatedCluster.Properties.LinuxProfile).To(BeNil())
 	})
 
@@ -172,7 +242,7 @@ var _ = Describe("updateCluster", func() {
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "active")
 		Expect(err).ToNot(HaveOccurred())
 
-		updatedCluster := updateCluster(*desiredCluster, *actualCluster)
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
 		Expect(updatedCluster.Properties.ServicePrincipalProfile).To(BeNil())
 	})
 
@@ -181,7 +251,7 @@ var _ = Describe("updateCluster", func() {
 		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
 		Expect(err).ToNot(HaveOccurred())
 
-		updatedCluster := updateCluster(*desiredCluster, *actualCluster)
+		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
 		Expect(updatedCluster.Tags).To(HaveLen(0))
 	})
 })

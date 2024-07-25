@@ -48,7 +48,7 @@ func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient service
 		ctx,
 		spec.ResourceGroup,
 		spec.ClusterName,
-		updateCluster(*desiredCluster, actualCluster.ManagedCluster),
+		updateCluster(*desiredCluster, actualCluster.ManagedCluster, spec.Imported),
 		nil,
 	)
 	if err != nil {
@@ -64,7 +64,7 @@ func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient service
 	return err
 }
 
-func updateCluster(desiredCluster armcontainerservice.ManagedCluster, actualCluster armcontainerservice.ManagedCluster) armcontainerservice.ManagedCluster {
+func updateCluster(desiredCluster armcontainerservice.ManagedCluster, actualCluster armcontainerservice.ManagedCluster, imported bool) armcontainerservice.ManagedCluster {
 	if !validateUpdate(desiredCluster, actualCluster) {
 		logrus.Warn("Not all cluster properties can be updated.")
 	}
@@ -108,13 +108,22 @@ func updateCluster(desiredCluster armcontainerservice.ManagedCluster, actualClus
 		}
 	}
 
+	// If the cluster is imported, we may not have the authorized IP ranges set on the spec.
 	if desiredCluster.Properties.APIServerAccessProfile != nil && desiredCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges != nil {
-		for i := range desiredCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges {
-			ipRange := (desiredCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges)[i]
+		if !imported {
+			actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges = desiredCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges
+		} else {
+			for i := range desiredCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges {
+				ipRange := (desiredCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges)[i]
 
-			if !hasAuthorizedIPRange(String(ipRange), actualCluster.Properties.APIServerAccessProfile) {
-				actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges = append(actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges, ipRange)
+				if !hasAuthorizedIPRange(String(ipRange), actualCluster.Properties.APIServerAccessProfile) {
+					actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges = append(actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges, ipRange)
+				}
 			}
+		}
+	} else {
+		if !imported && actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges != nil {
+			actualCluster.Properties.APIServerAccessProfile.AuthorizedIPRanges = []*string{}
 		}
 	}
 
