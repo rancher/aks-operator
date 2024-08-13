@@ -224,7 +224,8 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	}
 
 	// Get monitoring from config spec
-	if Bool(spec.Monitoring) {
+	if spec.Monitoring != nil && Bool(spec.Monitoring) {
+		logrus.Debug("Monitoring is enabled")
 		managedCluster.Properties.AddonProfiles["omsAgent"] = &armcontainerservice.ManagedClusterAddonProfile{
 			Enabled: spec.Monitoring,
 		}
@@ -242,6 +243,12 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 
 		managedCluster.Properties.AddonProfiles["omsAgent"].Config = map[string]*string{
 			"logAnalyticsWorkspaceResourceID": to.Ptr(logAnalyticsWorkspaceResourceID),
+		}
+	} else if spec.Monitoring != nil && !Bool(spec.Monitoring) {
+		logrus.Debug("Monitoring is disabled")
+		managedCluster.Properties.AddonProfiles["omsAgent"] = &armcontainerservice.ManagedClusterAddonProfile{
+			Enabled: spec.Monitoring,
+			Config:  nil,
 		}
 	}
 
