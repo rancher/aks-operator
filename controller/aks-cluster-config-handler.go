@@ -676,24 +676,31 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 	if addonProfile["omsAgent"] != nil {
 		upstreamSpec.Monitoring = addonProfile["omsAgent"].Enabled
 
-		if len(addonProfile["omsAgent"].Config) == 0 {
-			return nil, fmt.Errorf("cannot set OMS Agent configuration retrieved from Azure")
-		}
-		logAnalyticsWorkspaceResourceID := addonProfile["omsAgent"].Config["logAnalyticsWorkspaceResourceID"]
+		// If the monitoring addon is enabled, attempt to populate the Log Analytics
+		// workspace name and group from the Azure OMS Agent configuration.
+		if aks.Bool(addonProfile["omsAgent"].Enabled) && addonProfile["omsAgent"].Config != nil {
+			if len(addonProfile["omsAgent"].Config) == 0 {
+				return nil, fmt.Errorf("cannot set OMS Agent configuration retrieved from Azure")
+			}
+			logAnalyticsWorkspaceResourceID := addonProfile["omsAgent"].Config["logAnalyticsWorkspaceResourceID"]
 
-		group := matchWorkspaceGroup.FindStringSubmatch(aks.String(logAnalyticsWorkspaceResourceID))
-		if group == nil {
-			return nil, fmt.Errorf("OMS Agent configuration workspace group was not found")
-		}
-		logAnalyticsWorkspaceGroup := group[1]
-		upstreamSpec.LogAnalyticsWorkspaceGroup = to.Ptr(logAnalyticsWorkspaceGroup)
+			group := matchWorkspaceGroup.FindStringSubmatch(aks.String(logAnalyticsWorkspaceResourceID))
+			if group == nil {
+				return nil, fmt.Errorf("OMS Agent configuration workspace group was not found")
+			}
+			logAnalyticsWorkspaceGroup := group[1]
+			upstreamSpec.LogAnalyticsWorkspaceGroup = to.Ptr(logAnalyticsWorkspaceGroup)
 
-		name := matchWorkspaceName.FindStringSubmatch(aks.String(logAnalyticsWorkspaceResourceID))
-		if name == nil {
-			return nil, fmt.Errorf("OMS Agent configuration workspace name was not found")
+			name := matchWorkspaceName.FindStringSubmatch(aks.String(logAnalyticsWorkspaceResourceID))
+			if name == nil {
+				return nil, fmt.Errorf("OMS Agent configuration workspace name was not found")
+			}
+			logAnalyticsWorkspaceName := name[1]
+			upstreamSpec.LogAnalyticsWorkspaceName = to.Ptr(logAnalyticsWorkspaceName)
+		} else if addonProfile["omsAgent"].Enabled != nil && !aks.Bool(addonProfile["omsAgent"].Enabled) {
+			upstreamSpec.LogAnalyticsWorkspaceGroup = nil
+			upstreamSpec.LogAnalyticsWorkspaceName = nil
 		}
-		logAnalyticsWorkspaceName := name[1]
-		upstreamSpec.LogAnalyticsWorkspaceName = to.Ptr(logAnalyticsWorkspaceName)
 	}
 
 	// set API server access profile
@@ -791,10 +798,19 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	if config.Spec.Monitoring != nil {
 		if aks.Bool(config.Spec.Monitoring) != aks.Bool(upstreamSpec.Monitoring) {
 			logrus.Infof("Updating monitoring addon for cluster [%s]", config.Spec.ClusterName)
-			updateAksCluster = true
-			importedClusterSpec.Monitoring = config.Spec.Monitoring
-			importedClusterSpec.LogAnalyticsWorkspaceGroup = config.Spec.LogAnalyticsWorkspaceGroup
-			importedClusterSpec.LogAnalyticsWorkspaceName = config.Spec.LogAnalyticsWorkspaceName
+			if config.Spec.Monitoring != nil && !aks.Bool(config.Spec.Monitoring) {
+				logrus.Debugf("Disabling monitoring addon for cluster [%s]", config.Spec.ClusterName)
+				updateAksCluster = true
+				importedClusterSpec.Monitoring = config.Spec.Monitoring
+				importedClusterSpec.LogAnalyticsWorkspaceGroup = nil
+				importedClusterSpec.LogAnalyticsWorkspaceName = nil
+			} else if config.Spec.Monitoring != nil && aks.Bool(config.Spec.Monitoring) {
+				logrus.Debugf("Enabling monitoring addon for cluster [%s]", config.Spec.ClusterName)
+				updateAksCluster = true
+				importedClusterSpec.Monitoring = config.Spec.Monitoring
+				importedClusterSpec.LogAnalyticsWorkspaceGroup = config.Spec.LogAnalyticsWorkspaceGroup
+				importedClusterSpec.LogAnalyticsWorkspaceName = config.Spec.LogAnalyticsWorkspaceName
+			}
 		}
 	}
 
