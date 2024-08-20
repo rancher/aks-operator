@@ -937,4 +937,21 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		_, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
 		Expect(err).ToNot(HaveOccurred())
 	})
+
+	It("should succeed even if the monitoring addon is disabled", func() {
+		clusterState.Properties.AddonProfiles["omsAgent"] = &armcontainerservice.ManagedClusterAddonProfile{
+			Enabled: to.Ptr(false),
+			Config:  nil,
+		}
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: *clusterState,
+			}, nil)
+
+		upstreamSpec, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(*upstreamSpec.Monitoring).To(BeFalse())
+		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(BeNil())
+		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(BeNil())
+	})
 })

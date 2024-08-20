@@ -334,7 +334,18 @@ var _ = Describe("newManagedCluster", func() {
 		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).ToNot(HaveOccurred())
 
-		Expect(managedCluster.Properties.AddonProfiles).ToNot(HaveKey("omsagent"))
+		Expect(managedCluster.Properties.AddonProfiles).ToNot(HaveKey("omsAgent"))
+	})
+
+	It("should successfully create managed cluster with monitoring disabled", func() {
+		workplacesClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(armoperationalinsights.WorkspacesClientGetResponse{}, nil).Times(0)
+		flag := false
+		clusterSpec.Monitoring = &flag
+		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(managedCluster.Properties.AddonProfiles).To(HaveKey("omsAgent"))
+		Expect(*managedCluster.Properties.AddonProfiles["omsAgent"].Enabled).To(BeFalse())
 	})
 
 	It("should successfully create managed cluster when phase is set to active", func() {
