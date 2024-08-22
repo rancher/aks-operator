@@ -36,7 +36,7 @@ func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient service
 	// Pull the upstream cluster state
 	actualCluster, err := clusterClient.Get(ctx, spec.ResourceGroup, spec.ClusterName, nil)
 	if err != nil {
-		logrus.Errorf("Error getting upstream AKS cluster by name [%s]: %s", spec.ClusterName, err.Error())
+		logrus.Errorf("error getting upstream AKS cluster by name [%s]: %s", spec.ClusterName, err.Error())
 		return err
 	}
 
