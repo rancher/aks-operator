@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/retry"
 
 	"github.com/rancher/aks-operator/pkg/aks"
 	"github.com/rancher/aks-operator/pkg/aks/services"
@@ -182,34 +183,43 @@ func (h *Handler) OnAksConfigRemoved(_ string, config *aksv1.AKSClusterConfig) (
 // empty string will be written to status
 func (h *Handler) recordError(onChange func(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error)) func(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
 	return func(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
-		var err error
 		var message string
-		config, err = onChange(key, config)
+		config, onChangeErr := onChange(key, config)
 		if config == nil {
 			// AKS config is likely deleting
-			return config, err
+			return config, onChangeErr
 		}
-		if err != nil {
-			message = err.Error()
-		}
-
 		if config.Status.FailureMessage == message {
-			return config, err
+			return config, onChangeErr
 		}
-
-		config = config.DeepCopy()
-		if message != "" && config.Status.Phase == aksConfigActivePhase {
-			// can assume an update is failing
-			config.Status.Phase = aksConfigUpdatingPhase
+		statusUpdateErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			// Fetch the latest version of the config
+			conf, err := h.aksCC.Get(config.Namespace, config.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			// Ensure we're working on a deep copy
+			conf = conf.DeepCopy()
+			// Update status with the new failure message
+			if message != "" && conf.Status.Phase == aksConfigActivePhase {
+				// Can assume an update is failing
+				conf.Status.Phase = aksConfigUpdatingPhase
+			}
+			conf.Status.FailureMessage = message
+			// Try to update status
+			updatedConfig, err := h.aksCC.UpdateStatus(conf)
+			if err == nil {
+				config = updatedConfig
+			}
+			return err
+		})
+		if statusUpdateErr != nil {
+			logrus.Errorf(
+				"Error updating status for AKSClusterConfig [%s/%s]: %v. Original error from onChange: %v",
+				config.Spec.ClusterName, config.Name, statusUpdateErr, onChangeErr,
+			)
 		}
-		config.Status.FailureMessage = message
-
-		var recordErr error
-		config, recordErr = h.aksCC.UpdateStatus(config)
-		if recordErr != nil {
-			logrus.Errorf("Error recording akscc [%s (id: %s)] failure message: %s", config.Spec.ClusterName, config.Name, recordErr.Error())
-		}
-		return config, err
+		return config, onChangeErr
 	}
 }
 
