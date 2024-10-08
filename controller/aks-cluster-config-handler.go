@@ -799,16 +799,6 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 		}
 	}
 
-	// check addon HTTP Application Routing
-	if config.Spec.HTTPApplicationRouting != nil {
-		if aks.Bool(config.Spec.HTTPApplicationRouting) != aks.Bool(upstreamSpec.HTTPApplicationRouting) {
-			logrus.Infof("Updating HTTP application routing to %v for cluster [%s (id: %s)]", aks.Bool(config.Spec.HTTPApplicationRouting), config.Spec.ClusterName, config.Name)
-			logrus.Debugf("config: %v; upstream: %v", aks.Bool(config.Spec.HTTPApplicationRouting), aks.Bool(upstreamSpec.HTTPApplicationRouting))
-			updateAksCluster = true
-			importedClusterSpec.HTTPApplicationRouting = config.Spec.HTTPApplicationRouting
-		}
-	}
-
 	// check addon monitoring
 	if config.Spec.Monitoring != nil {
 		if aks.Bool(config.Spec.Monitoring) != aks.Bool(upstreamSpec.Monitoring) {
@@ -970,6 +960,16 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					return config, fmt.Errorf("failed to remove node pool: %v", err)
 				}
 				return h.enqueueUpdate(config)
+			}
+		}
+
+		// check addon HTTP Application Routing
+		if config.Spec.HTTPApplicationRouting != nil {
+			if aks.Bool(config.Spec.HTTPApplicationRouting) != aks.Bool(upstreamSpec.HTTPApplicationRouting) {
+				logrus.Infof("Updating HTTP application routing to %v for cluster [%s (id: %s)]", aks.Bool(config.Spec.HTTPApplicationRouting), config.Spec.ClusterName, config.Name)
+				logrus.Debugf("config: %v; upstream: %v", aks.Bool(config.Spec.HTTPApplicationRouting), aks.Bool(upstreamSpec.HTTPApplicationRouting))
+				updateAksCluster = true
+				importedClusterSpec.HTTPApplicationRouting = config.Spec.HTTPApplicationRouting
 			}
 		}
 	}
