@@ -28,7 +28,7 @@ require (
 	github.com/rancher/wrangler/v3 v3.0.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
-	go.uber.org/mock v0.4.0
+	go.uber.org/mock v0.5.0
 	golang.org/x/net v0.30.0
 	k8s.io/api v0.30.1
 	k8s.io/apiextensions-apiserver v0.30.1
