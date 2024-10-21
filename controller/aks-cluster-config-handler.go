@@ -432,7 +432,7 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 		if np.Mode == "" {
 			return fmt.Errorf(cannotBeNilError, "NodePool.Mode", config.Spec.ClusterName, config.Name)
 		}
-		if np.Mode == "System" {
+		if np.Mode == string(armcontainerservice.AgentPoolModeSystem) {
 			systemMode = true
 		}
 		if np.OsType == "" {
@@ -964,6 +964,18 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 		// check for removed NodePools
 		for npName := range upstreamNodePools {
 			if _, ok := downstreamNodePools[npName]; !ok {
+				if upstreamNodePools[npName].Mode == string(armcontainerservice.AgentPoolModeSystem) {
+					// at least one NodePool with mode System is required in the cluster
+					systemNodePoolExists := false
+					for _, tmpNodePool := range downstreamNodePools {
+						if tmpNodePool.Mode == string(armcontainerservice.AgentPoolModeSystem) {
+							systemNodePoolExists = true
+						}
+					}
+					if !systemNodePoolExists {
+						return config, fmt.Errorf("cannot remove node pool [%s] with mode System from cluster [%s (id: %s)]", npName, config.Spec.ClusterName, config.Name)
+					}
+				}
 				logrus.Infof("Removing node pool [%s] from cluster [%s (id: %s)]", npName, config.Spec.ClusterName, config.Name)
 				err = aks.RemoveAgentPool(ctx, h.azureClients.agentPoolsClient, &config.Spec, upstreamNodePools[npName])
 				if err != nil {
