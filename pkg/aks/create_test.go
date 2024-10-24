@@ -97,6 +97,7 @@ var _ = Describe("newManagedCluster", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(managedCluster.Tags).To(HaveKeyWithValue("test-tag", to.Ptr("test-value")))
+		Expect(managedCluster.Tags).To(HaveKeyWithValue("empty-tag", to.Ptr("")))
 		Expect(*managedCluster.Properties.NetworkProfile.NetworkPolicy).To(Equal(armcontainerservice.NetworkPolicy(String(clusterSpec.NetworkPolicy))))
 		Expect(*managedCluster.Properties.NetworkProfile.LoadBalancerSKU).To(Equal(armcontainerservice.LoadBalancerSKU(String(clusterSpec.LoadBalancerSKU))))
 		Expect(*managedCluster.Properties.NetworkProfile.NetworkPlugin).To(Equal(armcontainerservice.NetworkPlugin(String(clusterSpec.NetworkPlugin))))
@@ -537,7 +538,8 @@ func newTestClusterSpec() *aksv1.AKSClusterConfigSpec {
 	return &aksv1.AKSClusterConfigSpec{
 		ResourceLocation: "eastus",
 		Tags: map[string]string{
-			"test-tag": "test-value",
+			"test-tag":  "test-value",
+			"empty-tag": "",
 		},
 		NetworkPolicy:       to.Ptr("azure"),
 		NetworkPlugin:       to.Ptr("azure"),
