@@ -843,18 +843,19 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 			clusterSpecCopy.ResourceGroup = config.Spec.ResourceGroup
 			clusterSpecCopy.ResourceLocation = config.Spec.ResourceLocation
 			clusterSpecCopy.ClusterName = config.Spec.ClusterName
-		}
-		clusterSpecCopy.NodePools = make([]aksv1.AKSNodePool, 0, len(config.Spec.NodePools))
-		for _, n := range config.Spec.NodePools {
-			if _, ok := upstreamNodePools[*n.Name]; ok {
-				clusterSpecCopy.NodePools = append(clusterSpecCopy.NodePools, n)
+
+			clusterSpecCopy.NodePools = make([]aksv1.AKSNodePool, 0, len(config.Spec.NodePools))
+			for _, n := range config.Spec.NodePools {
+				if _, ok := upstreamNodePools[*n.Name]; ok {
+					clusterSpecCopy.NodePools = append(clusterSpecCopy.NodePools, n)
+				}
 			}
+			err = aks.UpdateCluster(ctx, &h.azureClients.credentials, h.azureClients.clustersClient, h.azureClients.workplacesClient, clusterSpecCopy, config.Status.Phase)
+			if err != nil {
+				return config, fmt.Errorf("failed to update cluster: %v", err)
+			}
+			return h.enqueueUpdate(config)
 		}
-		err = aks.UpdateCluster(ctx, &h.azureClients.credentials, h.azureClients.clustersClient, h.azureClients.workplacesClient, clusterSpecCopy, config.Status.Phase)
-		if err != nil {
-			return config, fmt.Errorf("failed to update cluster: %v", err)
-		}
-		return h.enqueueUpdate(config)
 	}
 
 	if config.Spec.NodePools != nil {
