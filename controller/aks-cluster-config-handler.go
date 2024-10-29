@@ -11,7 +11,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
 	wranglerv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -437,20 +436,20 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	}
 
 	if config.Spec.NetworkPlugin != nil &&
-		aks.String(config.Spec.NetworkPlugin) != string(containerservice.Kubenet) &&
-		aks.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
+		aks.String(config.Spec.NetworkPlugin) != string(armcontainerservice.NetworkPluginKubenet) &&
+		aks.String(config.Spec.NetworkPlugin) != string(armcontainerservice.NetworkPluginAzure) {
 		return fmt.Errorf("invalid network plugin value [%s] for [%s (id: %s)] cluster config", aks.String(config.Spec.NetworkPlugin), config.Spec.ClusterName, config.Name)
 	}
 	if config.Spec.NetworkPolicy != nil &&
-		aks.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyAzure) &&
-		aks.String(config.Spec.NetworkPolicy) != string(containerservice.NetworkPolicyCalico) {
+		aks.String(config.Spec.NetworkPolicy) != string(armcontainerservice.NetworkPolicyAzure) &&
+		aks.String(config.Spec.NetworkPolicy) != string(armcontainerservice.NetworkPolicyCalico) {
 		return fmt.Errorf("invalid network policy value [%s] for [%s (id: %s)] cluster config", aks.String(config.Spec.NetworkPolicy), config.Spec.ClusterName, config.Name)
 	}
-	if aks.String(config.Spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) && aks.String(config.Spec.NetworkPlugin) != string(containerservice.Azure) {
+	if aks.String(config.Spec.NetworkPolicy) == string(armcontainerservice.NetworkPolicyAzure) && aks.String(config.Spec.NetworkPlugin) != string(armcontainerservice.NetworkPluginAzure) {
 		return fmt.Errorf("azure network policy can be used only with Azure CNI network plugin for [%s (id: %s)] cluster", config.Spec.ClusterName, config.Name)
 	}
 	cannotBeNilErrorAzurePlugin := "field [%s] must be provided for cluster [%s (id: %s)] config when Azure CNI network plugin is used"
-	if aks.String(config.Spec.NetworkPlugin) == string(containerservice.Azure) {
+	if aks.String(config.Spec.NetworkPlugin) == string(armcontainerservice.NetworkPluginAzure) {
 		if config.Spec.VirtualNetwork == nil {
 			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "virtualNetwork", config.Spec.ClusterName, config.Name)
 		}
