@@ -43,14 +43,8 @@ jobs:
       with:
         fetch-depth: 0
         ref: ${{ github.ref_name}}
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: 'go.mod'
-        check-latest: true
     - name: Build and push all image variations
       run: |
-        make operator
         make image-push
         TAG="${TAG}-amd64" TARGET_PLATFORMS=linux/amd64 make image-push
         TAG="${TAG}-arm64" TARGET_PLATFORMS=linux/arm64 make image-push
