@@ -28,12 +28,21 @@ jobs:
         secrets: |
           secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials username | PUBLIC_REGISTRY_USERNAME ;
           secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials password | PUBLIC_REGISTRY_PASSWORD ;
-    - name: Login to DockerHub
+          secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials registry | PRIME_REGISTRY ;
+          secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials username | PRIME_REGISTRY_USERNAME ;
+          secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials password | PRIME_REGISTRY_PASSWORD ;
+    - name: Login to Public Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ vars.PUBLIC_REGISTRY }}
         username: ${{ env.PUBLIC_REGISTRY_USERNAME }}
         password: ${{ env.PUBLIC_REGISTRY_PASSWORD }}
+    - name: Login to Prime Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.PRIME_REGISTRY }}
+        username: ${{ env.PRIME_REGISTRY_USERNAME }}
+        password: ${{ env.PRIME_REGISTRY_PASSWORD }}
     - name: Setup QEMU
       uses: docker/setup-qemu-action@v3
     - name: Setup Docker Buildx
@@ -43,7 +52,7 @@ jobs:
       with:
         fetch-depth: 0
         ref: ${{ github.ref_name}}
-    - name: Build and push all image variations
+    - name: Build and push all image variations to Public Registry
       run: |
         make image-push
         TAG="${TAG}-amd64" TARGET_PLATFORMS=linux/amd64 make image-push
@@ -51,6 +60,14 @@ jobs:
       env:
         TAG: ${{ github.ref_name }}
         REPO: ${{ vars.PUBLIC_REGISTRY }}/${{ vars.PUBLIC_REGISTRY_REPO }}
+    - name: Build and push all image variations to Prime Registry
+      run: |
+        make image-push
+        TAG="${TAG}-amd64" TARGET_PLATFORMS=linux/amd64 make image-push
+        TAG="${TAG}-arm64" TARGET_PLATFORMS=linux/arm64 make image-push
+      env:
+        TAG: ${{ github.ref_name }}
+        REPO: ${{ env.PRIME_REGISTRY }}/${{ vars.PUBLIC_REGISTRY_REPO }}
     - name: Create release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for creating GH release
