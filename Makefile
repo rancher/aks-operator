@@ -146,7 +146,7 @@ image-build: buildx-machine ## build (and load) the container image targeting th
 .PHONY: image-push
 image-push: buildx-machine ## build the container image targeting all platforms defined by TARGET_PLATFORMS and push to a registry.
 	docker buildx build -f package/Dockerfile \
-    --builder $(MACHINE) $(BUILDX_ARGS) --build-arg VERSION=$(TAG) \
+    --builder $(MACHINE) $(IID_FILE_FLAG) $(BUILDX_ARGS) --build-arg VERSION=$(TAG) \
     --platform=$(TARGET_PLATFORMS) -t "$(IMAGE)" --push .
 	@echo "Pushed $(IMAGE)"
 
