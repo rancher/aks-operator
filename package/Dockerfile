@@ -1,15 +1,26 @@
+# Image that provides cross compilation tooling.
+FROM --platform=$BUILDPLATFORM rancher/mirrored-tonistiigi-xx:1.5.0 AS xx
+
 FROM registry.suse.com/bci/bci-base:15.6 AS base
 RUN sed -i 's/^CREATE_MAIL_SPOOL=yes/CREATE_MAIL_SPOOL=no/' /etc/default/useradd
 RUN useradd --uid 1007 aks-operator
 
-FROM registry.suse.com/bci/golang:1.23 AS builder
+FROM --platform=$BUILDPLATFORM registry.suse.com/bci/golang:1.23 AS builder
+
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
+
 COPY ./controller ./controller
 COPY ./pkg ./pkg
 COPY ./main.go ./main.go
-RUN CGO_ENABLED=0 GOOS=linux go build -o /aks-operator
+
+# Copy xx scripts to your build stage
+COPY --from=xx / /
+
+ARG TARGETPLATFORM
+ENV CGO_ENABLED=0
+RUN xx-go build -o /aks-operator && xx-verify /aks-operator
 
 FROM registry.suse.com/bci/bci-micro:15.6
 COPY --from=base /etc/passwd /etc/passwd
