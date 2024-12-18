@@ -64,7 +64,8 @@ jobs:
         prime-username: ${{ env.PRIME_REGISTRY_USERNAME }}
         prime-password: ${{ env.PRIME_REGISTRY_PASSWORD }}
         make-target: image-push
-        push-to-prime: false
+    - name: Cleanup checksum files # in order to avoid goreleaser dirty state error, remove once rancher/ecm-distro-tools/actions/publish-image@main gets updated
+      run: rm -f slsactl_*_checksums.txt*
     - name: Create release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for creating GH release
