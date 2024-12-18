@@ -64,9 +64,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 
 	managedCluster.Tags = make(map[string]*string)
 	for key, val := range spec.Tags {
-		if val != "" {
-			managedCluster.Tags[key] = to.Ptr(val)
-		}
+		managedCluster.Tags[key] = to.Ptr(val)
 	}
 
 	nodeResourceGroupName := ""
