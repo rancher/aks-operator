@@ -33,7 +33,7 @@ jobs:
           # - amd64 manifest
           - tag-suffix: "-amd64"
             platforms: linux/amd64
-    runs-on: org-${{ github.repository_owner_id }}-amd64-k8s
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
           secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials password | PUBLIC_REGISTRY_PASSWORD ;
           secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials registry | PRIME_REGISTRY ;
           secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials username | PRIME_REGISTRY_USERNAME ;
-          secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials password | PRIME_REGISTRY_PASSWORD ;
+          secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials password | PRIME_REGISTRY_PASSWORD
     - name: Publish images
       uses: rancher/ecm-distro-tools/actions/publish-image@master
       with:
@@ -64,6 +64,7 @@ jobs:
         prime-username: ${{ env.PRIME_REGISTRY_USERNAME }}
         prime-password: ${{ env.PRIME_REGISTRY_PASSWORD }}
         make-target: image-push
+        push-to-prime: false
     - name: Cleanup checksum files # in order to avoid goreleaser dirty state error, remove once rancher/ecm-distro-tools/actions/publish-image@main gets updated
       run: rm -f slsactl_*_checksums.txt*
     - name: Create release
