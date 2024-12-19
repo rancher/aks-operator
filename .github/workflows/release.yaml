@@ -33,7 +33,7 @@ jobs:
           # - amd64 manifest
           - tag-suffix: "-amd64"
             platforms: linux/amd64
-    runs-on: ubuntu-latest
+    runs-on: org-${{ github.repository_owner_id }}-amd64-k8s
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
