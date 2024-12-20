@@ -448,6 +448,25 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	if aks.String(config.Spec.NetworkPolicy) == string(armcontainerservice.NetworkPolicyAzure) && aks.String(config.Spec.NetworkPlugin) != string(armcontainerservice.NetworkPluginAzure) {
 		return fmt.Errorf("azure network policy can be used only with Azure CNI network plugin for [%s (id: %s)] cluster", config.Spec.ClusterName, config.Name)
 	}
+
+	outboundType := strings.ToLower(aks.String(config.Spec.OutboundType))
+	if outboundType != "" {
+		if outboundType != strings.ToLower(string(armcontainerservice.OutboundTypeLoadBalancer)) &&
+			outboundType != strings.ToLower(string(armcontainerservice.OutboundTypeUserDefinedRouting)) &&
+			outboundType != strings.ToLower(string(armcontainerservice.OutboundTypeManagedNATGateway)) &&
+			outboundType != strings.ToLower(string(armcontainerservice.OutboundTypeUserAssignedNATGateway)) {
+			return fmt.Errorf("invalid outbound type value [%s] for [%s (id: %s)] cluster config", outboundType, config.Spec.ClusterName, config.Name)
+		}
+		if outboundType == strings.ToLower(string(armcontainerservice.OutboundTypeUserDefinedRouting)) {
+			if aks.String(config.Spec.NetworkPlugin) != string(armcontainerservice.NetworkPluginAzure) {
+				return fmt.Errorf("user defined routing can be used only with Azure CNI network plugin for [%s (id: %s)] cluster", config.Spec.ClusterName, config.Name)
+			}
+			if config.Spec.Subnet == nil || aks.String(config.Spec.Subnet) == "" {
+				return fmt.Errorf("subnet must be provided for cluster [%s (id: %s)] config when user defined routing is used", config.Spec.ClusterName, config.Name)
+			}
+		}
+	}
+
 	cannotBeNilErrorAzurePlugin := "field [%s] must be provided for cluster [%s (id: %s)] config when Azure CNI network plugin is used"
 	if aks.String(config.Spec.NetworkPlugin) == string(armcontainerservice.NetworkPluginAzure) {
 		if config.Spec.VirtualNetwork == nil {
