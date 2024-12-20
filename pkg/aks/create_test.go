@@ -176,7 +176,20 @@ var _ = Describe("newManagedCluster", func() {
 					ID: to.Ptr("test-workspace-id"),
 				},
 			}, nil)
-		clusterSpec.OutboundType = to.Ptr("userDefinedRouting")
+		clusterSpec.OutboundType = to.Ptr("userdefinedrouting")
+		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(*managedCluster.Properties.NetworkProfile.OutboundType).To(Equal(armcontainerservice.OutboundTypeUserDefinedRouting))
+	})
+
+	It("should successfully create managed cluster with outboundtype UserDefinedRouting", func() {
+		workplacesClientMock.EXPECT().Get(ctx, String(clusterSpec.LogAnalyticsWorkspaceGroup), String(clusterSpec.LogAnalyticsWorkspaceName), nil).
+			Return(armoperationalinsights.WorkspacesClientGetResponse{
+				Workspace: armoperationalinsights.Workspace{
+					ID: to.Ptr("test-workspace-id"),
+				},
+			}, nil)
+		clusterSpec.OutboundType = to.Ptr("UserDefinedRouting")
 		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(*managedCluster.Properties.NetworkProfile.OutboundType).To(Equal(armcontainerservice.OutboundTypeUserDefinedRouting))
