@@ -16,10 +16,10 @@ on:
 #   - PUBLIC_REGISTRY_PASSWORD
 
 jobs:
-  release:
+  publish-images:
     permissions:
-      contents: write # required for creating GH release
-      id-token: write # required for reading vault secrets
+      contents: read
+      id-token: write #  required for reading vault secrets and for cosign's use in ecm-distro-tools/publish-image
     strategy:
       matrix:
         include:
@@ -48,7 +48,7 @@ jobs:
           secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials password | PUBLIC_REGISTRY_PASSWORD ;
           secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials registry | PRIME_REGISTRY ;
           secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials username | PRIME_REGISTRY_USERNAME ;
-          secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials password | PRIME_REGISTRY_PASSWORD ;
+          secret/data/github/repo/${{ github.repository }}/rancher-prime-registry/credentials password | PRIME_REGISTRY_PASSWORD
     - name: Publish images
       uses: rancher/ecm-distro-tools/actions/publish-image@master
       with:
@@ -64,6 +64,19 @@ jobs:
         prime-username: ${{ env.PRIME_REGISTRY_USERNAME }}
         prime-password: ${{ env.PRIME_REGISTRY_PASSWORD }}
         make-target: image-push
+        push-to-prime: false
+  
+  release:
+    permissions:
+      contents: write # required for creating GH release
+    runs-on: ubuntu-latest
+    needs: publish-images
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: ${{ github.ref_name}}
     - name: Create release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for creating GH release
