@@ -8,7 +8,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2020-11-01/containerservice"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	"github.com/rancher/aks-operator/pkg/utils"
@@ -82,18 +81,18 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	networkProfile := &armcontainerservice.NetworkProfile{}
 
 	switch String(spec.OutboundType) {
-	case string(containerservice.LoadBalancer):
+	case string(armcontainerservice.OutboundTypeLoadBalancer):
 		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeLoadBalancer)
-	case string(containerservice.UserDefinedRouting):
+	case string(armcontainerservice.OutboundTypeUserDefinedRouting):
 		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeUserDefinedRouting)
 	case "":
 		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeLoadBalancer)
 	}
 
 	switch String(spec.NetworkPolicy) {
-	case string(containerservice.NetworkPolicyAzure):
+	case string(armcontainerservice.NetworkPolicyAzure):
 		networkProfile.NetworkPolicy = to.Ptr(armcontainerservice.NetworkPolicyAzure)
-	case string(containerservice.NetworkPolicyCalico):
+	case string(armcontainerservice.NetworkPolicyCalico):
 		networkProfile.NetworkPolicy = to.Ptr(armcontainerservice.NetworkPolicyCalico)
 	case "":
 		networkProfile.NetworkPolicy = nil
@@ -102,9 +101,9 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	}
 
 	switch String(spec.NetworkPlugin) {
-	case string(containerservice.Azure):
+	case string(armcontainerservice.NetworkPluginAzure):
 		networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginAzure)
-	case string(containerservice.Kubenet):
+	case string(armcontainerservice.NetworkPluginKubenet):
 		networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginKubenet)
 	case "":
 		networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginKubenet)
@@ -112,24 +111,24 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		return nil, fmt.Errorf("networkPlugin '%s' is not supported", String(spec.NetworkPlugin))
 	}
 
-	if *networkProfile.NetworkPlugin == armcontainerservice.NetworkPluginKubenet && String(spec.NetworkPolicy) == string(containerservice.NetworkPolicyAzure) {
+	if *networkProfile.NetworkPlugin == armcontainerservice.NetworkPluginKubenet && String(spec.NetworkPolicy) == string(armcontainerservice.NetworkPolicyAzure) {
 		return nil, fmt.Errorf("network plugin Kubenet is not compatible with network policy Azure")
 	}
 
 	networkProfile.LoadBalancerSKU = to.Ptr(armcontainerservice.LoadBalancerSKUStandard)
 
-	if String(spec.LoadBalancerSKU) == string(containerservice.Basic) {
+	if String(spec.LoadBalancerSKU) == string(armcontainerservice.LoadBalancerSKUBasic) {
 		logrus.Warnf("LoadBalancerSKU 'basic' is not supported")
 		networkProfile.LoadBalancerSKU = to.Ptr(armcontainerservice.LoadBalancerSKUBasic)
 	}
 
 	// Disable standard loadbalancer for UserDefinedRouting and use routing created by user pre-defined table for egress
-	if String(spec.OutboundType) == string(containerservice.UserDefinedRouting) {
+	if String(spec.OutboundType) == string(armcontainerservice.OutboundTypeUserDefinedRouting) {
 		networkProfile.LoadBalancerSKU = nil
 	}
 
 	virtualNetworkResourceGroup := spec.ResourceGroup
-	if containerservice.NetworkPlugin(String(spec.NetworkPlugin)) == containerservice.Azure || containerservice.NetworkPlugin(String(spec.NetworkPlugin)) == containerservice.Kubenet {
+	if armcontainerservice.NetworkPlugin(String(spec.NetworkPlugin)) == armcontainerservice.NetworkPluginAzure || armcontainerservice.NetworkPlugin(String(spec.NetworkPlugin)) == armcontainerservice.NetworkPluginKubenet {
 		// If a virtual network resource group is set, use it, otherwise assume it is the same as the cluster
 		if String(spec.VirtualNetworkResourceGroup) != "" {
 			virtualNetworkResourceGroup = String(spec.VirtualNetworkResourceGroup)
