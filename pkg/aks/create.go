@@ -80,16 +80,18 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 
 	networkProfile := &armcontainerservice.NetworkProfile{}
 
-	switch String(spec.OutboundType) {
-	case string(armcontainerservice.OutboundTypeLoadBalancer):
+	switch strings.ToLower(String(spec.OutboundType)) {
+	case strings.ToLower(string(armcontainerservice.OutboundTypeLoadBalancer)):
 		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeLoadBalancer)
-	case string(armcontainerservice.OutboundTypeUserDefinedRouting):
+	case strings.ToLower(string(armcontainerservice.OutboundTypeUserDefinedRouting)):
 		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeUserDefinedRouting)
+	case strings.ToLower(string(armcontainerservice.OutboundTypeManagedNATGateway)):
+		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeManagedNATGateway)
 	case "":
 		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeLoadBalancer)
 	}
 
-	switch String(spec.NetworkPolicy) {
+	switch strings.ToLower(String(spec.NetworkPolicy)) {
 	case string(armcontainerservice.NetworkPolicyAzure):
 		networkProfile.NetworkPolicy = to.Ptr(armcontainerservice.NetworkPolicyAzure)
 	case string(armcontainerservice.NetworkPolicyCalico):
@@ -100,7 +102,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		return nil, fmt.Errorf("networkPolicy '%s' is not supported", String(spec.NetworkPolicy))
 	}
 
-	switch String(spec.NetworkPlugin) {
+	switch strings.ToLower(String(spec.NetworkPlugin)) {
 	case string(armcontainerservice.NetworkPluginAzure):
 		networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginAzure)
 	case string(armcontainerservice.NetworkPluginKubenet):
@@ -117,13 +119,13 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 
 	networkProfile.LoadBalancerSKU = to.Ptr(armcontainerservice.LoadBalancerSKUStandard)
 
-	if String(spec.LoadBalancerSKU) == string(armcontainerservice.LoadBalancerSKUBasic) {
+	if strings.EqualFold(String(spec.LoadBalancerSKU), string(armcontainerservice.LoadBalancerSKUBasic)) {
 		logrus.Warnf("LoadBalancerSKU 'basic' is not supported")
 		networkProfile.LoadBalancerSKU = to.Ptr(armcontainerservice.LoadBalancerSKUBasic)
 	}
 
 	// Disable standard loadbalancer for UserDefinedRouting and use routing created by user pre-defined table for egress
-	if String(spec.OutboundType) == string(armcontainerservice.OutboundTypeUserDefinedRouting) {
+	if strings.EqualFold(String(spec.OutboundType), string(armcontainerservice.OutboundTypeUserDefinedRouting)) {
 		networkProfile.LoadBalancerSKU = nil
 	}
 
