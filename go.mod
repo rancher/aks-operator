@@ -23,7 +23,7 @@ require (
 	github.com/rancher/wrangler/v2 v2.1.4
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/net v0.32.0
+	golang.org/x/net v0.33.0
 	k8s.io/api v0.28.9
 	k8s.io/apiextensions-apiserver v0.28.9
 	k8s.io/apimachinery v0.28.9
