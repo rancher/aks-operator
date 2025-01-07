@@ -299,6 +299,13 @@ var _ = Describe("validateConfig", func() {
 		Expect(handler.validateConfig(aksConfig)).To(Succeed())
 	})
 
+	It("should successfully validate if user defined routing is used with subnet", func() {
+		aksConfig.Spec.OutboundType = to.Ptr("userDefinedRouting")
+		aksConfig.Spec.Subnet = to.Ptr("test-subnet-1")
+		aksConfig.Spec.NetworkPlugin = to.Ptr(string(armcontainerservice.NetworkPluginAzure))
+		Expect(handler.validateConfig(aksConfig)).To(Succeed())
+	})
+
 	It("should fail if listing aks cluster config fails", func() {
 		brokenAksFactory, err := aksv1controllers.NewFactoryFromConfig(&rest.Config{})
 		Expect(err).NotTo(HaveOccurred())
@@ -462,6 +469,19 @@ var _ = Describe("validateConfig", func() {
 
 	It("should fail if network pod cidr is empty", func() {
 		aksConfig.Spec.NetworkServiceCIDR = nil
+		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
+	})
+
+	It("should fail if user defined routing is used and subnet is empty", func() {
+		aksConfig.Spec.OutboundType = to.Ptr("userDefinedRouting")
+		aksConfig.Spec.Subnet = to.Ptr("")
+		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
+	})
+
+	It("should fail if user defined routing is used and kubenet as network plugin", func() {
+		aksConfig.Spec.OutboundType = to.Ptr("userDefinedRouting")
+		aksConfig.Spec.Subnet = to.Ptr("test-subnet-1")
+		aksConfig.Spec.NetworkPlugin = to.Ptr(string(armcontainerservice.NetworkPluginKubenet))
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 	})
 })
