@@ -8,6 +8,7 @@ import (
 
 	"github.com/rancher/aks-operator/controller"
 	aksv1 "github.com/rancher/aks-operator/pkg/generated/controllers/aks.cattle.io"
+	"github.com/rancher/aks-operator/pkg/version"
 	core3 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
 	"github.com/rancher/wrangler/v3/pkg/kubeconfig"
 	"github.com/rancher/wrangler/v3/pkg/signals"
@@ -36,6 +37,7 @@ func main() {
 		logrus.SetLevel(logrus.DebugLevel)
 		logrus.Debugf("Loglevel set to [%v]", logrus.DebugLevel)
 	}
+	logrus.Infof("Starting aks-operator (version: %s, commit: %s)", version.Version, version.GitCommit)
 
 	// This will load the kubeconfig file in a style the same as kubectl
 	cfg, err := kubeconfig.GetNonInteractiveClientConfig(kubeconfigFile).ClientConfig()
