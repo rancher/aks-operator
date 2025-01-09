@@ -19,8 +19,14 @@ COPY ./main.go ./main.go
 COPY --from=xx / /
 
 ARG TARGETPLATFORM
+ARG COMMIT
+ARG VERSION
 ENV CGO_ENABLED=0
-RUN xx-go build -o /aks-operator && xx-verify /aks-operator
+RUN xx-go build -ldflags \
+           "-X github.com/rancher/aks-operator/pkg/version.GitCommit=${COMMIT} \
+            -X github.com/rancher/aks-operator/pkg/version.Version=${VERSION}" \
+       -o /aks-operator && \
+       xx-verify /aks-operator
 
 FROM registry.suse.com/bci/bci-micro:15.6
 COPY --from=base /etc/passwd /etc/passwd
