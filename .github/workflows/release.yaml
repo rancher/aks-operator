@@ -64,7 +64,7 @@ jobs:
         prime-username: ${{ env.PRIME_REGISTRY_USERNAME }}
         prime-password: ${{ env.PRIME_REGISTRY_PASSWORD }}
         make-target: image-push
-        push-to-prime: false
+        push-to-prime: true
   
   release:
     permissions:
