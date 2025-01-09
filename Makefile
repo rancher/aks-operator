@@ -79,7 +79,10 @@ $(SETUP_ENVTEST):
 
 .PHONY: operator
 operator:
-	CGO_ENABLED=0 go build -o bin/aks-operator main.go
+	CGO_ENABLED=0 go build -ldflags \
+            "-X github.com/rancher/aks-operator/pkg/version.GitCommit=$(GIT_COMMIT) \
+             -X github.com/rancher/aks-operator/pkg/version.Version=$(TAG)" \
+        -o bin/aks-operator .
 
 .PHONY: generate-go
 generate-go: $(MOCKGEN)
@@ -132,7 +135,7 @@ buildx-machine:
 .PHONY: image-build
 image-build: buildx-machine ## build (and load) the container image targeting the current platform.
 	docker buildx build -f package/Dockerfile \
-    --builder $(MACHINE) --build-arg VERSION=$(TAG) \
+    --builder $(MACHINE) --build-arg COMMIT=$(GIT_COMMIT) --build-arg VERSION=$(TAG) \
     -t "$(IMAGE)" $(BUILD_ACTION) .
 	@echo "Built $(IMAGE)"
 
