@@ -10,8 +10,8 @@ TAG?=${GIT_TAG}-${GIT_COMMIT_SHORT}
 OPERATOR_CHART?=$(shell find $(ROOT_DIR) -type f -name "rancher-aks-operator-[0-9]*.tgz" -print)
 CRD_CHART?=$(shell find $(ROOT_DIR) -type f -name "rancher-aks-operator-crd*.tgz" -print)
 CHART_VERSION?=900 # Only used in e2e to avoid downgrades from rancher
-REPO?=docker.io/rancher/aks-operator
-IMAGE = $(REPO):$(TAG)
+REPO?=docker.io/rancher
+IMAGE = $(REPO)/aks-operator:$(TAG)
 MACHINE := rancher
 # Define the target platforms that can be used across the ecosystem.
 # Note that what would actually be used for a given project will be
@@ -119,7 +119,7 @@ operator-chart:
 	mkdir -p $(BIN_DIR)
 	cp -rf $(ROOT_DIR)/charts/aks-operator $(BIN_DIR)/chart
 	sed -i -e 's/tag:.*/tag: '${TAG}'/' $(BIN_DIR)/chart/values.yaml
-	sed -i -e 's|repository:.*|repository: '${REPO}'|' $(BIN_DIR)/chart/values.yaml
+	sed -i -e 's|repository:.*|repository: '${REPO}/aks-operator'|' $(BIN_DIR)/chart/values.yaml
 	helm package --version ${CHART_VERSION} --app-version ${GIT_TAG} -d $(BIN_DIR)/ $(BIN_DIR)/chart
 	rm -Rf $(BIN_DIR)/chart
 	
@@ -142,15 +142,15 @@ buildx-machine: ## create rancher dockerbuildx machine targeting platform define
 .PHONY: image-build
 image-build: buildx-machine ## build (and load) the container image targeting the current platform.
 	docker buildx build -f package/Dockerfile \
-    --builder $(MACHINE) --build-arg COMMIT=$(GIT_COMMIT) --build-arg VERSION=$(TAG) \
-    -t "$(IMAGE)" $(BUILD_ACTION) .
+    	--builder $(MACHINE) --build-arg COMMIT=$(GIT_COMMIT) --build-arg VERSION=$(TAG) \
+    	-t "$(IMAGE)" $(BUILD_ACTION) .
 	@echo "Built $(IMAGE)"
 
 .PHONY: image-push
 image-push: buildx-machine ## build the container image targeting all platforms defined by TARGET_PLATFORMS and push to a registry.
 	docker buildx build -f package/Dockerfile \
-    --builder $(MACHINE) $(IID_FILE_FLAG) $(BUILDX_ARGS) --build-arg VERSION=$(TAG) \
-    --platform=$(TARGET_PLATFORMS) -t "$(IMAGE)" --push .
+    	--builder $(MACHINE) $(IID_FILE_FLAG) $(BUILDX_ARGS) --build-arg COMMIT=$(GIT_COMMIT) --build-arg VERSION=$(TAG) \
+    	--platform=$(TARGET_PLATFORMS) -t "$(IMAGE)" --push .
 	@echo "Pushed $(IMAGE)"
 
 .PHONY: setup-kind
@@ -168,7 +168,7 @@ e2e-tests: $(GINKGO) charts
 
 .PHONY: kind-e2e-tests
 kind-e2e-tests: docker-build-e2e setup-kind
-	kind load docker-image --name $(CLUSTER_NAME) ${REPO}:${TAG}
+	kind load docker-image --name $(CLUSTER_NAME) ${IMAGE}
 	$(MAKE) e2e-tests
 
 kind-deploy-operator:
@@ -181,7 +181,7 @@ docker-build-e2e:
 		--build-arg "TAG=${GIT_TAG}" \
 		--build-arg "COMMIT=${GIT_COMMIT}" \
 		--build-arg "COMMITDATE=${COMMITDATE}" \
-		-t ${REPO}:${TAG} .
+		-t ${IMAGE} .
 
 .PHOHY: delete-local-kind-cluster
 delete-local-kind-cluster: ## Delete the local kind cluster
