@@ -16,10 +16,10 @@ on:
 #   - PUBLIC_REGISTRY_PASSWORD
 
 jobs:
-  release:
+  publish-images:
     permissions:
-      contents: write # required for creating GH release
-      id-token: write # required for reading vault secrets
+      contents: read
+      id-token: write # required for reading vault secrets and for cosign's use in ecm-distro-tools/publish-image
     strategy:
       matrix:
         include:
@@ -64,6 +64,20 @@ jobs:
         prime-username: ${{ env.PRIME_REGISTRY_USERNAME }}
         prime-password: ${{ env.PRIME_REGISTRY_PASSWORD }}
         make-target: image-push
+    - name: Cleanup checksum files # in order to avoid goreleaser dirty state error, remove once rancher/ecm-distro-tools/actions/publish-image@main gets updated
+      run: rm -f slsactl_*_checksums.txt*
+
+  release:
+    permissions:
+      contents: write # required for creating GH release
+    runs-on: ubuntu-latest
+    needs: publish-images
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: ${{ github.ref_name}}
     - name: Create release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for creating GH release
@@ -77,7 +91,7 @@ jobs:
     - name: Upload charts to release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for updating GH release
-        REPO: rancher/aks-operator # Docker repository to reference in `values.yaml` of the Helm chart release
+        REPO: rancher # First name component for Docker repository to reference in `values.yaml` of the Helm chart release, this is expected to be `rancher`, image name is appended to this value
         TAG: ${{ github.ref_name }} # image tag to be referenced in `values.yaml` of the Helm chart release
       run: |
         version=$(echo '${{ steps.goreleaser.outputs.metadata }}' | jq -r '.version')
