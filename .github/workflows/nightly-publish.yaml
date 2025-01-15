@@ -32,3 +32,36 @@ jobs:
           REPO: ghcr.io/rancher
         run: |
           make image-push
+
+  publish_charts:
+    permissions:
+      packages: write # Required for pushing charts to ghcr.io
+    runs-on: ubuntu-latest
+    needs: publish_images
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Login to GHCR registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 3.8.0
+      - name: Set image tag
+        run: echo "TAG=$(date +'%Y%m%d')" >> "$GITHUB_ENV"
+      - name: Build charts
+        env:
+          REPO: ghcr.io/rancher # used in the Helm chart values.yaml
+          CHART_VERSION: ${{ env.TAG }} # chart version matches image tag
+        run: |
+          make charts
+      - name: Push charts
+        env:
+          CHART_VERSION: ${{ env.TAG }} # chart version matches image tag
+        run: |
+          helm push bin/rancher-aks-operator-$CHART_VERSION.tgz oci://ghcr.io/${{ github.repository_owner }}/rancher-aks-operator-chart
+          helm push bin/rancher-aks-operator-crd-$CHART_VERSION.tgz oci://ghcr.io/${{ github.repository_owner }}/rancher-aks-operator-crd-chart
