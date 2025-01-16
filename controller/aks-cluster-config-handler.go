@@ -98,6 +98,7 @@ type azureClients struct {
 	resourceGroupsClient services.ResourceGroupsClientInterface
 	agentPoolsClient     services.AgentPoolsClientInterface
 	workplacesClient     services.WorkplacesClientInterface
+	subscriptionsClient  services.SubscriptionsClientInterface
 }
 
 func Register(
