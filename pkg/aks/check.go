@@ -7,7 +7,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/operationalinsights/armoperationalinsights"
+
 	"github.com/rancher/aks-operator/pkg/aks/services"
+
 	"github.com/sirupsen/logrus"
 )
 

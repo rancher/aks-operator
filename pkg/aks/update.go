@@ -2,6 +2,7 @@ package aks
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
 	"github.com/rancher/aks-operator/pkg/aks/services"
@@ -26,9 +27,13 @@ func UpdateClusterTags(ctx context.Context, clusterClient services.ManagedCluste
 // UpdateCluster updates an existing managed Kubernetes cluster. Before updating, it pulls any existing configuration
 // and then only updates managed fields.
 func UpdateCluster(ctx context.Context, cred *Credentials, clusterClient services.ManagedClustersClientInterface, workplaceClient services.WorkplacesClientInterface,
-	spec *aksv1.AKSClusterConfigSpec, phase string) error {
+	subscriptionClient services.SubscriptionsClientInterface, spec *aksv1.AKSClusterConfigSpec, phase string) error {
+	aksRegionsWithAzSupport, err := GetRegionsWithAvailabilityZoneSupport(ctx, subscriptionClient, cred.SubscriptionID)
+	if err != nil {
+		return fmt.Errorf("error getting regions with availability zone support with message %w", err)
+	}
 	// Create a new managed cluster from the AKS cluster config
-	desiredCluster, err := createManagedCluster(ctx, cred, workplaceClient, spec, phase)
+	desiredCluster, err := createManagedCluster(ctx, cred, workplaceClient, spec, phase, aksRegionsWithAzSupport)
 	if err != nil {
 		return err
 	}

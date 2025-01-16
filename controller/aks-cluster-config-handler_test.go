@@ -6,6 +6,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher/aks-operator/pkg/aks"
@@ -238,7 +239,7 @@ var _ = Describe("validateConfig", func() {
 				AzureCredentialSecret: credentialsSecret.Namespace + ":" + credentialsSecret.Name,
 				AuthBaseURL:           to.Ptr("test"),
 				BaseURL:               to.Ptr("test"),
-				ResourceLocation:      "test",
+				ResourceLocation:      "eastus",
 				ResourceGroup:         "test",
 				ClusterName:           "test",
 				KubernetesVersion:     to.Ptr("test"),
@@ -493,9 +494,12 @@ var _ = Describe("createCluster", func() {
 		clusterClientMock       *mock_services.MockManagedClustersClientInterface
 		resourceGroupClientMock *mock_services.MockResourceGroupsClientInterface
 		workplacesClientMock    *mock_services.MockWorkplacesClientInterface
+		subscriptionClientMock  *mock_services.MockSubscriptionsClientInterface
+		pagerMock               *mock_services.MockPager[armsubscriptions.ClientListLocationsResponse]
 		aksConfig               *aksv1.AKSClusterConfig
 		credentialsSecret       *corev1.Secret
 		pollerMock              *mock_services.MockPoller[armcontainerservice.ManagedClustersClientCreateOrUpdateResponse]
+		creds                   aks.Credentials
 	)
 
 	BeforeEach(func() {
@@ -503,7 +507,16 @@ var _ = Describe("createCluster", func() {
 		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
 		resourceGroupClientMock = mock_services.NewMockResourceGroupsClientInterface(mockController)
 		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
+		subscriptionClientMock = mock_services.NewMockSubscriptionsClientInterface(mockController)
+		pagerMock = mock_services.NewMockPager[armsubscriptions.ClientListLocationsResponse](mockController)
 		pollerMock = mock_services.NewMockPoller[armcontainerservice.ManagedClustersClientCreateOrUpdateResponse](mockController)
+
+		creds = aks.Credentials{
+			TenantID:       "test",
+			SubscriptionID: "test",
+			ClientID:       "test",
+			ClientSecret:   "test",
+		}
 
 		credentialsSecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -529,7 +542,7 @@ var _ = Describe("createCluster", func() {
 				AzureCredentialSecret: credentialsSecret.Namespace + ":" + credentialsSecret.Name,
 				AuthBaseURL:           to.Ptr("test"),
 				BaseURL:               to.Ptr("test"),
-				ResourceLocation:      "test",
+				ResourceLocation:      "eastus",
 				ResourceGroup:         "test",
 				ClusterName:           "test",
 				KubernetesVersion:     to.Ptr("test"),
@@ -563,9 +576,11 @@ var _ = Describe("createCluster", func() {
 			secrets:      coreFactory.Core().V1().Secret(),
 			secretsCache: coreFactory.Core().V1().Secret().Cache(),
 			azureClients: azureClients{
+				credentials:          creds,
 				clustersClient:       clusterClientMock,
 				resourceGroupsClient: resourceGroupClientMock,
 				workplacesClient:     workplacesClientMock,
+				subscriptionsClient:  subscriptionClientMock,
 			},
 		}
 	})
@@ -575,6 +590,30 @@ var _ = Describe("createCluster", func() {
 	})
 
 	It("should successfully create aks cluster", func() {
+		subscriptionClientMock.EXPECT().NewListLocationsPager(gomock.Any(), &armsubscriptions.ClientListLocationsOptions{IncludeExtendedLocations: nil}).
+			Return(pagerMock)
+		pagerMock.EXPECT().More().Return(true)
+		pagerMock.EXPECT().NextPage(gomock.Any()).Return(armsubscriptions.ClientListLocationsResponse{
+			LocationListResult: armsubscriptions.LocationListResult{
+				Value: []*armsubscriptions.Location{
+					{
+						Name: to.Ptr("eastus"),
+						AvailabilityZoneMappings: []*armsubscriptions.AvailabilityZoneMappings{
+							{
+								LogicalZone:  to.Ptr("1"),
+								PhysicalZone: to.Ptr("eastus-az1"),
+							},
+							{
+								LogicalZone:  to.Ptr("2"),
+								PhysicalZone: to.Ptr("eastus-az3"),
+							},
+						},
+					},
+				},
+			},
+		}, nil)
+		pagerMock.EXPECT().More().Return(false)
+
 		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(armcontainerservice.ManagedClustersClientGetResponse{}, errors.New("cluster does not exist"))
 		clusterClientMock.EXPECT().BeginCreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(pollerMock, nil)
 
@@ -626,6 +665,11 @@ var _ = Describe("createCluster", func() {
 	})
 
 	It("should fail if cluster failed to be created", func() {
+		subscriptionClientMock.EXPECT().NewListLocationsPager(gomock.Any(), &armsubscriptions.ClientListLocationsOptions{IncludeExtendedLocations: nil}).
+			Return(pagerMock)
+
+		pagerMock.EXPECT().More().Return(false)
+
 		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(armcontainerservice.ManagedClustersClientGetResponse{}, errors.New("cluster does not exist"))
 
 		clusterClientMock.EXPECT().BeginCreateOrUpdate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(pollerMock, errors.New("error"))

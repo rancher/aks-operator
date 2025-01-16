@@ -5,6 +5,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rancher/aks-operator/pkg/aks/services/mock_services"
@@ -14,11 +15,12 @@ import (
 
 var _ = Describe("updateCluster", func() {
 	var (
-		mockController       *gomock.Controller
-		workplacesClientMock *mock_services.MockWorkplacesClientInterface
-		clusterSpec          *aksv1.AKSClusterConfigSpec
-		cred                 *Credentials
-		actualCluster        *armcontainerservice.ManagedCluster
+		mockController          *gomock.Controller
+		workplacesClientMock    *mock_services.MockWorkplacesClientInterface
+		clusterSpec             *aksv1.AKSClusterConfigSpec
+		aksRegionsWithAzSupport map[string]bool
+		cred                    *Credentials
+		actualCluster           *armcontainerservice.ManagedCluster
 	)
 
 	BeforeEach(func() {
@@ -51,6 +53,10 @@ var _ = Describe("updateCluster", func() {
 				"test-tag": "test-value",
 			},
 		}
+		aksRegionsWithAzSupport = map[string]bool{
+			"eastus":        true,
+			"test-location": true,
+		}
 		cred = &Credentials{
 			ClientID:     "test-client-id",
 			ClientSecret: "test-client-secret",
@@ -69,7 +75,7 @@ var _ = Describe("updateCluster", func() {
 	})
 
 	It("should successfully update cluster", func() {
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
@@ -110,7 +116,7 @@ var _ = Describe("updateCluster", func() {
 
 	It("shouldn't update kubernetes version if it's not specified", func() {
 		clusterSpec.KubernetesVersion = nil
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
@@ -123,7 +129,7 @@ var _ = Describe("updateCluster", func() {
 				Name: to.Ptr("test-nodepool"),
 			},
 		}
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
@@ -137,7 +143,7 @@ var _ = Describe("updateCluster", func() {
 		}
 
 		clusterSpec.AuthorizedIPRanges = nil
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
@@ -147,7 +153,7 @@ var _ = Describe("updateCluster", func() {
 		Expect(authorizedIPranges).To(HaveLen(0))
 
 		clusterSpec.AuthorizedIPRanges = to.Ptr([]string{})
-		desiredCluster, err = createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err = createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster = updateCluster(*desiredCluster, *actualCluster, false)
@@ -164,7 +170,7 @@ var _ = Describe("updateCluster", func() {
 			AuthorizedIPRanges: []*string{to.Ptr("test-ip-range"), to.Ptr("test-ip-range-2")},
 		}
 
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
@@ -185,7 +191,7 @@ var _ = Describe("updateCluster", func() {
 			AuthorizedIPRanges: []*string{to.Ptr("test-ip-range"), to.Ptr("test-ip-range-2")},
 		}
 
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, true)
@@ -204,7 +210,7 @@ var _ = Describe("updateCluster", func() {
 			AuthorizedIPRanges: []*string{to.Ptr("test-ip-range"), to.Ptr("test-ip-range-2")},
 		}
 		clusterSpec.AuthorizedIPRanges = nil
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, true)
@@ -216,7 +222,7 @@ var _ = Describe("updateCluster", func() {
 		Expect(*authorizedIPranges[1]).To(Equal("test-ip-range-2"))
 
 		clusterSpec.AuthorizedIPRanges = to.Ptr([]string{})
-		desiredCluster, err = createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err = createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster = updateCluster(*desiredCluster, *actualCluster, true)
@@ -231,7 +237,7 @@ var _ = Describe("updateCluster", func() {
 	It("shouldn't update linux profile if it's not specified", func() {
 		clusterSpec.LinuxAdminUsername = nil
 		clusterSpec.LinuxSSHPublicKey = nil
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
@@ -239,7 +245,7 @@ var _ = Describe("updateCluster", func() {
 	})
 
 	It("shouldn't update service principal if phase is active or updating", func() {
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "active")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "active", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
@@ -248,7 +254,7 @@ var _ = Describe("updateCluster", func() {
 
 	It("shouldn't update tags if not specified in cluster spec", func() {
 		clusterSpec.Tags = nil
-		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase")
+		desiredCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "phase", aksRegionsWithAzSupport)
 		Expect(err).ToNot(HaveOccurred())
 
 		updatedCluster := updateCluster(*desiredCluster, *actualCluster, false)
@@ -258,21 +264,31 @@ var _ = Describe("updateCluster", func() {
 
 var _ = Describe("UpdateCluster", func() {
 	var (
-		mockController       *gomock.Controller
-		workplacesClientMock *mock_services.MockWorkplacesClientInterface
-		clusterClientMock    *mock_services.MockManagedClustersClientInterface
-		pollerMock           *mock_services.MockPoller[armcontainerservice.ManagedClustersClientCreateOrUpdateResponse]
-		clusterSpec          *aksv1.AKSClusterConfigSpec
+		mockController         *gomock.Controller
+		workplacesClientMock   *mock_services.MockWorkplacesClientInterface
+		clusterClientMock      *mock_services.MockManagedClustersClientInterface
+		subscriptionClientMock *mock_services.MockSubscriptionsClientInterface
+		pagerMock              *mock_services.MockPager[armsubscriptions.ClientListLocationsResponse]
+		pollerMock             *mock_services.MockPoller[armcontainerservice.ManagedClustersClientCreateOrUpdateResponse]
+		clusterSpec            *aksv1.AKSClusterConfigSpec
+		cred                   *Credentials
 	)
 
 	BeforeEach(func() {
 		mockController = gomock.NewController(GinkgoT())
 		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
 		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
+		subscriptionClientMock = mock_services.NewMockSubscriptionsClientInterface(mockController)
+		pagerMock = mock_services.NewMockPager[armsubscriptions.ClientListLocationsResponse](mockController)
 		pollerMock = mock_services.NewMockPoller[armcontainerservice.ManagedClustersClientCreateOrUpdateResponse](mockController)
 		clusterSpec = &aksv1.AKSClusterConfigSpec{
 			ResourceGroup: "test-rg",
 			ClusterName:   "test-cluster",
+		}
+		cred = &Credentials{
+			ClientID:       "test-client-id",
+			ClientSecret:   "test-client-secret",
+			SubscriptionID: "test-subscription",
 		}
 	})
 
@@ -283,24 +299,119 @@ var _ = Describe("UpdateCluster", func() {
 	It("should successfully update cluster", func() {
 		clusterClientMock.EXPECT().Get(ctx, clusterSpec.ResourceGroup, clusterSpec.ClusterName, nil).Return(armcontainerservice.ManagedClustersClientGetResponse{}, nil)
 		clusterClientMock.EXPECT().BeginCreateOrUpdate(ctx, clusterSpec.ResourceGroup, clusterSpec.ClusterName, gomock.Any(), nil).Return(pollerMock, nil)
+		subscriptionClientMock.EXPECT().NewListLocationsPager(cred.SubscriptionID, &armsubscriptions.ClientListLocationsOptions{IncludeExtendedLocations: nil}).
+			Return(pagerMock)
+		pagerMock.EXPECT().More().Return(true)
+		pagerMock.EXPECT().NextPage(ctx).Return(armsubscriptions.ClientListLocationsResponse{
+			LocationListResult: armsubscriptions.LocationListResult{
+				Value: []*armsubscriptions.Location{
+					{
+						Name: to.Ptr("test-location"),
+						AvailabilityZoneMappings: []*armsubscriptions.AvailabilityZoneMappings{
+							{
+								LogicalZone:  to.Ptr("1"),
+								PhysicalZone: to.Ptr("test-az1"),
+							},
+							{
+								LogicalZone:  to.Ptr("2"),
+								PhysicalZone: to.Ptr("test-az3"),
+							},
+						},
+					},
+				},
+			},
+		}, nil)
+		pagerMock.EXPECT().More().Return(false)
 		pollerMock.EXPECT().PollUntilDone(ctx, nil).Return(armcontainerservice.ManagedClustersClientCreateOrUpdateResponse{}, nil)
-		Expect(UpdateCluster(ctx, &Credentials{}, clusterClientMock, workplacesClientMock, clusterSpec, "active")).To(Succeed())
+		Expect(UpdateCluster(ctx, cred, clusterClientMock, workplacesClientMock, subscriptionClientMock, clusterSpec, "active")).To(Succeed())
 	})
 
 	It("should fail when createManagedCluster returns error", func() {
+		subscriptionClientMock.EXPECT().NewListLocationsPager(cred.SubscriptionID, &armsubscriptions.ClientListLocationsOptions{IncludeExtendedLocations: nil}).
+			Return(pagerMock)
+		pagerMock.EXPECT().More().Return(true)
+		pagerMock.EXPECT().NextPage(ctx).Return(armsubscriptions.ClientListLocationsResponse{
+			LocationListResult: armsubscriptions.LocationListResult{
+				Value: []*armsubscriptions.Location{
+					{
+						Name: to.Ptr("test-location"),
+						AvailabilityZoneMappings: []*armsubscriptions.AvailabilityZoneMappings{
+							{
+								LogicalZone:  to.Ptr("1"),
+								PhysicalZone: to.Ptr("test-az1"),
+							},
+							{
+								LogicalZone:  to.Ptr("2"),
+								PhysicalZone: to.Ptr("test-az3"),
+							},
+						},
+					},
+				},
+			},
+		}, nil)
+		pagerMock.EXPECT().More().Return(false)
+
 		clusterSpec.Monitoring = to.Ptr(true)
-		Expect(UpdateCluster(ctx, &Credentials{}, clusterClientMock, workplacesClientMock, clusterSpec, "active")).ToNot(Succeed())
+		Expect(UpdateCluster(ctx, cred, clusterClientMock, workplacesClientMock, subscriptionClientMock, clusterSpec, "active")).ToNot(Succeed())
 	})
 
 	It("should fail when azure API returns error on Get() request", func() {
+		subscriptionClientMock.EXPECT().NewListLocationsPager(cred.SubscriptionID, &armsubscriptions.ClientListLocationsOptions{IncludeExtendedLocations: nil}).
+			Return(pagerMock)
+		pagerMock.EXPECT().More().Return(true)
+		pagerMock.EXPECT().NextPage(ctx).Return(armsubscriptions.ClientListLocationsResponse{
+			LocationListResult: armsubscriptions.LocationListResult{
+				Value: []*armsubscriptions.Location{
+					{
+						Name: to.Ptr("test-location"),
+						AvailabilityZoneMappings: []*armsubscriptions.AvailabilityZoneMappings{
+							{
+								LogicalZone:  to.Ptr("1"),
+								PhysicalZone: to.Ptr("test-az1"),
+							},
+							{
+								LogicalZone:  to.Ptr("2"),
+								PhysicalZone: to.Ptr("test-az3"),
+							},
+						},
+					},
+				},
+			},
+		}, nil)
+		pagerMock.EXPECT().More().Return(false)
+
 		clusterClientMock.EXPECT().Get(ctx, clusterSpec.ResourceGroup, clusterSpec.ClusterName, nil).Return(armcontainerservice.ManagedClustersClientGetResponse{}, errors.New("test error"))
-		Expect(UpdateCluster(ctx, &Credentials{}, clusterClientMock, workplacesClientMock, clusterSpec, "active")).ToNot(Succeed())
+		Expect(UpdateCluster(ctx, cred, clusterClientMock, workplacesClientMock, subscriptionClientMock, clusterSpec, "active")).ToNot(Succeed())
 	})
 
 	It("should fail when azure API returns error on CreateOrUpdate() request", func() {
+		subscriptionClientMock.EXPECT().NewListLocationsPager(cred.SubscriptionID, &armsubscriptions.ClientListLocationsOptions{IncludeExtendedLocations: nil}).
+			Return(pagerMock)
+		pagerMock.EXPECT().More().Return(true)
+		pagerMock.EXPECT().NextPage(ctx).Return(armsubscriptions.ClientListLocationsResponse{
+			LocationListResult: armsubscriptions.LocationListResult{
+				Value: []*armsubscriptions.Location{
+					{
+						Name: to.Ptr("test-location"),
+						AvailabilityZoneMappings: []*armsubscriptions.AvailabilityZoneMappings{
+							{
+								LogicalZone:  to.Ptr("1"),
+								PhysicalZone: to.Ptr("test-az1"),
+							},
+							{
+								LogicalZone:  to.Ptr("2"),
+								PhysicalZone: to.Ptr("test-az3"),
+							},
+						},
+					},
+				},
+			},
+		}, nil)
+		pagerMock.EXPECT().More().Return(false)
+
 		clusterClientMock.EXPECT().Get(ctx, clusterSpec.ResourceGroup, clusterSpec.ClusterName, nil).Return(armcontainerservice.ManagedClustersClientGetResponse{}, nil)
 		clusterClientMock.EXPECT().BeginCreateOrUpdate(ctx, clusterSpec.ResourceGroup, clusterSpec.ClusterName, gomock.Any(), nil).Return(pollerMock, errors.New("test error"))
-		Expect(UpdateCluster(ctx, &Credentials{}, clusterClientMock, workplacesClientMock, clusterSpec, "active")).ToNot(Succeed())
+		Expect(UpdateCluster(ctx, cred, clusterClientMock, workplacesClientMock, subscriptionClientMock, clusterSpec, "active")).ToNot(Succeed())
 	})
 })
 

@@ -34,8 +34,13 @@ func CreateResourceGroup(ctx context.Context, groupsClient services.ResourceGrou
 // CreateCluster creates a new managed Kubernetes cluster. In this case, there will be no existing upstream cluster.
 // We are provisioning a brand new one.
 func CreateCluster(ctx context.Context, cred *Credentials, clusterClient services.ManagedClustersClientInterface, workplaceClient services.WorkplacesClientInterface,
-	spec *aksv1.AKSClusterConfigSpec, phase string) error {
-	managedCluster, err := createManagedCluster(ctx, cred, workplaceClient, spec, phase)
+	subscriptionClient services.SubscriptionsClientInterface, spec *aksv1.AKSClusterConfigSpec, phase string) error {
+	aksRegionsWithAzSupport, err := GetRegionsWithAvailabilityZoneSupport(ctx, subscriptionClient, cred.SubscriptionID)
+	if err != nil {
+		return fmt.Errorf("error getting regions with availability zone support with message %w", err)
+	}
+
+	managedCluster, err := createManagedCluster(ctx, cred, workplaceClient, spec, phase, aksRegionsWithAzSupport)
 	if err != nil {
 		return err
 	}
@@ -52,7 +57,7 @@ func CreateCluster(ctx context.Context, cred *Credentials, clusterClient service
 }
 
 // createManagedCluster creates a new managed Kubernetes cluster.
-func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClient services.WorkplacesClientInterface, spec *aksv1.AKSClusterConfigSpec, phase string) (*armcontainerservice.ManagedCluster, error) {
+func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClient services.WorkplacesClientInterface, spec *aksv1.AKSClusterConfigSpec, phase string, aksRegionsWithAzSupport map[string]bool) (*armcontainerservice.ManagedCluster, error) {
 	managedCluster := &armcontainerservice.ManagedCluster{
 		Name:     to.Ptr(spec.ClusterName),
 		Location: to.Ptr(spec.ResourceLocation),
@@ -173,6 +178,9 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			agentProfile.OrchestratorVersion = np.OrchestratorVersion
 		}
 		if np.AvailabilityZones != nil && len(*np.AvailabilityZones) > 0 {
+			if azSupport, ok := aksRegionsWithAzSupport[spec.ResourceLocation]; !(ok && azSupport) {
+				return nil, fmt.Errorf("availability zones are not supported in region %s", spec.ResourceLocation)
+			}
 			agentProfile.AvailabilityZones = utils.ConvertToSliceOfPointers(np.AvailabilityZones)
 		}
 

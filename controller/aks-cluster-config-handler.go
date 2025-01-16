@@ -98,6 +98,7 @@ type azureClients struct {
 	resourceGroupsClient services.ResourceGroupsClientInterface
 	agentPoolsClient     services.AgentPoolsClientInterface
 	workplacesClient     services.WorkplacesClientInterface
+	subscriptionsClient  services.SubscriptionsClientInterface
 }
 
 func Register(
@@ -257,7 +258,7 @@ func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 
 	logrus.Infof("Creating AKS cluster [%s (id: %s)]", config.Spec.ClusterName, config.Name)
 
-	err = aks.CreateCluster(ctx, &h.azureClients.credentials, h.azureClients.clustersClient, h.azureClients.workplacesClient, &config.Spec, config.Status.Phase)
+	err = aks.CreateCluster(ctx, &h.azureClients.credentials, h.azureClients.clustersClient, h.azureClients.workplacesClient, h.azureClients.subscriptionsClient, &config.Spec, config.Status.Phase)
 	if err != nil {
 		return config, fmt.Errorf("error failed to create cluster: %v ", err)
 	}
@@ -868,7 +869,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				clusterSpecCopy.NodePools = append(clusterSpecCopy.NodePools, n)
 			}
 		}
-		err = aks.UpdateCluster(ctx, &h.azureClients.credentials, h.azureClients.clustersClient, h.azureClients.workplacesClient, clusterSpecCopy, config.Status.Phase)
+		err = aks.UpdateCluster(ctx, &h.azureClients.credentials, h.azureClients.clustersClient, h.azureClients.workplacesClient, h.azureClients.subscriptionsClient, clusterSpecCopy, config.Status.Phase)
 		if err != nil {
 			return config, fmt.Errorf("failed to update cluster: %v", err)
 		}
@@ -952,10 +953,20 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					logrus.Debugf("config: %s; upstream: %s", np.Mode, upstreamNodePool.Mode)
 					updateNodePool = true
 				}
+
 				if np.AvailabilityZones != nil && !reflect.DeepEqual(np.AvailabilityZones, upstreamNodePool.AvailabilityZones) {
-					return config, fmt.Errorf("Changing availability zones for node pool [%s] in cluster [%s (id: %s)] is not permitted", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+					return config, fmt.Errorf("changing availability zones for node pool [%s] in cluster [%s (id: %s)] is not permitted", aks.String(np.Name), config.Spec.ClusterName, config.Name)
 				}
 			} else {
+				azRegionsWithAzSupport, err := aks.GetRegionsWithAvailabilityZoneSupport(ctx, h.azureClients.subscriptionsClient, h.azureClients.credentials.SubscriptionID)
+				if err != nil {
+					return config, fmt.Errorf("error getting regions with availability zone support with message %w", err)
+				}
+
+				if azSupport, ok := azRegionsWithAzSupport[config.Spec.ResourceLocation]; !(ok && azSupport) {
+					return config, fmt.Errorf("availability zones are not supported in region %s", config.Spec.ResourceLocation)
+				}
+
 				logrus.Infof("Adding node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
 				updateNodePool = true
 			}
@@ -1033,6 +1044,10 @@ func (h *Handler) getAzureClients(config *aksv1.AKSClusterConfig) error {
 	if err != nil {
 		return fmt.Errorf("error creating workplace client: %w", err)
 	}
+	subscriptionsClient, err := services.NewSubscriptionClient(clientSecretCredential, credentials.Cloud)
+	if err != nil {
+		return fmt.Errorf("error creating subscription client: %w", err)
+	}
 
 	h.azureClients = azureClients{
 		credentials:          *credentials,
@@ -1040,6 +1055,7 @@ func (h *Handler) getAzureClients(config *aksv1.AKSClusterConfig) error {
 		resourceGroupsClient: rgClient,
 		agentPoolsClient:     agentPoolsClient,
 		workplacesClient:     workplacesClient,
+		subscriptionsClient:  subscriptionsClient,
 	}
 
 	return nil
