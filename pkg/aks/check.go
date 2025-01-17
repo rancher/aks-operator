@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"log"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/operationalinsights/armoperationalinsights"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	"github.com/rancher/aks-operator/pkg/aks/services"
 	"github.com/sirupsen/logrus"
 )
@@ -174,4 +176,66 @@ func generateUniqueLogWorkspace(workspaceName string) string {
 	hexHash := h.Sum(nil)
 	shaString := fmt.Sprintf("%x", hexHash)
 	return fmt.Sprintf("%s-%s", s, shaString[0:16])
+}
+
+var azRegionSupport = map[string]bool{
+	"australiaeast":      true,
+	"brazilsouth":        true,
+	"canadacentral":      true,
+	"centralindia":       true,
+	"centralus":          true,
+	"eastasia":           true,
+	"eastus":             true,
+	"eastus2":            true,
+	"eastus2euap":        true,
+	"francecentral":      true,
+	"germanywestcentral": true,
+	"israelcentral":      true,
+	"italynorth":         true,
+	"japaneast":          true,
+	"koreacentral":       true,
+	"mexicocentral":      true,
+	"newzealandnorth":    true,
+	"northeurope":        true,
+	"norwayeast":         true,
+	"polandcentral":      true,
+	"qatarcentral":       true,
+	"southafricanorth":   true,
+	"southcentralus":     true,
+	"southeastasia":      true,
+	"spaincentral":       true,
+	"swedencentral":      true,
+	"switzerlandnorth":   true,
+	"uaenorth":           true,
+	"uksouth":            true,
+	"westeurope":         true,
+	"westus2":            true,
+	"westus3":            true,
+}
+
+func CheckAvailabilityZonesSupport(location string) bool {
+	return azRegionSupport[location]
+}
+
+func CheckAvailabilityZonesSupportAPI(ctx context.Context, client services.SubscriptionsClientInterface, subscription string, location string) (bool, error) {
+	pager := client.NewListLocationsPager(subscription, &armsubscriptions.ClientListLocationsOptions{IncludeExtendedLocations: nil})
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			log.Fatalf("failed to advance page: %v", err)
+		}
+		for _, v := range page.Value {
+			if v.Name != nil && *v.Name == location {
+				// You could use page here. We use blank identifier for just demo purposes.
+				if len(v.AvailabilityZoneMappings) > 0 {
+					logrus.Info("Region with AZ Name: ", *v.Name, " show AZ: ", *v.AvailabilityZoneMappings[0].PhysicalZone)
+					return true, nil
+				} else {
+					logrus.Info("Region without AZ Name: ", *v.Name)
+					return false, nil
+				}
+			}
+		}
+	}
+	return false, fmt.Errorf("region %s not found", location)
 }
