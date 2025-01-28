@@ -173,6 +173,9 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 			agentProfile.OrchestratorVersion = np.OrchestratorVersion
 		}
 		if np.AvailabilityZones != nil && len(*np.AvailabilityZones) > 0 {
+			if !CheckAvailabilityZonesSupport(spec.ResourceLocation) {
+				return nil, fmt.Errorf("availability zones are not supported in region %s", spec.ResourceLocation)
+			}
 			agentProfile.AvailabilityZones = utils.ConvertToSliceOfPointers(np.AvailabilityZones)
 		}
 
@@ -306,6 +309,9 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 // CreateOrUpdateAgentPool creates a new pool(s) in AKS. If one already exists it updates the upstream node pool with
 // any provided updates.
 func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient services.AgentPoolsClientInterface, spec *aksv1.AKSClusterConfigSpec, np *aksv1.AKSNodePool) error {
+	if np.AvailabilityZones != nil && len(*np.AvailabilityZones) > 0 && !CheckAvailabilityZonesSupport(spec.ResourceLocation) {
+		return fmt.Errorf("availability zones are not supported in region %s", spec.ResourceLocation)
+	}
 	agentProfile := &armcontainerservice.ManagedClusterAgentPoolProfileProperties{
 		Count:               np.Count,
 		MaxPods:             np.MaxPods,
