@@ -175,3 +175,43 @@ func generateUniqueLogWorkspace(workspaceName string) string {
 	shaString := fmt.Sprintf("%x", hexHash)
 	return fmt.Sprintf("%s-%s", s, shaString[0:16])
 }
+
+var aksRegionsWithAzSupport = map[string]bool{
+	"australiaeast":      true,
+	"brazilsouth":        true,
+	"canadacentral":      true,
+	"centralindia":       true,
+	"chinanorth3":        true,
+	"centralus":          true,
+	"eastasia":           true,
+	"eastus":             true,
+	"eastus2":            true,
+	"eastus2euap":        true,
+	"francecentral":      true,
+	"germanywestcentral": true,
+	"israelcentral":      true,
+	"italynorth":         true,
+	"japaneast":          true,
+	"koreacentral":       true,
+	"mexicocentral":      true,
+	"newzealandnorth":    true,
+	"northeurope":        true,
+	"norwayeast":         true,
+	"polandcentral":      true,
+	"qatarcentral":       true,
+	"southafricanorth":   true,
+	"southcentralus":     true,
+	"southeastasia":      true,
+	"spaincentral":       true,
+	"swedencentral":      true,
+	"switzerlandnorth":   true,
+	"uaenorth":           true,
+	"uksouth":            true,
+	"westeurope":         true,
+	"westus2":            true,
+	"westus3":            true,
+}
+
+func CheckAvailabilityZonesSupport(location string) bool {
+	return aksRegionsWithAzSupport[location]
+}
