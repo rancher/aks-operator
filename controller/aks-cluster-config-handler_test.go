@@ -1000,6 +1000,10 @@ var _ = Describe("recordError", func() {
 		Expect(cl.Create(ctx, aksConfig)).To(Succeed())
 	})
 
+	AfterEach(func() {
+		Expect(test.CleanupAndWait(ctx, cl, aksConfig)).To(Succeed())
+	})
+
 	It("should return same conflict error when onChange returns a conflict error", func() {
 		oldOutput := logrus.StandardLogger().Out
 		buf := bytes.Buffer{}
