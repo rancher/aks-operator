@@ -189,6 +189,14 @@ func (h *Handler) recordError(onChange func(key string, config *aksv1.AKSCluster
 			return config, err
 		}
 		if err != nil {
+			if apierrors.IsConflict(err) {
+				// conflict error means the config is updated by rancher controller
+				// the changes which needs to be done by the operator controller will be handled in next
+				// reconcile call
+				logrus.Debugf("Error updating aksclusterconfig: %s", err.Error())
+				return config, err
+			}
+
 			message = err.Error()
 		}
 
