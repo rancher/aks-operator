@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"bytes"
 	"errors"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
@@ -15,6 +17,7 @@ import (
 	"github.com/rancher/aks-operator/pkg/test"
 	"github.com/rancher/aks-operator/pkg/utils"
 	"github.com/rancher/wrangler/v3/pkg/generated/controllers/core"
+	"github.com/sirupsen/logrus"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -973,5 +976,84 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		Expect(*upstreamSpec.Monitoring).To(BeFalse())
 		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(BeNil())
 		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(BeNil())
+	})
+})
+
+var _ = Describe("recordError", func() {
+	var (
+		aksConfig *aksv1.AKSClusterConfig
+		handler   *Handler
+	)
+
+	BeforeEach(func() {
+		aksConfig = &aksv1.AKSClusterConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "testrecorderror",
+				Namespace: "default",
+			},
+			Spec: aksv1.AKSClusterConfigSpec{
+				ResourceGroup: "test",
+				ClusterName:   "test",
+			},
+		}
+
+		Expect(cl.Create(ctx, aksConfig)).To(Succeed())
+	})
+
+	AfterEach(func() {
+		Expect(test.CleanupAndWait(ctx, cl, aksConfig)).To(Succeed())
+	})
+
+	It("should return same conflict error when onChange returns a conflict error", func() {
+		oldOutput := logrus.StandardLogger().Out
+		buf := bytes.Buffer{}
+		logrus.SetOutput(&buf)
+
+		aksConfigUpdated := aksConfig.DeepCopy()
+		Expect(cl.Update(ctx, aksConfigUpdated)).To(Succeed())
+
+		var expectedErr error
+		expectedConfig := &aksv1.AKSClusterConfig{}
+		onChange := func(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
+			expectedErr = cl.Update(ctx, config)
+			return expectedConfig, expectedErr
+		}
+
+		aksConfig.ResourceVersion = "1"
+		handleFunction := handler.recordError(onChange)
+		config, err := handleFunction("", aksConfig)
+
+		Expect(config).To(Equal(expectedConfig))
+		Expect(err).To(Equal(expectedErr))
+		Expect("").To(Equal(string(buf.Bytes())))
+		logrus.SetOutput(oldOutput)
+	})
+
+	It("should return same conflict error when onChange returns a conflict error and print a debug log for the error", func() {
+		oldOutput := logrus.StandardLogger().Out
+		buf := bytes.Buffer{}
+		logrus.SetOutput(&buf)
+		logrus.SetLevel(logrus.DebugLevel)
+
+		aksConfigUpdated := aksConfig.DeepCopy()
+		Expect(cl.Update(ctx, aksConfigUpdated)).To(Succeed())
+
+		var expectedErr error
+		expectedConfig := &aksv1.AKSClusterConfig{}
+		onChange := func(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
+			expectedErr = cl.Update(ctx, config)
+			return expectedConfig, expectedErr
+		}
+
+		aksConfig.ResourceVersion = "1"
+		handleFunction := handler.recordError(onChange)
+		config, err := handleFunction("", aksConfig)
+
+		Expect(config).To(Equal(expectedConfig))
+		Expect(err).To(MatchError(expectedErr))
+
+		cleanLogOutput := strings.Replace(string(buf.Bytes()), `\"`, `"`, -1)
+		Expect(strings.Contains(cleanLogOutput, err.Error())).To(BeTrue())
+		logrus.SetOutput(oldOutput)
 	})
 })
