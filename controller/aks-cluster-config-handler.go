@@ -853,10 +853,6 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	}
 
 	if updateAksCluster {
-		// If status is not updating, then enqueue the update ( to re-enter the onChange handler )
-		if config.Status.Phase != aksConfigUpdatingPhase {
-			return h.enqueueUpdate(config)
-		}
 		resourceGroupExists, err := aks.ExistsResourceGroup(ctx, h.azureClients.resourceGroupsClient, config.Spec.ResourceGroup)
 		if err != nil && strings.Contains(err.Error(), "unauthorized") {
 			logrus.Infof("User does not have permissions to access resource group [%s]: %s", config.Spec.ResourceGroup, err)
@@ -868,6 +864,11 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				return config, fmt.Errorf("error during updating resource group %v", err)
 			}
 			logrus.Infof("Resource group [%s] updated successfully", config.Spec.ResourceGroup)
+		}
+
+		// If status is not updating, then enqueue the update (to re-enter the onChange handler)
+		if config.Status.Phase != aksConfigUpdatingPhase {
+			return h.enqueueUpdate(config)
 		}
 
 		upstreamNodePools, _ := utils.BuildNodePoolMap(upstreamSpec.NodePools, config.Spec.ClusterName)
