@@ -763,6 +763,10 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 	// check tags for update
 	if config.Spec.Tags != nil {
 		if !reflect.DeepEqual(config.Spec.Tags, upstreamSpec.Tags) {
+			// If status is not updating, then enqueue the update ( to re-enter the onChange handler )
+			if config.Status.Phase != aksConfigUpdatingPhase {
+				return h.enqueueUpdate(config)
+			}
 			logrus.Infof("Updating tags for cluster [%s (id: %s)]", config.Spec.ClusterName, config.Name)
 			logrus.Debugf("config: %v; upstream: %v", config.Spec.Tags, upstreamSpec.Tags)
 			tags := armcontainerservice.TagsObject{
@@ -860,6 +864,11 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				return config, fmt.Errorf("error during updating resource group %v", err)
 			}
 			logrus.Infof("Resource group [%s] updated successfully", config.Spec.ResourceGroup)
+		}
+
+		// If status is not updating, then enqueue the update (to re-enter the onChange handler)
+		if config.Status.Phase != aksConfigUpdatingPhase {
+			return h.enqueueUpdate(config)
 		}
 
 		upstreamNodePools, _ := utils.BuildNodePoolMap(upstreamSpec.NodePools, config.Spec.ClusterName)
@@ -969,6 +978,10 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 			}
 
 			if updateNodePool {
+				// If status is not updating, then enqueue the update ( to re-enter the onChange handler )
+				if config.Status.Phase != aksConfigUpdatingPhase {
+					return h.enqueueUpdate(config)
+				}
 				err = aks.CreateOrUpdateAgentPool(ctx, h.azureClients.agentPoolsClient, &config.Spec, np)
 				if err != nil {
 					return config, fmt.Errorf("failed to update cluster [%s (id: %s)]: %v", config.Spec.ClusterName, config.Name, err)
@@ -991,6 +1004,10 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					if !systemNodePoolExists {
 						return config, fmt.Errorf("cannot remove node pool [%s] with mode System from cluster [%s (id: %s)]", npName, config.Spec.ClusterName, config.Name)
 					}
+				}
+				// If status is not updating, then enqueue the update ( to re-enter the onChange handler )
+				if config.Status.Phase != aksConfigUpdatingPhase {
+					return h.enqueueUpdate(config)
 				}
 				logrus.Infof("Removing node pool [%s] from cluster [%s (id: %s)]", npName, config.Spec.ClusterName, config.Name)
 				err = aks.RemoveAgentPool(ctx, h.azureClients.agentPoolsClient, &config.Spec, upstreamNodePools[npName])
