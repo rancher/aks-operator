@@ -969,7 +969,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					logrus.Debugf("config: %s; upstream: %s", np.Mode, upstreamNodePool.Mode)
 					updateNodePool = true
 				}
-				if np.AvailabilityZones != nil && !reflect.DeepEqual(np.AvailabilityZones, upstreamNodePool.AvailabilityZones) {
+				if np.AvailabilityZones != nil && !availabilityZonesEqual(np.AvailabilityZones, upstreamNodePool.AvailabilityZones) {
 					return config, fmt.Errorf("Changing availability zones for node pool [%s] in cluster [%s (id: %s)] is not permitted", aks.String(np.Name), config.Spec.ClusterName, config.Name)
 				}
 			} else {
@@ -1068,4 +1068,40 @@ func (h *Handler) getAzureClients(config *aksv1.AKSClusterConfig) error {
 	}
 
 	return nil
+}
+
+func availabilityZonesEqual(a, b *[]string) bool {
+	// Handle nil pointer cases first
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil && *b == nil {
+		return true
+	}
+	if b == nil && *a == nil {
+		return true
+	}
+	if a == nil && len(*b) == 0 {
+		return true
+	}
+	if b == nil && len(*a) == 0 {
+		return true
+	}
+
+	// Now handle non-nil pointers
+	if a == nil || b == nil {
+		return false
+	}
+
+	if len(*a) != len(*b) {
+		return false
+	}
+
+	for i := range *a {
+		if (*a)[i] != (*b)[i] {
+			return false
+		}
+	}
+
+	return true
 }
