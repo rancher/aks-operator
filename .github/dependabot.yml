@@ -20,6 +20,20 @@ updates:
   - dependency-name: "go.etcd.io/*"
   - dependency-name: "github.com/Azure/azure-sdk-for-go"
   target-branch: "main"
+# Go modules in release-v2.9 branch
+- package-ecosystem: "gomod"
+  directory: "/"
+  schedule:
+    interval: "weekly"
+  ignore:
+  - dependency-name: "sigs.k8s.io/controller-runtime"
+  # Ignore k8s and its transitives modules as they are upgraded manually
+  # together with controller-runtime.
+  - dependency-name: "k8s.io/*"
+  - dependency-name: "go.etcd.io/*"
+  - dependency-name: "github.com/Azure/azure-sdk-for-go"
+  - dependency-name: "github.com/rancher/lasso"
+  target-branch: "release-v2.9"
 # Go modules in release-v2.8 branch
 - package-ecosystem: "gomod"
   directory: "/"
@@ -32,6 +46,7 @@ updates:
   - dependency-name: "k8s.io/*"
   - dependency-name: "go.etcd.io/*"
   - dependency-name: "github.com/Azure/azure-sdk-for-go"
+  - dependency-name: "github.com/rancher/lasso"
   target-branch: "release-v2.8"
 # Go modules in release-v2.7 branch
 - package-ecosystem: "gomod"
@@ -45,4 +60,5 @@ updates:
   - dependency-name: "k8s.io/*"
   - dependency-name: "go.etcd.io/*"
   - dependency-name: "github.com/Azure/azure-sdk-for-go"
+  - dependency-name: "github.com/rancher/lasso"
   target-branch: "release-v2.7"
