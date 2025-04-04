@@ -2,7 +2,7 @@ module github.com/rancher/aks-operator
 
 go 1.23.0
 
-toolchain go1.23.4
+toolchain go1.24.1
 
 replace k8s.io/client-go => k8s.io/client-go v0.31.1
 
@@ -26,7 +26,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.0
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.38.0
 	k8s.io/api v0.31.1
 	k8s.io/apiextensions-apiserver v0.31.1
 	k8s.io/apimachinery v0.31.1
