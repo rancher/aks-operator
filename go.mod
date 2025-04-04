@@ -2,7 +2,7 @@ module github.com/rancher/aks-operator
 
 go 1.23.0
 
-toolchain go1.23.4
+toolchain go1.24.1
 
 replace (
 	k8s.io/apiserver => k8s.io/apiserver v0.30.1
@@ -19,7 +19,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.30
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46
 	github.com/onsi/ginkgo/v2 v2.23.3
-	github.com/onsi/gomega v1.36.3
+	github.com/onsi/gomega v1.37.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher-sandbox/ele-testhelpers v0.0.0-20231206161614-20a517410736
 	github.com/rancher/lasso v0.0.0-20240705194423-b2a060d103c1
