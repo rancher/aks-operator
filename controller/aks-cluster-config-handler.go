@@ -969,8 +969,8 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					logrus.Debugf("config: %s; upstream: %s", np.Mode, upstreamNodePool.Mode)
 					updateNodePool = true
 				}
-				if np.AvailabilityZones != nil && !reflect.DeepEqual(np.AvailabilityZones, upstreamNodePool.AvailabilityZones) {
-					return config, fmt.Errorf("Changing availability zones for node pool [%s] in cluster [%s (id: %s)] is not permitted", aks.String(np.Name), config.Spec.ClusterName, config.Name)
+				if np.AvailabilityZones != nil && upstreamNodePool.AvailabilityZones != nil && !availabilityZonesEqual(*np.AvailabilityZones, *upstreamNodePool.AvailabilityZones) {
+					return config, fmt.Errorf("changing availability zones for node pool [%s] in cluster [%s (id: %s)] is not permitted", aks.String(np.Name), config.Spec.ClusterName, config.Name)
 				}
 			} else {
 				logrus.Infof("Adding node pool [%s] for cluster [%s (id: %s)]", aks.String(np.Name), config.Spec.ClusterName, config.Name)
@@ -1068,4 +1068,19 @@ func (h *Handler) getAzureClients(config *aksv1.AKSClusterConfig) error {
 	}
 
 	return nil
+}
+
+func availabilityZonesEqual(a, b []string) bool {
+	// If lengths don't match, they're not equal
+	if len(a) != len(b) {
+		return false
+	}
+
+	// Compare each element
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
