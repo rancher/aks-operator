@@ -64,3 +64,12 @@ jobs:
         run: |
           helm push bin/rancher-aks-operator-$CHART_VERSION.tgz oci://ghcr.io/${{ github.repository_owner }}/rancher-aks-operator-chart
           helm push bin/rancher-aks-operator-crd-$CHART_VERSION.tgz oci://ghcr.io/${{ github.repository_owner }}/rancher-aks-operator-crd-chart
+
+      - name: Delete old package versions from GHCR registry
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: aks-operator
+          package-type: container
+          min-versions-to-keep: 7
+          token: ${{ secrets.GITHUB_TOKEN }}  
+          owner: rancher  
