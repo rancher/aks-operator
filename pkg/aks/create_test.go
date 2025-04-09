@@ -336,6 +336,7 @@ var _ = Describe("newManagedCluster", func() {
 				},
 			}, nil)
 		clusterSpec.ResourceLocation = "chinaeast"
+		clusterSpec.NodePools[0].AvailabilityZones = nil
 		managedCluster, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).ToNot(HaveOccurred())
 
@@ -390,6 +391,12 @@ var _ = Describe("newManagedCluster", func() {
 		workplacesClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(armoperationalinsights.WorkspacesClientGetResponse{}, nil).Times(0)
 		clusterSpec.NetworkPlugin = to.Ptr("kubenet")
 		clusterSpec.NetworkPolicy = to.Ptr("azure")
+		_, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should fail for region without availibility zones", func() {
+		clusterSpec.ResourceLocation = "westus"
 		_, err := createManagedCluster(ctx, cred, workplacesClientMock, clusterSpec, "test-phase")
 		Expect(err).To(HaveOccurred())
 	})
@@ -543,6 +550,11 @@ var _ = Describe("CreateOrUpdateAgentPool", func() {
 			ctx, clusterSpec.ResourceGroup, clusterSpec.ClusterName, String(nodePoolSpec.Name), gomock.Any()).
 			Return(&runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{}, errors.New("test-error"))
 
+		Expect(CreateOrUpdateAgentPool(ctx, agentPoolClientMock, clusterSpec, nodePoolSpec)).ToNot(Succeed())
+	})
+
+	It("should fail for region without avaibility zones", func() {
+		clusterSpec.ResourceLocation = "westus"
 		Expect(CreateOrUpdateAgentPool(ctx, agentPoolClientMock, clusterSpec, nodePoolSpec)).ToNot(Succeed())
 	})
 })

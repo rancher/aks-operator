@@ -120,3 +120,20 @@ var _ = Describe("CheckLogAnalyticsWorkspaceForMonitoring", func() {
 		Expect(err).To(HaveOccurred())
 	})
 })
+
+var _ = Describe("CheckAvailabilityZonesSupport", func() {
+	var (
+		locationWithAZ    = "eastus"
+		locationWithoutAZ = "westus"
+	)
+
+	It("should success for region with availability zones", func() {
+		result := CheckAvailabilityZonesSupport(locationWithAZ)
+		Expect(result).To(BeTrue())
+	})
+
+	It("should fail for region with availability zones", func() {
+		result := CheckAvailabilityZonesSupport(locationWithoutAZ)
+		Expect(result).To(BeFalse())
+	})
+})
