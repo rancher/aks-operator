@@ -1,7 +1,7 @@
 name: Delete Old images and charts
 on:
   schedule:
-    - cron: '0 1 * * 1' # Every Monday at 01:00 UTC
+    - cron: '0 1 * * 1,4'  # Every Mondays and Thursdays at 01:00 UTC
   workflow_dispatch:
 
 jobs:
