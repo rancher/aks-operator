@@ -326,6 +326,17 @@ var _ = Describe("validateConfig", func() {
 		handler.secrets = brokenSecretFactory.Core().V1().Secret()
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 	})
+	It("should successfully validate aks config with Linux profile", func() {
+		aksConfig.Spec.LinuxAdminUsername = to.Ptr("customuser")
+		aksConfig.Spec.LinuxSSHPublicKey = to.Ptr("ssh-rsa AAAAB3NzaC1yc2EAAAA...")
+		Expect(handler.validateConfig(aksConfig)).To(Succeed())
+	})
+
+	It("should successfully validate aks config without Linux profile", func() {
+		aksConfig.Spec.LinuxAdminUsername = nil
+		aksConfig.Spec.LinuxSSHPublicKey = nil
+		Expect(handler.validateConfig(aksConfig)).To(Succeed())
+	})
 
 	It("should fail to validate aks config if cluster with a similar name exists", func() {
 		secondAKSConfig := &aksv1.AKSClusterConfig{
@@ -977,6 +988,30 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(BeNil())
 		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(BeNil())
 	})
+	It("should handle missing LinuxProfile gracefully", func() {
+		clusterState.Properties.LinuxProfile = nil
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: *clusterState,
+			}, nil)
+
+		upstreamSpec, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(upstreamSpec.LinuxAdminUsername).To(BeNil())
+		Expect(upstreamSpec.LinuxSSHPublicKey).To(BeNil())
+	})
+
+	It("should handle LinuxProfile with missing SSH keys gracefully", func() {
+		clusterState.Properties.LinuxProfile.SSH.PublicKeys = nil
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: *clusterState,
+			}, nil)
+
+		_, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
+		Expect(err).To(HaveOccurred())
+
+	})
 })
 
 var _ = Describe("recordError", func() {
@@ -1052,8 +1087,104 @@ var _ = Describe("recordError", func() {
 		Expect(config).To(Equal(expectedConfig))
 		Expect(err).To(MatchError(expectedErr))
 
-		cleanLogOutput := strings.Replace(string(buf.Bytes()), `\"`, `"`, -1)
+		cleanLogOutput := strings.Replace(buf.String(), `\"`, `"`, -1)
 		Expect(strings.Contains(cleanLogOutput, err.Error())).To(BeTrue())
 		logrus.SetOutput(oldOutput)
+	})
+})
+
+var _ = Describe("updateUpstreamClusterState - Linux Profile", func() {
+	var (
+		handler                 *Handler
+		mockController          *gomock.Controller
+		clusterClientMock       *mock_services.MockManagedClustersClientInterface
+		resourceGroupClientMock *mock_services.MockResourceGroupsClientInterface
+		workplacesClientMock    *mock_services.MockWorkplacesClientInterface
+		aksConfig               *aksv1.AKSClusterConfig
+		upstreamSpec            *aksv1.AKSClusterConfigSpec
+	)
+
+	BeforeEach(func() {
+		mockController = gomock.NewController(GinkgoT())
+		clusterClientMock = mock_services.NewMockManagedClustersClientInterface(mockController)
+		resourceGroupClientMock = mock_services.NewMockResourceGroupsClientInterface(mockController)
+		workplacesClientMock = mock_services.NewMockWorkplacesClientInterface(mockController)
+
+		aksConfig = &aksv1.AKSClusterConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: aksv1.AKSClusterConfigSpec{
+				ResourceGroup:      "test",
+				ResourceLocation:   "test",
+				ClusterName:        "test",
+				LinuxAdminUsername: to.Ptr("customuser"),
+				LinuxSSHPublicKey:  to.Ptr("ssh-rsa AAAAB3...customkey"),
+			},
+			Status: aksv1.AKSClusterConfigStatus{
+				Phase: aksConfigActivePhase,
+			},
+		}
+
+		upstreamSpec = &aksv1.AKSClusterConfigSpec{
+			LinuxAdminUsername: to.Ptr("azureuser"),
+			LinuxSSHPublicKey:  to.Ptr("ssh-rsa AAAAB3...oldkey"),
+			Tags:               make(map[string]string),
+		}
+
+		Expect(cl.Create(ctx, aksConfig)).To(Succeed())
+
+		handler = &Handler{
+			aksCC: aksFactory.Aks().V1().AKSClusterConfig(),
+			azureClients: azureClients{
+				clustersClient:       clusterClientMock,
+				resourceGroupsClient: resourceGroupClientMock,
+				workplacesClient:     workplacesClientMock,
+			},
+		}
+	})
+
+	AfterEach(func() {
+		test.CleanupAndWait(ctx, cl, aksConfig)
+	})
+
+	It("should detect LinuxAdminUsername difference and trigger update", func() {
+		resourceGroupClientMock.EXPECT().CheckExistence(gomock.Any(), gomock.Any(), nil).Return(armresources.ResourceGroupsClientCheckExistenceResponse{
+			Success: true,
+		}, nil)
+
+		gotAKSConfig, err := handler.updateUpstreamClusterState(ctx, aksConfig, upstreamSpec)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(gotAKSConfig.Status.Phase).To(Equal(aksConfigUpdatingPhase))
+	})
+
+	It("should detect LinuxSSHPublicKey difference and trigger update", func() {
+		upstreamSpec.LinuxAdminUsername = to.Ptr("customuser")
+
+		resourceGroupClientMock.EXPECT().CheckExistence(gomock.Any(), gomock.Any(), nil).Return(armresources.ResourceGroupsClientCheckExistenceResponse{
+			Success: true,
+		}, nil)
+
+		gotAKSConfig, err := handler.updateUpstreamClusterState(ctx, aksConfig, upstreamSpec)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(gotAKSConfig.Status.Phase).To(Equal(aksConfigUpdatingPhase))
+	})
+
+	It("should not trigger update when Linux profile matches", func() {
+		upstreamSpec.LinuxAdminUsername = to.Ptr("customuser")
+		upstreamSpec.LinuxSSHPublicKey = to.Ptr("ssh-rsa AAAAB3...customkey")
+
+		gotAKSConfig, err := handler.updateUpstreamClusterState(ctx, aksConfig, upstreamSpec)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(gotAKSConfig.Status.Phase).To(Equal(aksConfigActivePhase))
+	})
+
+	It("should handle nil LinuxAdminUsername in config gracefully", func() {
+		aksConfig.Spec.LinuxAdminUsername = nil
+
+		gotAKSConfig, err := handler.updateUpstreamClusterState(ctx, aksConfig, upstreamSpec)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(gotAKSConfig.Status.Phase).To(Equal(aksConfigActivePhase))
 	})
 })

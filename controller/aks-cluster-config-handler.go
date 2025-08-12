@@ -851,6 +851,23 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 			}
 		}
 	}
+	if config.Spec.LinuxAdminUsername != nil {
+		if aks.String(config.Spec.LinuxAdminUsername) != aks.String(upstreamSpec.LinuxAdminUsername) {
+			logrus.Infof("Updating Linux admin username to %s for cluster [%s (id: %s)]", aks.String(config.Spec.LinuxAdminUsername), config.Spec.ClusterName, config.Name)
+			logrus.Debugf("config: %s; upstream: %s", aks.String(config.Spec.LinuxAdminUsername), aks.String(upstreamSpec.LinuxAdminUsername))
+			updateAksCluster = true
+			importedClusterSpec.LinuxAdminUsername = config.Spec.LinuxAdminUsername
+		}
+	}
+
+	if config.Spec.LinuxSSHPublicKey != nil {
+		if aks.String(config.Spec.LinuxSSHPublicKey) != aks.String(upstreamSpec.LinuxSSHPublicKey) {
+			logrus.Infof("Updating Linux SSH public key for cluster [%s (id: %s)]", config.Spec.ClusterName, config.Name)
+			logrus.Debugf("config key length: %d; upstream key length: %d", len(aks.String(config.Spec.LinuxSSHPublicKey)), len(aks.String(upstreamSpec.LinuxSSHPublicKey)))
+			updateAksCluster = true
+			importedClusterSpec.LinuxSSHPublicKey = config.Spec.LinuxSSHPublicKey
+		}
+	}
 
 	if updateAksCluster {
 		resourceGroupExists, err := aks.ExistsResourceGroup(ctx, h.azureClients.resourceGroupsClient, config.Spec.ResourceGroup)
