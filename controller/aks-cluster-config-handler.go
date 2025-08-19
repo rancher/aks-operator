@@ -860,15 +860,6 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 		}
 	}
 
-	if config.Spec.LinuxSSHPublicKey != nil {
-		if aks.String(config.Spec.LinuxSSHPublicKey) != aks.String(upstreamSpec.LinuxSSHPublicKey) {
-			logrus.Infof("Updating Linux SSH public key for cluster [%s (id: %s)]", config.Spec.ClusterName, config.Name)
-			logrus.Debugf("config key length: %d; upstream key length: %d", len(aks.String(config.Spec.LinuxSSHPublicKey)), len(aks.String(upstreamSpec.LinuxSSHPublicKey)))
-			updateAksCluster = true
-			importedClusterSpec.LinuxSSHPublicKey = config.Spec.LinuxSSHPublicKey
-		}
-	}
-
 	if updateAksCluster {
 		resourceGroupExists, err := aks.ExistsResourceGroup(ctx, h.azureClients.resourceGroupsClient, config.Spec.ResourceGroup)
 		if err != nil && strings.Contains(err.Error(), "unauthorized") {
