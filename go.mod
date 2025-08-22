@@ -8,36 +8,36 @@ replace k8s.io/client-go => k8s.io/client-go v0.33.1
 
 require (
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.2
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.1
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5 v5.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/operationalinsights/armoperationalinsights v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.2.0
 	github.com/Azure/go-autorest/autorest v0.11.30
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46
 	github.com/onsi/ginkgo/v2 v2.23.4
-	github.com/onsi/gomega v1.37.0
+	github.com/onsi/gomega v1.38.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher-sandbox/ele-testhelpers v0.0.0-20231206161614-20a517410736
-	github.com/rancher/lasso v0.2.3-rc1
+	github.com/rancher/lasso v0.2.3
 	github.com/rancher/rancher/pkg/apis v0.0.0-20240821150307-952f563826f5
 	github.com/rancher/wrangler-api v0.6.1-0.20200427172631-a7c2f09b783e
-	github.com/rancher/wrangler/v3 v3.2.2-rc.1
+	github.com/rancher/wrangler/v3 v3.2.2-rc.3
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.2
-	golang.org/x/net v0.41.0
+	golang.org/x/net v0.42.0
 	k8s.io/api v0.33.1
 	k8s.io/apiextensions-apiserver v0.33.1
 	k8s.io/apimachinery v0.33.1
 	k8s.io/apiserver v0.33.1
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.21.0
-	sigs.k8s.io/yaml v1.4.0
+	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.1 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.23 // indirect
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
@@ -94,16 +94,17 @@ require (
 	go.uber.org/automaxprocs v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
+	go.yaml.in/yaml/v2 v2.4.2 // indirect
+	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/term v0.32.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/term v0.33.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
-	golang.org/x/tools v0.33.0 // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
+	golang.org/x/tools v0.34.0 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
