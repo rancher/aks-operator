@@ -167,10 +167,6 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           VERSION_OVERRIDE="minor"
-          if [[ "${{ github.ref_name }}" == *"-rc"* ]]; then
-            VERSION_OVERRIDE="auto"
-          fi
-
           gh workflow run "Manual Trigger for Auto Bump" \
             --repo rancher/charts \
             --ref dev-v2.12 \
