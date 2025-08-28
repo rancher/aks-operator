@@ -162,6 +162,9 @@ jobs:
           private-key: ${{ env.PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
       - name: Dispatch to rancher/charts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           VERSION_OVERRIDE="minor"
           gh workflow run "Manual Trigger for Auto Bump" \
             --repo rancher/charts \
