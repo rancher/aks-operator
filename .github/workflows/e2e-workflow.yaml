@@ -17,9 +17,21 @@ jobs:
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-  e2e-test-v2_12:
+  e2e-test-v2_13:
     if: ${{ always() }}
     needs: e2e-test-main
+    uses: ./.github/workflows/e2e-branch.yaml
+    with:
+      branch: release-v2.13
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  e2e-test-v2_12:
+    if: ${{ always() }}
+    needs: e2e-test-v2_13
     uses: ./.github/workflows/e2e-branch.yaml
     with:
       branch: release-v2.12
