@@ -61,8 +61,10 @@ updates:
     # Ignore wrangler
     - dependency-name: "github.com/rancher/wrangler"
     - dependency-name: "github.com/rancher/wrangler/v3"
+    - dependency-name: "github.com/rancher/rancher/pkg/apis"
     - dependency-name: "go.etcd.io/*"
     - dependency-name: "github.com/Azure/azure-sdk-for-go"
+    - dependency-name: "github.com/rancher/lasso"
   commit-message:
     prefix: ":seedling:"
   target-branch: "release-v2.12"
