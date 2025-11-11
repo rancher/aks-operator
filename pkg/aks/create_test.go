@@ -540,6 +540,7 @@ var _ = Describe("CreateOrUpdateAgentPool", func() {
 					UpgradeSettings: &armcontainerservice.AgentPoolUpgradeSettings{
 						MaxSurge: nodePoolSpec.MaxSurge,
 					},
+					VnetSubnetID: nodePoolSpec.VnetSubnetID,
 				},
 			}).Return(&runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{}, nil)
 		Expect(CreateOrUpdateAgentPool(ctx, &Credentials{}, agentPoolClientMock, clusterSpec, nodePoolSpec)).To(Succeed())
