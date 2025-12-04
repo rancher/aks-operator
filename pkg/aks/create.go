@@ -80,6 +80,14 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 
 	networkProfile := &armcontainerservice.NetworkProfile{}
 
+	// Configure dual stack if enabled to support both IPv4 and IPv6, default is IPv4 only (controlplane will be always IPv4 only)
+	if spec.DualStack {
+		networkProfile.IPFamilies = []*armcontainerservice.IPFamily{
+			to.Ptr(armcontainerservice.IPFamilyIPv4),
+			to.Ptr(armcontainerservice.IPFamilyIPv6),
+		}
+	}
+
 	switch strings.ToLower(String(spec.OutboundType)) {
 	case strings.ToLower(string(armcontainerservice.OutboundTypeLoadBalancer)):
 		networkProfile.OutboundType = to.Ptr(armcontainerservice.OutboundTypeLoadBalancer)
@@ -140,6 +148,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 		networkProfile.DNSServiceIP = spec.NetworkDNSServiceIP
 		networkProfile.ServiceCidr = spec.NetworkServiceCIDR
 		networkProfile.PodCidr = spec.NetworkPodCIDR
+
 	}
 	managedCluster.Properties.NetworkProfile = networkProfile
 
