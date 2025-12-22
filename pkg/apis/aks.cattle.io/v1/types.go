@@ -44,7 +44,7 @@ type AKSClusterConfigSpec struct {
 	// IPv4 and IPv6 dual stack cluster support.
 	// +optional
 	// +kubebuilder:default=false
-	DualStack bool `json:"dualStack" norman:"noupdate"`
+	DualStack *bool `json:"dualStack" norman:"noupdate"`
 	// Location specifies the region to create the private endpoint.
 	ResourceLocation string `json:"resourceLocation" norman:"noupdate"`
 	// ResourceGroup is the name of the Azure resource group for this AKS Cluster.
