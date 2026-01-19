@@ -26,7 +26,7 @@ require (
 	github.com/rancher/rancher/pkg/apis v0.0.0-20240719121207-baeda6b89fe3
 	github.com/rancher/wrangler-api v0.6.1-0.20200427172631-a7c2f09b783e
 	github.com/rancher/wrangler/v3 v3.0.0
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/mock v0.5.2
 	golang.org/x/net v0.42.0
