@@ -477,12 +477,21 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 
 	cannotBeNilErrorAzurePlugin := "field [%s] must be provided for cluster [%s (id: %s)] config when Azure CNI network plugin is used"
 	if aks.String(config.Spec.NetworkPlugin) == string(armcontainerservice.NetworkPluginAzure) {
-		if config.Spec.VirtualNetwork == nil {
-			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "virtualNetwork", config.Spec.ClusterName, config.Name)
+		isOverlay := strings.EqualFold(aks.String(config.Spec.NetworkPluginMode), string(armcontainerservice.NetworkPluginModeOverlay))
+		if !isOverlay {
+			if config.Spec.VirtualNetwork == nil {
+				return fmt.Errorf(cannotBeNilErrorAzurePlugin, "virtualNetwork", config.Spec.ClusterName, config.Name)
+			}
+			if config.Spec.Subnet == nil {
+				return fmt.Errorf(cannotBeNilErrorAzurePlugin, "subnet", config.Spec.ClusterName, config.Name)
+			}
 		}
-		if config.Spec.Subnet == nil {
-			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "subnet", config.Spec.ClusterName, config.Name)
+		if isOverlay {
+			if config.Spec.NetworkPodCIDR == nil {
+				return fmt.Errorf("field [podCidr] must be provided for cluster [%s (id: %s)] config when Azure CNI Overlay is used", config.Spec.ClusterName, config.Name)
+			}
 		}
+
 		if config.Spec.NetworkDNSServiceIP == nil {
 			return fmt.Errorf(cannotBeNilErrorAzurePlugin, "dnsServiceIp", config.Spec.ClusterName, config.Name)
 		}
@@ -671,6 +680,9 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 	networkProfile := clusterState.Properties.NetworkProfile
 	if networkProfile != nil {
 		upstreamSpec.NetworkPlugin = to.Ptr(string(*networkProfile.NetworkPlugin))
+		if networkProfile.NetworkPluginMode != nil {
+			upstreamSpec.NetworkPluginMode = to.Ptr(string(*networkProfile.NetworkPluginMode))
+		}
 		upstreamSpec.NetworkDNSServiceIP = networkProfile.DNSServiceIP
 		upstreamSpec.NetworkServiceCIDR = networkProfile.ServiceCidr
 		upstreamSpec.NetworkPodCIDR = networkProfile.PodCidr
