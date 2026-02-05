@@ -64,6 +64,13 @@ type AKSClusterConfigSpec struct {
 	NetworkPlugin *string `json:"networkPlugin" norman:"pointer"`
 	// VirualNetworkResourceGroup is the name of the Azure resource group for the VNet and Subnet.
 	// +optional
+	// NetworkPluginMode is the mode the network plugin should use.
+	// Allowed value is "overlay".
+	// Immutable.
+	// +kubebuilder:validation:Enum=overlay
+	// +optional
+	NetworkPluginMode *string `json:"networkPluginMode,omitempty" norman:"pointer"`
+	// -
 	VirtualNetworkResourceGroup *string `json:"virtualNetworkResourceGroup" norman:"pointer"`
 	// VirtualNetwork describes the vnet for the AKS cluster. Will be created if it does not exist.
 	// +optional
