@@ -1,12 +1,12 @@
 run:
   timeout: 5m
-  go: "1.24"
+  go: "1.25"
   tests: false
   allow-parallel-runners: true
 
 output:
   formats:
-    - format: github-actions
+    github-actions: stdout
 
 linters:
   disable-all: true
