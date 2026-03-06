@@ -2,11 +2,9 @@ name: Scan
 on:
   workflow_dispatch:
   pull_request:
-    branches:
-      - main
+    branches: ["main", "release-v*"]
   push:
-    branches:
-      - main
+    branches: ["main", "release-v*"]
     tags:
       - "v*"
 jobs:
@@ -33,7 +31,7 @@ jobs:
             REPO=ghcr.io/rancher/aks-operator
             COMMIT=${{ github.sha }}
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@0.34.1
         env:
           TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db,public.ecr.aws/aquasecurity/trivy-db
           TRIVY_JAVA_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-java-db,public.ecr.aws/aquasecurity/trivy-java-db
