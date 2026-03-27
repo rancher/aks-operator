@@ -19,6 +19,11 @@ if [ -z "${3}" ]; then
   exit 1
 fi
 
+if [ "${3}" = "latest" ]; then
+  echo "error: version 'latest' is not allowed. must provide a specific version"
+  exit 1
+fi
+
 if [ -z "${GOBIN}" ]; then
   echo "GOBIN is not set. Must set GOBIN to install the bin in a specified directory."
   exit 1

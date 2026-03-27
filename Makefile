@@ -51,12 +51,6 @@ endif
 
 default: operator
 
-.dapper:
-	@echo Downloading dapper
-	@curl -sL https://releases.rancher.com/dapper/latest/dapper-`uname -s`-`uname -m` > .dapper.tmp
-	@@chmod +x .dapper.tmp
-	@./.dapper.tmp -v
-	@mv .dapper.tmp .dapper
 
 .PHONY: generate-crd
 generate-crd: $(MOCKGEN)
@@ -67,9 +61,6 @@ generate:
 	$(MAKE) generate-go
 	$(MAKE) generate-crd
 
-.PHONY: $(TARGETS)
-$(TARGETS): .dapper
-	./.dapper $@
 
 $(MOCKGEN):
 	GOBIN=$(BIN_DIR) $(GO_INSTALL) go.uber.org/mock/mockgen $(MOCKGEN_BIN) $(MOCKGEN_VER)
