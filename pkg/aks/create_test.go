@@ -540,9 +540,10 @@ var _ = Describe("CreateOrUpdateAgentPool", func() {
 					UpgradeSettings: &armcontainerservice.AgentPoolUpgradeSettings{
 						MaxSurge: nodePoolSpec.MaxSurge,
 					},
+					VnetSubnetID: nodePoolSpec.VnetSubnetID,
 				},
 			}).Return(&runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{}, nil)
-		Expect(CreateOrUpdateAgentPool(ctx, agentPoolClientMock, clusterSpec, nodePoolSpec)).To(Succeed())
+		Expect(CreateOrUpdateAgentPool(ctx, &Credentials{}, agentPoolClientMock, clusterSpec, nodePoolSpec)).To(Succeed())
 	})
 
 	It("should fail if agentPoolClient.CreateOrUpdate returns error", func() {
@@ -550,12 +551,12 @@ var _ = Describe("CreateOrUpdateAgentPool", func() {
 			ctx, clusterSpec.ResourceGroup, clusterSpec.ClusterName, String(nodePoolSpec.Name), gomock.Any()).
 			Return(&runtime.Poller[armcontainerservice.AgentPoolsClientCreateOrUpdateResponse]{}, errors.New("test-error"))
 
-		Expect(CreateOrUpdateAgentPool(ctx, agentPoolClientMock, clusterSpec, nodePoolSpec)).ToNot(Succeed())
+		Expect(CreateOrUpdateAgentPool(ctx, &Credentials{}, agentPoolClientMock, clusterSpec, nodePoolSpec)).ToNot(Succeed())
 	})
 
 	It("should fail for region without avaibility zones", func() {
 		clusterSpec.ResourceLocation = "westus"
-		Expect(CreateOrUpdateAgentPool(ctx, agentPoolClientMock, clusterSpec, nodePoolSpec)).ToNot(Succeed())
+		Expect(CreateOrUpdateAgentPool(ctx, &Credentials{}, agentPoolClientMock, clusterSpec, nodePoolSpec)).ToNot(Succeed())
 	})
 })
 
