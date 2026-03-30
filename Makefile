@@ -31,7 +31,7 @@ MOCKGEN_VER := v0.4.0
 MOCKGEN_BIN := mockgen
 MOCKGEN := $(BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER)
 
-GINKGO_VER := v2.22.2
+GINKGO_VER := v2.27.5
 GINKGO_BIN := ginkgo
 GINKGO := $(BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
 
@@ -39,7 +39,7 @@ GO_APIDIFF_VER := v0.8.2
 GO_APIDIFF_BIN := go-apidiff
 GO_APIDIFF := $(BIN_DIR)/$(GO_APIDIFF_BIN)-$(GO_APIDIFF_VER)
 
-SETUP_ENVTEST_VER := v0.0.0-20211110210527-619e6b92dab9
+SETUP_ENVTEST_VER := v0.0.0-20260125163108-a19ec76a3c5d
 SETUP_ENVTEST_BIN := setup-envtest
 SETUP_ENVTEST := $(BIN_DIR)/$(SETUP_ENVTEST_BIN)-$(SETUP_ENVTEST_VER)
 
@@ -51,13 +51,6 @@ endif
 
 default: operator
 
-.dapper:
-	@echo Downloading dapper
-	@curl -sL https://releases.rancher.com/dapper/latest/dapper-`uname -s`-`uname -m` > .dapper.tmp
-	@@chmod +x .dapper.tmp
-	@./.dapper.tmp -v
-	@mv .dapper.tmp .dapper
-
 .PHONY: generate-crd
 generate-crd: $(MOCKGEN)
 	go generate main.go
@@ -66,10 +59,6 @@ generate-crd: $(MOCKGEN)
 generate:
 	$(MAKE) generate-go
 	$(MAKE) generate-crd
-
-.PHONY: $(TARGETS)
-$(TARGETS): .dapper
-	./.dapper $@
 
 $(MOCKGEN):
 	GOBIN=$(BIN_DIR) $(GO_INSTALL) go.uber.org/mock/mockgen $(MOCKGEN_BIN) $(MOCKGEN_VER)
