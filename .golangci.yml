@@ -1,6 +1,6 @@
 version: "2"
 run:
-  go: "1.25"
+  go: "1.26"
   tests: false
   allow-parallel-runners: true
 linters:
@@ -80,12 +80,16 @@ linters:
     rules:
       - linters:
           - revive
+          - goconst
         path: mock(\w+)/doc.go$
         text: 'var-naming: don''t use an underscore in package name'
       - linters:                                           
           - revive
         path: utils/
         text: 'var-naming: avoid meaningless package names' 
+      - linters:
+          - goconst
+        path: pkg/aks/check.go$
     paths:
       - zz_generated_*
       - pkg/generated
