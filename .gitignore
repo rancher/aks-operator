@@ -1,0 +1,8 @@
+.idea/
+.vscode/
+bin/
+dist/
+vendor/
+.dapper
+.DS_Store
+_artifacts/
