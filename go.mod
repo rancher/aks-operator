@@ -1,6 +1,6 @@
 module github.com/rancher/aks-operator
 
-go 1.25.0
+go 1.25.11
 
 replace k8s.io/client-go => k8s.io/client-go v0.35.1
 
