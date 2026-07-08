@@ -11,7 +11,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2019-11-01/subscriptions"
 	"github.com/Azure/go-autorest/autorest/azure"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	"github.com/rancher/aks-operator/pkg/utils"
@@ -158,17 +157,6 @@ func GetEnvironment(env string) (cloud.Configuration, azure.Environment) {
 	default:
 		return cloud.AzurePublic, azure.PublicCloud
 	}
-}
-
-// This function is used to create a new SubscriptionsClient with the given base URI.
-// It is used to make unauthenticated requests to the Azure Resource Manager endpoint.
-func NewSubscriptionsClient(baseURI string) subscriptions.Client {
-	c := subscriptions.NewClientWithBaseURI(baseURI) // used only for unauthenticated requests for generic subs IDs
-	c.Client.UserAgent += fmt.Sprintf(";rancher-aks-operator")
-	c.RequestInspector = utils.RequestWithInspection()
-	c.ResponseInspector = utils.ResponseWithInspection()
-	c.PollingDelay = defaultClientPollingDelay
-	return c
 }
 
 // authorizationURIRegex extracts the value of "authorization_uri" in the header as the first capturing group
