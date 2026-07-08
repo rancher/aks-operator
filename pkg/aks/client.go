@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"time"
 
@@ -129,9 +130,9 @@ func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret 
 	if secret.Data["azurecredentialConfig-environment"] != nil {
 		clientEnvironment = string(secret.Data["azurecredentialConfig-environment"])
 	}
-	_, env := GetEnvironment(clientEnvironment)
-
-	tenantID, err := FindTenantID(ctx, env, subscriptionID)
+	env, _ := GetEnvironment(clientEnvironment)
+	resourceManagerEndpoint := env.Services[cloud.ResourceManager].Endpoint
+	tenantID, err := FindTenantID(ctx, resourceManagerEndpoint, subscriptionID)
 	if err != nil {
 		return "", err
 	}
@@ -170,39 +171,44 @@ func NewSubscriptionsClient(baseURI string) subscriptions.Client {
 	return c
 }
 
-// This function is used to find the tenant ID for the subscription ID. It will send an unauthenticated request to
-// the Azure Resource Manager endpoint to get the tenant ID from the WWW-Authenticate header.
-// Example header:
+// authorizationURIRegex extracts the value of "authorization_uri" in the header as the first capturing group
+// Example header value:
 //
-//	  Bearer authorization_uri="https://login.windows.net/996fe9d1-6171-40aa-945b-4c64b63bf655",
-//			error="invalid_token", error_description="The authentication failed because of missing 'Authorization' header."
-func FindTenantID(ctx context.Context, env azure.Environment, subscriptionID string) (string, error) {
-	goCtx, cancel := context.WithTimeout(ctx, findTenantIDTimeout)
-	defer cancel()
+//	Bearer authorization_uri="https://login.windows.net/996fe9d1-6171-40aa-945b-4c64b63bf655", error="invalid_token", error_description="The authentication failed because of missing 'Authorization' header."
+var authorizationURIRegex = regexp.MustCompile(`authorization_uri=".*/([0-9a-f\-]+)"`)
+
+// FindTenantID is used to find the tenant ID for the subscription ID. It will send an unauthenticated request to
+// the Azure Resource Manager endpoint to get the tenant ID from the WWW-Authenticate header.
+func FindTenantID(ctx context.Context, resourceManagerEndpoint string, subscriptionID string) (string, error) {
 	const hdrKey = "WWW-Authenticate"
-	c := NewSubscriptionsClient(env.ResourceManagerEndpoint)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	getSubscriptionURL := fmt.Sprintf("%s/subscriptions/%s?api-version=2022-12-01", resourceManagerEndpoint, url.PathEscape(subscriptionID))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, getSubscriptionURL, nil)
+	if err != nil {
+		return "", err
+	}
 
 	// we expect this request to fail (err != nil), but we are only interested
 	// in headers, so surface the error if the Response is not present (i.e.
 	// network error etc)
-	subs, err := c.Get(goCtx, subscriptionID)
-	if subs.Response.Response == nil {
-		return "", fmt.Errorf("Request failed: %v", err)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("cannot get subscription id: %v", err)
 	}
+	defer res.Body.Close()
 
 	// Expecting 401 StatusUnauthorized here, just read the header
-	if subs.StatusCode != http.StatusUnauthorized {
+	if res.StatusCode != http.StatusUnauthorized {
 		return "", fmt.Errorf("unexpected response from Get Subscription: %v", err)
 	}
-	hdr := subs.Header.Get(hdrKey)
+
+	hdr := res.Header.Get(hdrKey)
 	if hdr == "" {
 		return "", fmt.Errorf("header %v not found in Get Subscription response", hdrKey)
 	}
-
-	// Example value for hdr:
-	//   Bearer authorization_uri="https://login.windows.net/996fe9d1-6171-40aa-945b-4c64b63bf655", error="invalid_token", error_description="The authentication failed because of missing 'Authorization' header."
-	r := regexp.MustCompile(`authorization_uri=".*/([0-9a-f\-]+)"`)
-	m := r.FindStringSubmatch(hdr)
+	m := authorizationURIRegex.FindStringSubmatch(hdr)
 	if m == nil {
 		return "", fmt.Errorf("could not find the tenant ID in header: %s %q", hdrKey, hdr)
 	}
