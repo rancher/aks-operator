@@ -11,7 +11,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest/azure"
 	aksv1 "github.com/rancher/aks-operator/pkg/apis/aks.cattle.io/v1"
 	"github.com/rancher/aks-operator/pkg/utils"
 	wranglerv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
@@ -71,8 +70,7 @@ func GetSecrets(_ wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, 
 	if secret.Data["azurecredentialConfig-environment"] != nil {
 		clientEnvironment = string(secret.Data["azurecredentialConfig-environment"])
 	}
-	cloud, env := GetEnvironment(clientEnvironment)
-
+	env := GetEnvironment(clientEnvironment)
 	cannotBeNilError := "field [azurecredentialConfig-%s] must be provided in cloud credential"
 	if subscriptionIDBytes == nil {
 		return nil, fmt.Errorf(cannotBeNilError, "subscriptionId")
@@ -88,9 +86,9 @@ func GetSecrets(_ wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, 
 	cred.SubscriptionID = string(subscriptionIDBytes)
 	cred.ClientID = string(clientIDBytes)
 	cred.ClientSecret = string(clientSecretBytes)
-	cred.Cloud = cloud
-	cred.AuthBaseURL = &env.ActiveDirectoryEndpoint
-	cred.BaseURL = &env.ResourceManagerEndpoint
+	cred.Cloud = env
+	cred.AuthBaseURL = new(env.Services[cloud.ResourceManager].Endpoint)
+	cred.BaseURL = new(env.ActiveDirectoryAuthorityHost)
 
 	if cred.TenantID == "" {
 		cred.TenantID, err = GetCachedTenantID(secretClient, cred.SubscriptionID, secret)
@@ -129,7 +127,7 @@ func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret 
 	if secret.Data["azurecredentialConfig-environment"] != nil {
 		clientEnvironment = string(secret.Data["azurecredentialConfig-environment"])
 	}
-	env, _ := GetEnvironment(clientEnvironment)
+	env := GetEnvironment(clientEnvironment)
 	resourceManagerEndpoint := env.Services[cloud.ResourceManager].Endpoint
 	tenantID, err := FindTenantID(ctx, resourceManagerEndpoint, subscriptionID)
 	if err != nil {
@@ -148,14 +146,14 @@ func GetCachedTenantID(secretClient secretClient, subscriptionID string, secret 
 	return tenantID, err
 }
 
-func GetEnvironment(env string) (cloud.Configuration, azure.Environment) {
+func GetEnvironment(env string) cloud.Configuration {
 	switch env {
 	case "AzureChinaCloud":
-		return cloud.AzureChina, azure.ChinaCloud
+		return cloud.AzureChina
 	case "AzureUSGovernmentCloud":
-		return cloud.AzureGovernment, azure.USGovernmentCloud
+		return cloud.AzureGovernment
 	default:
-		return cloud.AzurePublic, azure.PublicCloud
+		return cloud.AzurePublic
 	}
 }
 
