@@ -87,8 +87,8 @@ func GetSecrets(_ wranglerv1.SecretCache, secretClient wranglerv1.SecretClient, 
 	cred.ClientID = string(clientIDBytes)
 	cred.ClientSecret = string(clientSecretBytes)
 	cred.Cloud = env
-	cred.AuthBaseURL = new(env.Services[cloud.ResourceManager].Endpoint)
-	cred.BaseURL = new(env.ActiveDirectoryAuthorityHost)
+	cred.AuthBaseURL = new(env.ActiveDirectoryAuthorityHost)
+	cred.BaseURL = new(env.Services[cloud.ResourceManager].Endpoint)
 
 	if cred.TenantID == "" {
 		cred.TenantID, err = GetCachedTenantID(secretClient, cred.SubscriptionID, secret)
