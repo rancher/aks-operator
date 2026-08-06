@@ -14,7 +14,7 @@ import (
 	reflect "reflect"
 
 	runtime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	armresources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	armresources "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	gomock "go.uber.org/mock/gomock"
 )
 
