@@ -28,7 +28,7 @@ RUN xx-go build -ldflags \
        -o /aks-operator && \
        xx-verify /aks-operator
 
-FROM registry.suse.com/bci/bci-micro:15.7
+FROM registry.suse.com/bci/bci-micro:16.1
 COPY --from=base /etc/passwd /etc/passwd
 COPY --from=base /etc/shadow /etc/shadow
 COPY --from=builder /aks-operator /usr/bin/aks-operator
