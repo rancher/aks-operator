@@ -2,12 +2,6 @@ module github.com/rancher/aks-operator
 
 go 1.26.0
 
-replace (
-	github.com/rancher/lasso => github.com/Abhishek-Valaboju/lasso v0.2.9-0.20260828055838-34eaedfec2e7
-	github.com/rancher/norman => github.com/Abhishek-Valaboju/norman v0.10.1-0.20260828094032-75fa12a9114f
-	github.com/rancher/wrangler/v3 => github.com/Abhishek-Valaboju/wrangler/v3 v3.5.1-rc.1.0.20260828064927-bed3da9cc545
-)
-
 replace k8s.io/client-go => k8s.io/client-go v0.37.0
 
 require (
@@ -21,10 +15,10 @@ require (
 	github.com/onsi/gomega v1.42.1
 	github.com/pkg/errors v0.9.1
 	github.com/rancher-sandbox/ele-testhelpers v0.0.0-20231206161614-20a517410736
-	github.com/rancher/lasso v0.2.9
+	github.com/rancher/lasso v0.2.10
 	github.com/rancher/rancher/pkg/apis v0.0.0-20260520140148-1f22fcaec55b
 	github.com/rancher/wrangler-api v0.6.1-0.20200427172631-a7c2f09b783e
-	github.com/rancher/wrangler/v3 v3.7.0
+	github.com/rancher/wrangler/v3 v3.8.0-rc.1
 	github.com/sirupsen/logrus v1.10.1
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/mock v0.6.0
@@ -86,7 +80,7 @@ require (
 	github.com/rancher/eks-operator v1.14.2 // indirect
 	github.com/rancher/fleet/pkg/apis v0.15.0 // indirect
 	github.com/rancher/gke-operator v1.14.2-rc.1 // indirect
-	github.com/rancher/norman v0.9.1 // indirect
+	github.com/rancher/norman v0.10.1 // indirect
 	github.com/rancher/wrangler v1.1.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
@@ -104,6 +98,8 @@ require (
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
