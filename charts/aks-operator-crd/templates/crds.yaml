@@ -77,6 +77,9 @@ spec:
               networkPlugin:
                 nullable: true
                 type: string
+              networkPluginMode:
+                nullable: true
+                type: string
               networkPolicy:
                 nullable: true
                 type: string
