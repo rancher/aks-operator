@@ -982,7 +982,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				if config.Status.Phase != aksConfigUpdatingPhase {
 					return h.enqueueUpdate(config)
 				}
-				err = aks.CreateOrUpdateAgentPool(ctx, h.azureClients.agentPoolsClient, &config.Spec, np)
+				err = aks.CreateOrUpdateAgentPool(ctx, &h.azureClients.credentials, h.azureClients.agentPoolsClient, &config.Spec, np)
 				if err != nil {
 					return config, fmt.Errorf("failed to update cluster [%s (id: %s)]: %v", config.Spec.ClusterName, config.Name, err)
 				}
