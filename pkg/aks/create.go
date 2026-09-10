@@ -308,7 +308,7 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 
 // CreateOrUpdateAgentPool creates a new pool(s) in AKS. If one already exists it updates the upstream node pool with
 // any provided updates.
-func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient services.AgentPoolsClientInterface, spec *aksv1.AKSClusterConfigSpec, np *aksv1.AKSNodePool) error {
+func CreateOrUpdateAgentPool(ctx context.Context, cred *Credentials, agentPoolClient services.AgentPoolsClientInterface, spec *aksv1.AKSClusterConfigSpec, np *aksv1.AKSNodePool) error {
 	if np.AvailabilityZones != nil && len(*np.AvailabilityZones) > 0 && !CheckAvailabilityZonesSupport(spec.ResourceLocation) {
 		return fmt.Errorf("availability zones are not supported in region %s", spec.ResourceLocation)
 	}
@@ -329,6 +329,19 @@ func CreateOrUpdateAgentPool(ctx context.Context, agentPoolClient services.Agent
 		VnetSubnetID:        np.VnetSubnetID,
 		NodeLabels:          np.NodeLabels,
 		NodeTaints:          utils.ConvertToSliceOfPointers(np.NodeTaints),
+	}
+	if hasCustomVirtualNetwork(spec) {
+		virtualNetworkResourceGroup := spec.ResourceGroup
+		if String(spec.VirtualNetworkResourceGroup) != "" {
+			virtualNetworkResourceGroup = String(spec.VirtualNetworkResourceGroup)
+		}
+		agentProfile.VnetSubnetID = to.Ptr(fmt.Sprintf(
+			"/subscriptions/%s/resourceGroups/%s/providers/Microsoft.Network/virtualNetworks/%s/subnets/%s",
+			cred.SubscriptionID,
+			virtualNetworkResourceGroup,
+			String(spec.VirtualNetwork),
+			String(spec.Subnet),
+		))
 	}
 
 	if np.MaxSurge != nil {
