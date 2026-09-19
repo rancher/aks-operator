@@ -450,7 +450,8 @@ func (h *Handler) validateConfig(config *aksv1.AKSClusterConfig) error {
 	}
 	if config.Spec.NetworkPolicy != nil &&
 		aks.String(config.Spec.NetworkPolicy) != string(armcontainerservice.NetworkPolicyAzure) &&
-		aks.String(config.Spec.NetworkPolicy) != string(armcontainerservice.NetworkPolicyCalico) {
+		aks.String(config.Spec.NetworkPolicy) != string(armcontainerservice.NetworkPolicyCalico) &&
+		aks.String(config.Spec.NetworkPolicy) != string(armcontainerservice.NetworkPolicyCilium) {
 		return fmt.Errorf("invalid network policy value [%s] for [%s (id: %s)] cluster config", aks.String(config.Spec.NetworkPolicy), config.Spec.ClusterName, config.Name)
 	}
 	if aks.String(config.Spec.NetworkPolicy) == string(armcontainerservice.NetworkPolicyAzure) && aks.String(config.Spec.NetworkPlugin) != string(armcontainerservice.NetworkPluginAzure) {

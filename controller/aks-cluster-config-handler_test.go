@@ -440,9 +440,14 @@ var _ = Describe("validateConfig", func() {
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
 	})
 
-	It("should fail if network policy is not azure or calico", func() {
+	It("should fail if network policy is not azure, calico, or cilium", func() {
 		aksConfig.Spec.NetworkPolicy = to.Ptr("invalid")
 		Expect(handler.validateConfig(aksConfig)).NotTo(Succeed())
+	})
+
+	It("should succeed if network policy is cilium", func() {
+		aksConfig.Spec.NetworkPolicy = to.Ptr(string(armcontainerservice.NetworkPolicyCilium))
+		Expect(handler.validateConfig(aksConfig)).To(Succeed())
 	})
 
 	It("should fail if network policy is azure and network plugin is kubenet", func() {
