@@ -1,8 +1,6 @@
 module github.com/rancher/aks-operator
 
-go 1.25.0
-
-toolchain go1.25.13
+go 1.26.0
 
 replace k8s.io/client-go => k8s.io/client-go v0.35.1
 
@@ -95,7 +93,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.55.0 // indirect
+	golang.org/x/crypto v0.56.0 // indirect
 	golang.org/x/mod v0.40.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
