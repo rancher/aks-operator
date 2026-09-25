@@ -230,6 +230,17 @@ func (h *Handler) setStatusMessage(config *aksv1.AKSClusterConfig, statusMessage
 	return h.aksCC.UpdateStatus(config)
 }
 
+func (h *Handler) updateStatus(config *aksv1.AKSClusterConfig, phase, message string) (*aksv1.AKSClusterConfig, error) {
+	if config.Status.Phase == phase && config.Status.Message == message {
+		return config, nil
+	}
+
+	config = config.DeepCopy()
+	config.Status.Phase = phase
+	config.Status.Message = message
+	return h.aksCC.UpdateStatus(config)
+}
+
 func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
 	if err := h.validateConfig(config); err != nil {
 		return config, err
@@ -330,29 +341,23 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 				config.Spec.ClusterName,
 				config.Name,
 			)
-			logrus.Infof("%s", statusMessage)
+			logrus.Info(statusMessage)
 			return h.setStatusMessage(config, statusMessage)
 		}
+
 		// upstream cluster is already updating, must wait until sending next update
 		statusMessage := fmt.Sprintf(
 			"Waiting for cluster [%s (id: %s)] to finish updating",
 			config.Spec.ClusterName,
 			config.Name,
 		)
-		logrus.Infof("%s", statusMessage)
-		if config.Status.Phase != aksConfigUpdatingPhase {
-			config = config.DeepCopy()
-			config.Status.Phase = aksConfigUpdatingPhase
-			config.Status.Message = statusMessage
-			return h.aksCC.UpdateStatus(config)
+		logrus.Info(statusMessage)
+
+		config, err = h.updateStatus(config, aksConfigUpdatingPhase, statusMessage)
+		if err != nil {
+			return config, err
 		}
-		if config.Status.Message == "" {
-			var err error
-			config, err = h.setStatusMessage(config, statusMessage)
-			if err != nil {
-				return config, err
-			}
-		}
+
 		h.aksEnqueueAfter(config.Namespace, config.Name, 30*time.Second)
 		return config, nil
 	}
@@ -368,7 +373,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 					config.Spec.ClusterName,
 					config.Name,
 				)
-				logrus.Infof("%s", statusMessage)
+				logrus.Info(statusMessage)
 				return h.setStatusMessage(config, statusMessage)
 			}
 			var statusMessage string
@@ -390,14 +395,12 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 				)
 			}
 
-			logrus.Infof("%s", statusMessage)
+			logrus.Info(statusMessage)
 
-			if config.Status.Message == "" {
-				var err error
-				config, err = h.setStatusMessage(config, statusMessage)
-				if err != nil {
-					return config, err
-				}
+			var err error
+			config, err = h.setStatusMessage(config, statusMessage)
+			if err != nil {
+				return config, err
 			}
 
 			h.aksEnqueueAfter(config.Namespace, config.Name, 30*time.Second)
@@ -574,6 +577,7 @@ func (h *Handler) waitForCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 		logrus.Infof("Cluster [%s (id: %s)] created successfully", config.Spec.ClusterName, config.Name)
 		config = config.DeepCopy()
 		config.Status.Phase = aksConfigActivePhase
+		config.Status.Message = ""
 		return h.aksCC.UpdateStatus(config)
 	}
 
@@ -583,7 +587,7 @@ func (h *Handler) waitForCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 		config.Name,
 		clusterState,
 	)
-	logrus.Infof("%s", statusMessage)
+	logrus.Info(statusMessage)
 
 	var statusMessageErr error
 	config, statusMessageErr = h.setStatusMessage(config, statusMessage)
@@ -841,7 +845,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				config.Spec.ClusterName,
 				config.Name,
 			)
-			logrus.Infof("%s", statusMessage)
+			logrus.Info(statusMessage)
 			var statusMessageErr error
 			config, statusMessageErr = h.setStatusMessage(config, statusMessage)
 			if statusMessageErr != nil {
@@ -888,7 +892,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				config.Spec.ClusterName,
 				config.Name,
 			)
-			logrus.Infof("%s", updateMessage)
+			logrus.Info(updateMessage)
 			logrus.Debugf("config: %s; upstream: %s", aks.String(config.Spec.KubernetesVersion), aks.String(upstreamSpec.KubernetesVersion))
 			updateAksCluster = true
 			importedClusterSpec.KubernetesVersion = config.Spec.KubernetesVersion
@@ -904,7 +908,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				config.Spec.ClusterName,
 				config.Name,
 			)
-			logrus.Infof("%s", updateMessage)
+			logrus.Info(updateMessage)
 			logrus.Debugf("config: %v; upstream: %v", *config.Spec.AuthorizedIPRanges, aks.StringSlice(upstreamSpec.AuthorizedIPRanges))
 			updateAksCluster = true
 			importedClusterSpec.AuthorizedIPRanges = config.Spec.AuthorizedIPRanges
@@ -920,7 +924,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				config.Spec.ClusterName,
 				config.Name,
 			)
-			logrus.Infof("%s", updateMessage)
+			logrus.Info(updateMessage)
 			logrus.Debugf("config: %v; upstream: %v", aks.Bool(config.Spec.HTTPApplicationRouting), aks.Bool(upstreamSpec.HTTPApplicationRouting))
 			updateAksCluster = true
 			importedClusterSpec.HTTPApplicationRouting = config.Spec.HTTPApplicationRouting
@@ -939,7 +943,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					config.Spec.ClusterName,
 					config.Name,
 				)
-				logrus.Infof("%s", updateMessage)
+				logrus.Info(updateMessage)
 				updateAksCluster = true
 				importedClusterSpec.Monitoring = config.Spec.Monitoring
 				importedClusterSpec.LogAnalyticsWorkspaceGroup = nil
@@ -950,7 +954,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					config.Spec.ClusterName,
 					config.Name,
 				)
-				logrus.Infof("%s", updateMessage)
+				logrus.Info(updateMessage)
 				updateAksCluster = true
 				importedClusterSpec.Monitoring = config.Spec.Monitoring
 				importedClusterSpec.LogAnalyticsWorkspaceGroup = config.Spec.LogAnalyticsWorkspaceGroup
@@ -1128,7 +1132,7 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 					"Removing node pool [%s] from cluster [%s (id: %s)]",
 					npName, config.Spec.ClusterName, config.Name,
 				)
-				logrus.Infof("%s", statusMessage)
+				logrus.Info(statusMessage)
 				var statusMessageErr error
 				config, statusMessageErr = h.setStatusMessage(config, statusMessage)
 				if statusMessageErr != nil {
