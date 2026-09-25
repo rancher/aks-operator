@@ -230,6 +230,17 @@ func (h *Handler) setStatusMessage(config *aksv1.AKSClusterConfig, statusMessage
 	return h.aksCC.UpdateStatus(config)
 }
 
+func (h *Handler) updateStatus(config *aksv1.AKSClusterConfig, phase, message string) (*aksv1.AKSClusterConfig, error) {
+	if config.Status.Phase == phase && config.Status.Message == message {
+		return config, nil
+	}
+
+	config = config.DeepCopy()
+	config.Status.Phase = phase
+	config.Status.Message = message
+	return h.aksCC.UpdateStatus(config)
+}
+
 func (h *Handler) createCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
 	if err := h.validateConfig(config); err != nil {
 		return config, err
@@ -333,6 +344,7 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 			logrus.Infof("%s", statusMessage)
 			return h.setStatusMessage(config, statusMessage)
 		}
+
 		// upstream cluster is already updating, must wait until sending next update
 		statusMessage := fmt.Sprintf(
 			"Waiting for cluster [%s (id: %s)] to finish updating",
@@ -340,19 +352,12 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 			config.Name,
 		)
 		logrus.Infof("%s", statusMessage)
-		if config.Status.Phase != aksConfigUpdatingPhase {
-			config = config.DeepCopy()
-			config.Status.Phase = aksConfigUpdatingPhase
-			config.Status.Message = statusMessage
-			return h.aksCC.UpdateStatus(config)
+
+		config, err = h.updateStatus(config, aksConfigUpdatingPhase, statusMessage)
+		if err != nil {
+			return config, err
 		}
-		if config.Status.Message == "" {
-			var err error
-			config, err = h.setStatusMessage(config, statusMessage)
-			if err != nil {
-				return config, err
-			}
-		}
+
 		h.aksEnqueueAfter(config.Namespace, config.Name, 30*time.Second)
 		return config, nil
 	}
