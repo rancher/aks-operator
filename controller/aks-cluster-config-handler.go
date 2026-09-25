@@ -182,7 +182,7 @@ func (h *Handler) OnAksConfigRemoved(_ string, config *aksv1.AKSClusterConfig) (
 func (h *Handler) recordError(onChange func(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error)) func(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
 	return func(key string, config *aksv1.AKSClusterConfig) (*aksv1.AKSClusterConfig, error) {
 		var err error
-		var message string
+		var statusMessage string
 		config, err = onChange(key, config)
 		if config == nil {
 			// AKS config is likely deleting
@@ -197,19 +197,19 @@ func (h *Handler) recordError(onChange func(key string, config *aksv1.AKSCluster
 				return config, err
 			}
 
-			message = err.Error()
+			statusMessage = err.Error()
 		}
 
-		if config.Status.FailureMessage == message {
+		if config.Status.FailureMessage == statusMessage {
 			return config, err
 		}
 
 		config = config.DeepCopy()
-		if message != "" && config.Status.Phase == aksConfigActivePhase {
+		if statusMessage != "" && config.Status.Phase == aksConfigActivePhase {
 			// can assume an update is failing
 			config.Status.Phase = aksConfigUpdatingPhase
 		}
-		config.Status.FailureMessage = message
+		config.Status.FailureMessage = statusMessage
 
 		var recordErr error
 		config, recordErr = h.aksCC.UpdateStatus(config)
@@ -220,13 +220,13 @@ func (h *Handler) recordError(onChange func(key string, config *aksv1.AKSCluster
 	}
 }
 
-func (h *Handler) setStatusMessage(config *aksv1.AKSClusterConfig, message string) (*aksv1.AKSClusterConfig, error) {
-	if config.Status.Message == message {
+func (h *Handler) setStatusMessage(config *aksv1.AKSClusterConfig, statusMessage string) (*aksv1.AKSClusterConfig, error) {
+	if config.Status.Message == statusMessage {
 		return config, nil
 	}
 
 	config = config.DeepCopy()
-	config.Status.Message = message
+	config.Status.Message = statusMessage
 	return h.aksCC.UpdateStatus(config)
 }
 
@@ -325,30 +325,30 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 		// If the cluster is in an active state in Rancher but is updating in AKS, then an update was initiated outside of Rancher,
 		// such as in AKS console. In this case, this is a no-op and the reconciliation will happen after syncing.
 		if config.Status.Phase == aksConfigActivePhase {
-			message := fmt.Sprintf(
+			statusMessage := fmt.Sprintf(
 				"Waiting for non-Rancher initiated cluster update for [%s (id: %s)]",
 				config.Spec.ClusterName,
 				config.Name,
 			)
-			logrus.Infof("%s", message)
-			return h.setStatusMessage(config, message)
+			logrus.Infof("%s", statusMessage)
+			return h.setStatusMessage(config, statusMessage)
 		}
 		// upstream cluster is already updating, must wait until sending next update
-		message := fmt.Sprintf(
+		statusMessage := fmt.Sprintf(
 			"Waiting for cluster [%s (id: %s)] to finish updating",
 			config.Spec.ClusterName,
 			config.Name,
 		)
-		logrus.Infof("%s", message)
+		logrus.Infof("%s", statusMessage)
 		if config.Status.Phase != aksConfigUpdatingPhase {
 			config = config.DeepCopy()
 			config.Status.Phase = aksConfigUpdatingPhase
-			config.Status.Message = message
+			config.Status.Message = statusMessage
 			return h.aksCC.UpdateStatus(config)
 		}
 		if config.Status.Message == "" {
 			var err error
-			config, err = h.setStatusMessage(config, message)
+			config, err = h.setStatusMessage(config, statusMessage)
 			if err != nil {
 				return config, err
 			}
@@ -363,26 +363,26 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 			// If the node pool is in an active state in Rancher but is updating in AKS, then an update was initiated outside of Rancher,
 			// such as in AKS console. In this case, this is a no-op and the reconciliation will happen after syncing.
 			if config.Status.Phase == aksConfigActivePhase {
-				message := fmt.Sprintf(
+				statusMessage := fmt.Sprintf(
 					"Waiting for non-Rancher initiated cluster update for [%s (id: %s)]",
 					config.Spec.ClusterName,
 					config.Name,
 				)
-				logrus.Infof("%s", message)
-				return h.setStatusMessage(config, message)
+				logrus.Infof("%s", statusMessage)
+				return h.setStatusMessage(config, statusMessage)
 			}
-			var message string
+			var statusMessage string
 
 			switch status {
 			case NodePoolDeleting:
-				message = fmt.Sprintf(
+				statusMessage = fmt.Sprintf(
 					"Waiting for cluster [%s (id: %s)] to delete node pool [%s]",
 					config.Spec.ClusterName,
 					config.Name,
 					aks.String(np.Name),
 				)
 			default:
-				message = fmt.Sprintf(
+				statusMessage = fmt.Sprintf(
 					"Waiting for cluster [%s (id: %s)] to update node pool [%s]",
 					config.Spec.ClusterName,
 					config.Name,
@@ -390,11 +390,11 @@ func (h *Handler) checkAndUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 				)
 			}
 
-			logrus.Infof("%s", message)
+			logrus.Infof("%s", statusMessage)
 
 			if config.Status.Message == "" {
 				var err error
-				config, err = h.setStatusMessage(config, message)
+				config, err = h.setStatusMessage(config, statusMessage)
 				if err != nil {
 					return config, err
 				}
@@ -577,18 +577,18 @@ func (h *Handler) waitForCluster(config *aksv1.AKSClusterConfig) (*aksv1.AKSClus
 		return h.aksCC.UpdateStatus(config)
 	}
 
-	message := fmt.Sprintf(
+	statusMessage := fmt.Sprintf(
 		"Waiting for cluster [%s (id: %s)] to finish creating, cluster state: %s",
 		config.Spec.ClusterName,
 		config.Name,
 		clusterState,
 	)
-	logrus.Infof("%s", message)
+	logrus.Infof("%s", statusMessage)
 
-	var messageErr error
-	config, messageErr = h.setStatusMessage(config, message)
-	if messageErr != nil {
-		return config, messageErr
+	var statusMessageErr error
+	config, statusMessageErr = h.setStatusMessage(config, statusMessage)
+	if statusMessageErr != nil {
+		return config, statusMessageErr
 	}
 
 	h.aksEnqueueAfter(config.Namespace, config.Name, wait*time.Second)
@@ -836,16 +836,16 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 			if config.Status.Phase != aksConfigUpdatingPhase {
 				return h.enqueueUpdate(config)
 			}
-			message := fmt.Sprintf(
+			statusMessage := fmt.Sprintf(
 				"Updating tags for cluster [%s (id: %s)]",
 				config.Spec.ClusterName,
 				config.Name,
 			)
-			logrus.Infof("%s", message)
-			var messageErr error
-			config, messageErr = h.setStatusMessage(config, message)
-			if messageErr != nil {
-				return config, messageErr
+			logrus.Infof("%s", statusMessage)
+			var statusMessageErr error
+			config, statusMessageErr = h.setStatusMessage(config, statusMessage)
+			if statusMessageErr != nil {
+				return config, statusMessageErr
 			}
 			logrus.Debugf("config: %v; upstream: %v", config.Spec.Tags, upstreamSpec.Tags)
 			tags := armcontainerservice.TagsObject{
@@ -979,10 +979,10 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 		}
 
 		if updateMessage != "" {
-			var messageErr error
-			config, messageErr = h.setStatusMessage(config, updateMessage)
-			if messageErr != nil {
-				return config, messageErr
+			var statusMessageErr error
+			config, statusMessageErr = h.setStatusMessage(config, updateMessage)
+			if statusMessageErr != nil {
+				return config, statusMessageErr
 			}
 		}
 
@@ -1124,15 +1124,15 @@ func (h *Handler) updateUpstreamClusterState(ctx context.Context, config *aksv1.
 				if config.Status.Phase != aksConfigUpdatingPhase {
 					return h.enqueueUpdate(config)
 				}
-				message := fmt.Sprintf(
+				statusMessage := fmt.Sprintf(
 					"Removing node pool [%s] from cluster [%s (id: %s)]",
 					npName, config.Spec.ClusterName, config.Name,
 				)
-				logrus.Infof("%s", message)
-				var messageErr error
-				config, messageErr = h.setStatusMessage(config, message)
-				if messageErr != nil {
-					return config, messageErr
+				logrus.Infof("%s", statusMessage)
+				var statusMessageErr error
+				config, statusMessageErr = h.setStatusMessage(config, statusMessage)
+				if statusMessageErr != nil {
+					return config, statusMessageErr
 				}
 				err = aks.RemoveAgentPool(ctx, h.azureClients.agentPoolsClient, &config.Spec, upstreamNodePools[npName])
 				if err != nil {
