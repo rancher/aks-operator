@@ -13,7 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	armoperationalinsights "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/operationalinsights/armoperationalinsights"
+	armoperationalinsights "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/operationalinsights/armoperationalinsights/v3"
 	services "github.com/rancher/aks-operator/pkg/aks/services"
 	gomock "go.uber.org/mock/gomock"
 )
