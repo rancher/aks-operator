@@ -151,6 +151,7 @@ type AKSClusterConfigSpec struct {
 type AKSClusterConfigStatus struct {
 	Phase          string `json:"phase"`
 	FailureMessage string `json:"failureMessage"`
+	Message        string `json:"message"`
 	RBACEnabled    *bool  `json:"rbacEnabled"`
 }
 
