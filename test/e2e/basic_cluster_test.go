@@ -34,7 +34,7 @@ var _ = Describe("BasicCluster", func() {
 
 	})
 
-	It("Succesfully creates a cluster", func() {
+	It("Successfully creates a cluster", func() {
 		By("Creating a cluster")
 		Expect(cl.Create(ctx, cluster)).Should(Succeed())
 
