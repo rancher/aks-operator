@@ -48,6 +48,9 @@ spec:
               dockerBridgeCidr:
                 nullable: true
                 type: string
+              dualStack:
+                nullable: true
+                type: boolean
               httpApplicationRouting:
                 nullable: true
                 type: boolean
