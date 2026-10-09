@@ -105,10 +105,18 @@ func createManagedCluster(ctx context.Context, cred *Credentials, workplacesClie
 	switch strings.ToLower(String(spec.NetworkPlugin)) {
 	case string(armcontainerservice.NetworkPluginAzure):
 		networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginAzure)
+		if strings.EqualFold(String(spec.NetworkPluginMode), string(armcontainerservice.NetworkPluginModeOverlay)) {
+			networkProfile.NetworkPluginMode = to.Ptr(armcontainerservice.NetworkPluginModeOverlay)
+		}
 	case string(armcontainerservice.NetworkPluginKubenet):
 		networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginKubenet)
 	case "":
-		networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginKubenet)
+		if strings.EqualFold(String(spec.NetworkPluginMode), string(armcontainerservice.NetworkPluginModeOverlay)) {
+			networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginAzure)
+			networkProfile.NetworkPluginMode = to.Ptr(armcontainerservice.NetworkPluginModeOverlay)
+		} else {
+			networkProfile.NetworkPlugin = to.Ptr(armcontainerservice.NetworkPluginKubenet)
+		}
 	default:
 		return nil, fmt.Errorf("networkPlugin '%s' is not supported", String(spec.NetworkPlugin))
 	}
