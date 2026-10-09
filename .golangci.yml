@@ -1,7 +1,7 @@
 version: "2"
 run:
   timeout: 5m
-  go: "1.25"
+  go: "1.26"
   tests: false
   allow-parallel-runners: true
 linters:
@@ -87,6 +87,10 @@ linters:
           - revive
         path: utils/
         text: 'var-naming: avoid meaningless package names' 
+        # Azure region lookup tables: repeated keys/values are data, not constants.
+      - linters:
+          - goconst
+        path: pkg/aks/check.go$
     paths:
       - zz_generated_*
       - pkg/generated
