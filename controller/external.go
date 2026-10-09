@@ -30,7 +30,8 @@ func GetClusterKubeConfig(ctx context.Context, secretsCache wranglerv1.SecretCac
 
 	h := Handler{
 		azureClients: azureClients{
-			clustersClient: clustersClient,
+			clustersClient:  clustersClient,
+			tokenCredential: clientSecretCredential,
 		},
 	}
 	return h.getClusterKubeConfig(ctx, spec)

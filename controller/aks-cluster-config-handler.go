@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
 	wranglerv1 "github.com/rancher/wrangler/v3/pkg/generated/controllers/core/v1"
@@ -98,6 +100,7 @@ type azureClients struct {
 	resourceGroupsClient services.ResourceGroupsClientInterface
 	agentPoolsClient     services.AgentPoolsClientInterface
 	workplacesClient     services.WorkplacesClientInterface
+	tokenCredential      azcore.TokenCredential
 }
 
 func Register(
@@ -616,7 +619,7 @@ func (h *Handler) enqueueUpdate(config *aksv1.AKSClusterConfig) (*aksv1.AKSClust
 // createCASecret creates a secret containing ca and endpoint. These can be used to create a kubeconfig via
 // the go sdk
 func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterConfig) error {
-	kubeConfig, err := h.getClusterKubeConfig(ctx, &config.Spec)
+	kubeConfig, err := h.getClusterCAAndEndpoint(ctx, &config.Spec)
 	if err != nil {
 		return err
 	}
@@ -645,7 +648,68 @@ func (h *Handler) createCASecret(ctx context.Context, config *aksv1.AKSClusterCo
 	return err
 }
 
+// getClusterCAAndEndpoint retrieves the cluster's API server endpoint and CA certificate.
+func (h *Handler) getClusterCAAndEndpoint(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (*rest.Config, error) {
+	logrus.Infof("Retrieving cluster CA and endpoint for cluster [%s]", spec.ClusterName)
+
+	clusterState, err := h.azureClients.clustersClient.Get(ctx, spec.ResourceGroup, spec.ClusterName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if clusterState.Properties != nil &&
+		clusterState.Properties.DisableLocalAccounts != nil &&
+		*clusterState.Properties.DisableLocalAccounts {
+		credentials, err := h.azureClients.clustersClient.ListClusterUserCredentials(
+			ctx,
+			spec.ResourceGroup,
+			spec.ClusterName,
+			&armcontainerservice.ManagedClustersClientListClusterUserCredentialsOptions{
+				Format: to.Ptr(armcontainerservice.FormatExec),
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(credentials.Kubeconfigs) == 0 {
+			return nil, fmt.Errorf("no kubeconfig returned for cluster [%s]", spec.ClusterName)
+		}
+
+		logrus.Infof("Cluster CA and endpoint retrieved successfully for cluster [%s]", spec.ClusterName)
+		return clientcmd.RESTConfigFromKubeConfig(credentials.Kubeconfigs[0].Value)
+	}
+
+	accessProfile, err := h.azureClients.clustersClient.GetAccessProfile(
+		ctx,
+		spec.ResourceGroup,
+		spec.ClusterName,
+		"clusterAdmin",
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	logrus.Infof("Cluster CA and endpoint retrieved successfully for cluster [%s]", spec.ClusterName)
+	return clientcmd.RESTConfigFromKubeConfig(accessProfile.Properties.KubeConfig)
+}
+
+// aksAADServerAppID is the Azure AD application ID of the "Azure Kubernetes Service AAD Server" app.
+const aksAADServerAppID = "6dae42f8-4368-4678-94ff-3960e28e3630"
+
+// getClusterKubeConfig returns a REST config for clusters with local accounts Enabled/disabled.
 func (h *Handler) getClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (restConfig *rest.Config, err error) {
+	logrus.Infof("Retrieving cluster kubeconfig for cluster [%s]", spec.ClusterName)
+	clusterState, err := h.azureClients.clustersClient.Get(ctx, spec.ResourceGroup, spec.ClusterName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if clusterState.Properties != nil && clusterState.Properties.DisableLocalAccounts != nil && *clusterState.Properties.DisableLocalAccounts {
+		return h.getEntraClusterKubeConfig(ctx, spec)
+	}
+
 	accessProfile, err := h.azureClients.clustersClient.GetAccessProfile(ctx, spec.ResourceGroup, spec.ClusterName, "clusterAdmin", nil)
 	if err != nil {
 		return nil, err
@@ -656,6 +720,29 @@ func (h *Handler) getClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClust
 		return nil, err
 	}
 	return config, nil
+}
+
+// getEntraClusterKubeConfig builds a rest.Config for a cluster with local accounts disabled
+func (h *Handler) getEntraClusterKubeConfig(ctx context.Context, spec *aksv1.AKSClusterConfigSpec) (*rest.Config, error) {
+	caAndEndpoint, err := h.getClusterCAAndEndpoint(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := h.azureClients.tokenCredential.GetToken(ctx, policy.TokenRequestOptions{
+		Scopes: []string{aksAADServerAppID + "/.default"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error acquiring Entra ID token for cluster [%s]: %w", spec.ClusterName, err)
+	}
+
+	return &rest.Config{
+		Host: caAndEndpoint.Host,
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: caAndEndpoint.CAData,
+		},
+		BearerToken: token.Token,
+	}, nil
 }
 
 func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *aks.Credentials, spec *aksv1.AKSClusterConfigSpec) (*aksv1.AKSClusterConfigSpec, error) {
@@ -1194,6 +1281,7 @@ func (h *Handler) getAzureClients(config *aksv1.AKSClusterConfig) error {
 		resourceGroupsClient: rgClient,
 		agentPoolsClient:     agentPoolsClient,
 		workplacesClient:     workplacesClient,
+		tokenCredential:      clientSecretCredential,
 	}
 
 	return nil
