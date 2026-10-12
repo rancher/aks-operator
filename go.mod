@@ -2,6 +2,8 @@ module github.com/rancher/aks-operator
 
 go 1.26.0
 
+toolchain go1.26.8
+
 replace k8s.io/client-go => k8s.io/client-go v0.36.0
 
 require (
