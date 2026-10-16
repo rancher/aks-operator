@@ -977,6 +977,44 @@ var _ = Describe("buildUpstreamClusterState", func() {
 		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(BeNil())
 		Expect(upstreamSpec.LogAnalyticsWorkspaceGroup).To(BeNil())
 	})
+
+	It("should skip node pools in Machines mode", func() {
+		clusterState.Properties.AgentPoolProfiles = append(clusterState.Properties.AgentPoolProfiles,
+			&armcontainerservice.ManagedClusterAgentPoolProfile{
+				Name:              to.Ptr("aksmanagedap"),
+				Mode:              to.Ptr(armcontainerservice.AgentPoolMode(agentPoolModeMachines)),
+				Type:              to.Ptr(armcontainerservice.AgentPoolType("VirtualMachines")),
+				VMSize:            to.Ptr(""),
+				ProvisioningState: to.Ptr(NodePoolSucceeded),
+			})
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: *clusterState,
+			}, nil)
+
+		upstreamSpec, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(upstreamSpec.NodePools).To(HaveLen(1))
+		Expect(upstreamSpec.NodePools[0].Name).To(Equal(to.Ptr("test")))
+	})
+
+	It("should succeed if node pool mode, os type and vm size are nil", func() {
+		nodePool := clusterState.Properties.AgentPoolProfiles[0]
+		nodePool.Mode = nil
+		nodePool.OSType = nil
+		nodePool.VMSize = nil
+		clusterClientMock.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any(), nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: *clusterState,
+			}, nil)
+
+		upstreamSpec, err := handler.buildUpstreamClusterState(ctx, credentials, &aksConfig.Spec)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(upstreamSpec.NodePools).To(HaveLen(1))
+		Expect(upstreamSpec.NodePools[0].Mode).To(BeEmpty())
+		Expect(upstreamSpec.NodePools[0].OsType).To(BeEmpty())
+		Expect(upstreamSpec.NodePools[0].VMSize).To(BeEmpty())
+	})
 })
 
 var _ = Describe("recordError", func() {

@@ -79,6 +79,10 @@ const (
 	NodePoolUpgrading = "Upgrading"
 )
 
+// agentPoolModeMachines is the mode of agent pools managed through the AKS Machine API, such as
+// the reserved "aksmanagedap" pool used by Node Auto Provisioning. It is not defined in armcontainerservice/v5.
+const agentPoolModeMachines = "Machines"
+
 var matchWorkspaceGroup = regexp.MustCompile("/(?i)resourcegroups/(.+?)/")
 var matchWorkspaceName = regexp.MustCompile("/(?i)workspaces/(.+?)$")
 
@@ -689,6 +693,11 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 
 	// set AgentPool profile
 	for _, np := range clusterState.Properties.AgentPoolProfiles {
+		// Machines mode pools hold individually managed machines rather than a scale set, and lack
+		// fields such as OSType, VMSize and Count. They are managed by AKS, so they are not tracked here.
+		if np.Mode != nil && string(*np.Mode) == agentPoolModeMachines {
+			continue
+		}
 		var upstreamNP aksv1.AKSNodePool
 		upstreamNP.Name = np.Name
 		if aks.String(np.ProvisioningState) != NodePoolSucceeded || aks.Bool(np.EnableAutoScaling) {
@@ -712,13 +721,17 @@ func (h *Handler) buildUpstreamClusterState(ctx context.Context, credentials *ak
 			upstreamNP.Count = np.Count
 		}
 		upstreamNP.MaxPods = np.MaxPods
-		upstreamNP.VMSize = *np.VMSize
+		upstreamNP.VMSize = aks.String(np.VMSize)
 		upstreamNP.OsDiskSizeGB = np.OSDiskSizeGB
 		if np.OSDiskType != nil {
 			upstreamNP.OsDiskType = string(*np.OSDiskType)
 		}
-		upstreamNP.Mode = string(*np.Mode)
-		upstreamNP.OsType = string(*np.OSType)
+		if np.Mode != nil {
+			upstreamNP.Mode = string(*np.Mode)
+		}
+		if np.OSType != nil {
+			upstreamNP.OsType = string(*np.OSType)
+		}
 		upstreamNP.OrchestratorVersion = np.OrchestratorVersion
 		upstreamNP.AvailabilityZones = utils.ConvertToPointerOfSlice(np.AvailabilityZones)
 		if np.EnableAutoScaling != nil {
