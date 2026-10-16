@@ -154,3 +154,18 @@ func (mr *MockManagedClustersClientInterfaceMockRecorder) GetAccessProfile(ctx, 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccessProfile", reflect.TypeOf((*MockManagedClustersClientInterface)(nil).GetAccessProfile), ctx, resourceGroupName, resourceName, roleName, options)
 }
+
+// ListClusterUserCredentials mocks base method.
+func (m *MockManagedClustersClientInterface) ListClusterUserCredentials(ctx context.Context, resourceGroupName, resourceName string, options *armcontainerservice.ManagedClustersClientListClusterUserCredentialsOptions) (armcontainerservice.ManagedClustersClientListClusterUserCredentialsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListClusterUserCredentials", ctx, resourceGroupName, resourceName, options)
+	ret0, _ := ret[0].(armcontainerservice.ManagedClustersClientListClusterUserCredentialsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListClusterUserCredentials indicates an expected call of ListClusterUserCredentials.
+func (mr *MockManagedClustersClientInterfaceMockRecorder) ListClusterUserCredentials(ctx, resourceGroupName, resourceName, options any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListClusterUserCredentials", reflect.TypeOf((*MockManagedClustersClientInterface)(nil).ListClusterUserCredentials), ctx, resourceGroupName, resourceName, options)
+}

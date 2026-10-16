@@ -2,9 +2,12 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice/v5"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
@@ -46,6 +49,51 @@ users:
     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCnRlc3QKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
     client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQp0ZXN0Ci0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
     token: dGVzdA==`
+
+const execKubeconfigYAML = `
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCnRlc3QKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    server: https://test.com
+  name: test
+contexts:
+- context:
+    cluster: test
+    user: test
+  name: test
+current-context: test
+kind: Config
+preferences: {}
+users:
+- name: test
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      command: kubelogin
+      args:
+      - get-token
+      - --environment
+      - AzurePublicCloud
+      - --server-id
+      - test
+      - --client-id
+      - test
+      - --tenant-id
+      - test
+      interactiveMode: IfAvailable
+      provideClusterInfo: false`
+
+type testTokenCredential struct {
+	token   string
+	err     error
+	options policy.TokenRequestOptions
+}
+
+func (c *testTokenCredential) GetToken(_ context.Context, options policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	c.options = options
+	return azcore.AccessToken{Token: c.token}, c.err
+}
 
 var _ = Describe("importCluster", func() {
 	var (
@@ -95,11 +143,21 @@ var _ = Describe("importCluster", func() {
 	})
 
 	It("should create CA secret and update status", func() {
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
-			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
-				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
-					Properties: &armcontainerservice.AccessProfile{
-						KubeConfig: []byte(kubeconfigYAML),
+		clusterClientMock.EXPECT().Get(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, nil).
+			Return(armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						DisableLocalAccounts: to.Ptr(true),
+					},
+				},
+			}, nil)
+
+		clusterClientMock.EXPECT().ListClusterUserCredentials(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName,
+			&armcontainerservice.ManagedClustersClientListClusterUserCredentialsOptions{Format: to.Ptr(armcontainerservice.FormatExec)}).
+			Return(armcontainerservice.ManagedClustersClientListClusterUserCredentialsResponse{
+				CredentialResults: armcontainerservice.CredentialResults{
+					Kubeconfigs: []*armcontainerservice.CredentialResult{
+						{Value: []byte(execKubeconfigYAML)},
 					},
 				},
 			}, nil)
@@ -118,15 +176,38 @@ var _ = Describe("importCluster", func() {
 	})
 
 	It("don't return error if secret already exists", func() {
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
-			Return(
-				armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
-					ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
-						Properties: &armcontainerservice.AccessProfile{
-							KubeConfig: []byte(kubeconfigYAML),
-						},
+		clusterClientMock.EXPECT().Get(
+			gomock.Any(),
+			aksConfig.Spec.ResourceGroup,
+			aksConfig.Spec.ClusterName,
+			nil,
+		).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						DisableLocalAccounts: to.Ptr(false),
 					},
-				}, nil).AnyTimes()
+				},
+			},
+			nil,
+		).AnyTimes()
+
+		clusterClientMock.EXPECT().GetAccessProfile(
+			gomock.Any(),
+			aksConfig.Spec.ResourceGroup,
+			aksConfig.Spec.ClusterName,
+			"clusterAdmin",
+			nil,
+		).Return(
+			armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
+				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
+					Properties: &armcontainerservice.AccessProfile{
+						KubeConfig: []byte(kubeconfigYAML),
+					},
+				},
+			},
+			nil,
+		).AnyTimes()
 
 		gotAKSConfig, err := handler.importCluster(aksConfig)
 		Expect(err).ToNot(HaveOccurred())
@@ -139,10 +220,18 @@ var _ = Describe("importCluster", func() {
 	})
 
 	It("should return error if something fails", func() {
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
-			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
-				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{},
-			}, errors.New("error"))
+		clusterClientMock.EXPECT().Get(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, nil).
+			Return(armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						DisableLocalAccounts: to.Ptr(true),
+					},
+				},
+			}, nil)
+
+		clusterClientMock.EXPECT().ListClusterUserCredentials(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName,
+			&armcontainerservice.ManagedClustersClientListClusterUserCredentialsOptions{Format: to.Ptr(armcontainerservice.FormatExec)}).
+			Return(armcontainerservice.ManagedClustersClientListClusterUserCredentialsResponse{}, errors.New("error"))
 
 		gotAKSConfig, err := handler.importCluster(aksConfig)
 		Expect(err).To(HaveOccurred())
@@ -174,6 +263,15 @@ var _ = Describe("getClusterKubeConfig", func() {
 	})
 
 	It("should successfully return kubeconfig", func() {
+		clusterClientMock.EXPECT().Get(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, nil).
+			Return(armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						DisableLocalAccounts: to.Ptr(false),
+					},
+				},
+			}, nil)
+
 		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, "clusterAdmin", nil).
 			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
 				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
@@ -189,6 +287,15 @@ var _ = Describe("getClusterKubeConfig", func() {
 	})
 
 	It("should return error if azure request fails", func() {
+		clusterClientMock.EXPECT().Get(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, nil).
+			Return(armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						DisableLocalAccounts: to.Ptr(false),
+					},
+				},
+			}, nil)
+
 		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, "clusterAdmin", nil).
 			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
 				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{},
@@ -199,6 +306,15 @@ var _ = Describe("getClusterKubeConfig", func() {
 	})
 
 	It("should return error if config is failed to be created", func() {
+		clusterClientMock.EXPECT().Get(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, nil).
+			Return(armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						DisableLocalAccounts: to.Ptr(false),
+					},
+				},
+			}, nil)
+
 		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfigSpec.ResourceGroup, aksConfigSpec.ClusterName, "clusterAdmin", nil).
 			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
 				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
@@ -210,6 +326,55 @@ var _ = Describe("getClusterKubeConfig", func() {
 
 		_, err := handler.getClusterKubeConfig(ctx, aksConfigSpec)
 		Expect(err).To(HaveOccurred())
+	})
+
+	It("should return an Entra-authenticated rest config when local accounts are disabled", func() {
+		clusterClientMock.EXPECT().Get(
+			gomock.Any(),
+			aksConfigSpec.ResourceGroup,
+			aksConfigSpec.ClusterName,
+			nil,
+		).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						DisableLocalAccounts: to.Ptr(true),
+					},
+				},
+			},
+			nil,
+		).Times(2)
+
+		clusterClientMock.EXPECT().ListClusterUserCredentials(
+			gomock.Any(),
+			aksConfigSpec.ResourceGroup,
+			aksConfigSpec.ClusterName,
+			&armcontainerservice.ManagedClustersClientListClusterUserCredentialsOptions{
+				Format: to.Ptr(armcontainerservice.FormatExec),
+			},
+		).Return(
+			armcontainerservice.ManagedClustersClientListClusterUserCredentialsResponse{
+				CredentialResults: armcontainerservice.CredentialResults{
+					Kubeconfigs: []*armcontainerservice.CredentialResult{
+						{Value: []byte(execKubeconfigYAML)},
+					},
+				},
+			},
+			nil,
+		)
+
+		tokenCredential := &testTokenCredential{token: "entra-token"}
+		handler.azureClients.tokenCredential = tokenCredential
+
+		config, err := handler.getClusterKubeConfig(ctx, aksConfigSpec)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(config).ToNot(BeNil())
+		Expect(config.Host).To(Equal("https://test.com"))
+		Expect(config.CAData).NotTo(BeEmpty())
+		Expect(config.BearerToken).To(Equal("entra-token"))
+		Expect(tokenCredential.options).To(Equal(policy.TokenRequestOptions{
+			Scopes: []string{aksAADServerAppID + "/.default"},
+		}))
 	})
 })
 
@@ -695,11 +860,22 @@ var _ = Describe("waitForCluster", func() {
 			},
 			nil)
 
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
-			Return(armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
-				ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
-					Properties: &armcontainerservice.AccessProfile{
-						KubeConfig: []byte(kubeconfigYAML),
+		clusterClientMock.EXPECT().Get(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						DisableLocalAccounts: to.Ptr(true),
+					},
+				},
+			},
+			nil)
+
+		clusterClientMock.EXPECT().ListClusterUserCredentials(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName,
+			&armcontainerservice.ManagedClustersClientListClusterUserCredentialsOptions{Format: to.Ptr(armcontainerservice.FormatExec)}).
+			Return(armcontainerservice.ManagedClustersClientListClusterUserCredentialsResponse{
+				CredentialResults: armcontainerservice.CredentialResults{
+					Kubeconfigs: []*armcontainerservice.CredentialResult{
+						{Value: []byte(execKubeconfigYAML)},
 					},
 				},
 			}, nil)
@@ -767,12 +943,23 @@ var _ = Describe("waitForCluster", func() {
 			},
 			nil)
 
-		clusterClientMock.EXPECT().GetAccessProfile(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, "clusterAdmin", nil).
+		clusterClientMock.EXPECT().Get(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName, nil).Return(
+			armcontainerservice.ManagedClustersClientGetResponse{
+				ManagedCluster: armcontainerservice.ManagedCluster{
+					Properties: &armcontainerservice.ManagedClusterProperties{
+						DisableLocalAccounts: to.Ptr(true),
+					},
+				},
+			},
+			nil)
+
+		clusterClientMock.EXPECT().ListClusterUserCredentials(gomock.Any(), aksConfig.Spec.ResourceGroup, aksConfig.Spec.ClusterName,
+			&armcontainerservice.ManagedClustersClientListClusterUserCredentialsOptions{Format: to.Ptr(armcontainerservice.FormatExec)}).
 			Return(
-				armcontainerservice.ManagedClustersClientGetAccessProfileResponse{
-					ManagedClusterAccessProfile: armcontainerservice.ManagedClusterAccessProfile{
-						Properties: &armcontainerservice.AccessProfile{
-							KubeConfig: []byte(kubeconfigYAML),
+				armcontainerservice.ManagedClustersClientListClusterUserCredentialsResponse{
+					CredentialResults: armcontainerservice.CredentialResults{
+						Kubeconfigs: []*armcontainerservice.CredentialResult{
+							{Value: []byte(execKubeconfigYAML)},
 						},
 					},
 				},
