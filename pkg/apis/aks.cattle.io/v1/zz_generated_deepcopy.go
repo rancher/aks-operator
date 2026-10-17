@@ -104,6 +104,11 @@ func (in *AKSClusterConfigSpec) DeepCopyInto(out *AKSClusterConfigSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.NetworkPluginMode != nil {
+		in, out := &in.NetworkPluginMode, &out.NetworkPluginMode
+		*out = new(string)
+		**out = **in
+	}
 	if in.VirtualNetworkResourceGroup != nil {
 		in, out := &in.VirtualNetworkResourceGroup, &out.VirtualNetworkResourceGroup
 		*out = new(string)
