@@ -18,4 +18,7 @@ annotations:
   catalog.cattle.io/rancher-version: '>= 2.12.0-0 < 2.13.0-0'
   catalog.cattle.io/release-name: rancher-aks-operator
   catalog.cattle.io/scope: management
+  helm.sh/images: |
+    - name: aks-operator
+      image: rancher/aks-operator:v0.0.0
 
