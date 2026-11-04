@@ -109,6 +109,7 @@ operator-chart:
 	cp -rf $(ROOT_DIR)/charts/aks-operator $(BIN_DIR)/chart
 	sed -i -e 's/tag:.*/tag: '${TAG}'/' $(BIN_DIR)/chart/values.yaml
 	sed -i -e 's|repository:.*|repository: '${REPO}/aks-operator'|' $(BIN_DIR)/chart/values.yaml
+	sed -i -e 's|image: .*/aks-operator:.*|image: '${REPO}/aks-operator:${TAG}'|' $(BIN_DIR)/chart/Chart.yaml
 	helm package --version ${CHART_VERSION} --app-version ${GIT_TAG} -d $(BIN_DIR)/ $(BIN_DIR)/chart
 	rm -Rf $(BIN_DIR)/chart
 	
