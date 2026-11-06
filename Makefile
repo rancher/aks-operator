@@ -27,10 +27,6 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BIN_DIR := $(abspath $(ROOT_DIR)/bin)
 GO_INSTALL = ./scripts/go_install.sh
 
-MOCKGEN_VER := v0.4.0
-MOCKGEN_BIN := mockgen
-MOCKGEN := $(BIN_DIR)/$(MOCKGEN_BIN)-$(MOCKGEN_VER)
-
 GINKGO_VER := v2.28.1
 GINKGO_BIN := ginkgo
 GINKGO := $(BIN_DIR)/$(GINKGO_BIN)-$(GINKGO_VER)
@@ -52,16 +48,13 @@ endif
 default: operator
 
 .PHONY: generate-crd
-generate-crd: $(MOCKGEN)
+generate-crd:
 	go generate main.go
 
 .PHONY: generate
 generate:
 	$(MAKE) generate-go
 	$(MAKE) generate-crd
-
-$(MOCKGEN):
-	GOBIN=$(BIN_DIR) $(GO_INSTALL) go.uber.org/mock/mockgen $(MOCKGEN_BIN) $(MOCKGEN_VER)
 
 $(GINKGO):
 	GOBIN=$(BIN_DIR) $(GO_INSTALL) github.com/onsi/ginkgo/v2/ginkgo $(GINKGO_BIN) $(GINKGO_VER)
@@ -80,7 +73,7 @@ operator:
         -o bin/aks-operator .
 
 .PHONY: generate-go
-generate-go: $(MOCKGEN)
+generate-go:
 	go generate ./pkg/aks/...
 
 .PHONY: test
