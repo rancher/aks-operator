@@ -23,6 +23,7 @@ import (
 type MockPoller[T any] struct {
 	ctrl     *gomock.Controller
 	recorder *MockPollerMockRecorder[T]
+	isgomock struct{}
 }
 
 // MockPollerMockRecorder is the mock recorder for MockPoller.
@@ -61,6 +62,7 @@ func (mr *MockPollerMockRecorder[T]) PollUntilDone(ctx, options any) *gomock.Cal
 type MockManagedClustersClientInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockManagedClustersClientInterfaceMockRecorder
+	isgomock struct{}
 }
 
 // MockManagedClustersClientInterfaceMockRecorder is the mock recorder for MockManagedClustersClientInterface.
