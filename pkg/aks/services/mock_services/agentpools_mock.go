@@ -22,6 +22,7 @@ import (
 type MockAgentPoolsClientInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockAgentPoolsClientInterfaceMockRecorder
+	isgomock struct{}
 }
 
 // MockAgentPoolsClientInterfaceMockRecorder is the mock recorder for MockAgentPoolsClientInterface.
