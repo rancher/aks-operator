@@ -2,7 +2,7 @@ module github.com/rancher/aks-operator/gotools/mockgen
 
 go 1.27.0
 
-toolchain go1.27.1
+toolchain go1.27.3
 
 tool go.uber.org/mock/mockgen
 
