@@ -20,6 +20,7 @@ type ManagedClustersClientInterface interface {
 	Get(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientGetOptions) (armcontainerservice.ManagedClustersClientGetResponse, error)
 	BeginDelete(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientBeginDeleteOptions) (Poller[armcontainerservice.ManagedClustersClientDeleteResponse], error)
 	GetAccessProfile(ctx context.Context, resourceGroupName string, resourceName string, roleName string, options *armcontainerservice.ManagedClustersClientGetAccessProfileOptions) (armcontainerservice.ManagedClustersClientGetAccessProfileResponse, error)
+	ListClusterUserCredentials(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientListClusterUserCredentialsOptions) (armcontainerservice.ManagedClustersClientListClusterUserCredentialsResponse, error)
 	BeginUpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error)
 }
 
@@ -57,6 +58,10 @@ func (cl *managedClustersClient) BeginDelete(ctx context.Context, resourceGroupN
 
 func (cl *managedClustersClient) GetAccessProfile(ctx context.Context, resourceGroupName string, resourceName string, roleName string, options *armcontainerservice.ManagedClustersClientGetAccessProfileOptions) (armcontainerservice.ManagedClustersClientGetAccessProfileResponse, error) {
 	return cl.armManagedClustersClient.GetAccessProfile(ctx, resourceGroupName, resourceName, roleName, options)
+}
+
+func (cl *managedClustersClient) ListClusterUserCredentials(ctx context.Context, resourceGroupName string, resourceName string, options *armcontainerservice.ManagedClustersClientListClusterUserCredentialsOptions) (armcontainerservice.ManagedClustersClientListClusterUserCredentialsResponse, error) {
+	return cl.armManagedClustersClient.ListClusterUserCredentials(ctx, resourceGroupName, resourceName, options)
 }
 
 func (cl *managedClustersClient) BeginUpdateTags(ctx context.Context, resourceGroupName string, resourceName string, parameters armcontainerservice.TagsObject, options *armcontainerservice.ManagedClustersClientBeginUpdateTagsOptions) (Poller[armcontainerservice.ManagedClustersClientUpdateTagsResponse], error) {
